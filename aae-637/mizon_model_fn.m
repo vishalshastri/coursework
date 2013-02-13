@@ -1,3 +1,3 @@
-function ret = mizon_model_fn(capital, labor, betas)
-	 ret = betas(1) .* capital.^betas(2) .* labor.^betas(3);
+function ret = mizon_model_fn(x, betas)
+	 ret = betas(1) .* x(:, 1).^betas(2) .* x(:, 2).^betas(3);
 end

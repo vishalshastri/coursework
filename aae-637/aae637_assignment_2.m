@@ -24,7 +24,7 @@ search_vec = ones(prod( size(grid_array1)), 1 );
 
 for m=1:size(search_vec,1) 
 
-  model_temp = mizon_model_fn(horzcat(
+  model_temp = mizon_model_fn(horzcat( ...
     full_data(:, strcmp(varnames,'Capital')), ...
     full_data(:, strcmp(varnames,'LH')) ), ...
     [grid_array1(m); grid_array2(m); grid_array3(m)] ) ;
@@ -49,14 +49,12 @@ min_grid_sol(1) = grid_array1(find(min_grid_sse==search_vec));
 min_grid_sol(2) = grid_array2(find(min_grid_sse==search_vec));
 min_grid_sol(3) = grid_array3(find(min_grid_sse==search_vec));
 % Now assigning the actual value of the parameters from the grid vector
-{'mizon_model_fn(full_data(:, strcmp(varnames,'Capital')), ...
-    full_data(:, strcmp(varnames,'LH')), ...
-    [grid_array1(m); grid_array2(m); grid_array3(m)] ) '}
+
+
 
 mizon_model_fn_pass@mizon_model_fn
 
-x_mat_input = horzcat(
-    full_data(:, strcmp(varnames,'Capital')), ...
+x_mat_input = horzcat(  full_data(:, strcmp(varnames,'Capital')), ...
     full_data(:, strcmp(varnames,'LH')) )
 
 [test1, test2] = nls(min_grid_sol, full_data(:, strcmp(varnames,'Quant')), ...
