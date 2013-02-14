@@ -24,10 +24,11 @@ search_vec = ones(prod( size(grid_array1)), 1 );
 
 for m=1:size(search_vec,1) 
 
-  model_temp = mizon_model_fn(horzcat( ...
+  model_temp = mizon_model_fn( ...
+    [grid_array1(m); grid_array2(m); grid_array3(m)], ...
+    horzcat( ...
     full_data(:, strcmp(varnames,'Capital')), ...
-    full_data(:, strcmp(varnames,'LH')) ), ...
-    [grid_array1(m); grid_array2(m); grid_array3(m)] ) ;
+    full_data(:, strcmp(varnames,'LH')) ) ) ;
   % Calling our model function that produces the y-hats
   search_vec(m,1) = ssefn( ...
     full_data(:, strcmp(varnames,'Quant')), model_temp ...
@@ -49,17 +50,24 @@ min_grid_sol(1) = grid_array1(find(min_grid_sse==search_vec));
 min_grid_sol(2) = grid_array2(find(min_grid_sse==search_vec));
 min_grid_sol(3) = grid_array3(find(min_grid_sse==search_vec));
 % Now assigning the actual value of the parameters from the grid vector
+%    1.8000
+%    0.2000
+%    0.8000
 
 
 
-mizon_model_fn_pass@mizon_model_fn
+mizon_model_fn_pass = @mizon_model_fn
 
 x_mat_input = horzcat(  full_data(:, strcmp(varnames,'Capital')), ...
-    full_data(:, strcmp(varnames,'LH')) )
+    full_data(:, strcmp(varnames,'LH')) ) ;
 
 [test1, test2] = nls(min_grid_sol, full_data(:, strcmp(varnames,'Quant')), ...
   {'beta1', 'beta2', 'beta3'}, 1e-6, 250, ...
-  size(full_data,1), 1, mizon_model_fn_pass, x_mat_input, .000001)
+  size(full_data,1), 1, mizon_model_fn_pass, x_mat_input, .000001) ;
+
+%    1.3040
+%    0.2215
+%    0.8288
 
 
 

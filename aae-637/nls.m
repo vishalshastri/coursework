@@ -58,6 +58,12 @@ function[betas,covb] =  nls(betas,y,names, critic_limit, iter_limit, numobs, do_
      iter = iter + 1;                % ** Update for next iteration**
      crit = max(abs((b - betas)./betas));  % ** Evaluate change in coeff. ** 
      betas = b;                      % ** Create lag betas **
+     hessian = model_hess(func_name, betas, x_mat)
+     [throwaway,definiteness] = chol(hessian)
+     if definiteness==0
+       display('*******REACHED CONVEX SECTION********'
+       break
+     end
     end
 
   %**** Compute covariance matrix *****
