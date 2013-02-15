@@ -15,7 +15,7 @@ function[betas,covb] =  nls(betas,y,names, critic_limit, iter_limit, numobs, do_
      z = Grad(betas,func_name,numobs, dh, x_mat);
      % ************************************************************
      u_lag = y - func_name(betas, x_mat); %** Compute errors| previous betas **
-     sl=(z'*z)\(z'*u_lag);      % ** step length:  JHGLL,eq.12.2.74 *
+     sl=(z'*z)\(z'*u_lag);      % ** step length:  JHGLL,eq.12.2.74 * (actually 12.2.42)
                                 % ** Could have used:  sl=inv(z'*z)*z'*u
      if do_step == 1;           % ** Use a variable step length **
        s = 1;                   % ** Initialize base step length of 1 **
@@ -58,10 +58,10 @@ function[betas,covb] =  nls(betas,y,names, critic_limit, iter_limit, numobs, do_
      iter = iter + 1;                % ** Update for next iteration**
      crit = max(abs((b - betas)./betas));  % ** Evaluate change in coeff. ** 
      betas = b;                      % ** Create lag betas **
-     hessian = model_hess(func_name, betas, x_mat)
-     [throwaway,definiteness] = chol(hessian)
+     hessian = model_hess(func_name, betas, x_mat, y);
+     [throwaway,definiteness] = chol(hessian);
      if definiteness==0
-       display('*******REACHED CONVEX SECTION********'
+       display('*******REACHED CONVEX SECTION********')
        break
      end
     end

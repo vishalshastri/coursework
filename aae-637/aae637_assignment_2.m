@@ -14,6 +14,7 @@ varnames = [varnames, 'LH'] ;
 
 
 [grid_array1, grid_array2, grid_array3] = ndgrid(-1:0.1:3, -1:0.1:3, -1:0.1:3) ;
+%[grid_array1, grid_array2, grid_array3] = ndgrid(-10:2:10, -10:2:10, -10:2:10) ;
 % We will iterate over each value -2 to 2, in steps of 0.01, for each 
 % parameter
 % When we did -100:1:100, we got optimums of: 2, 0, 1
@@ -54,8 +55,6 @@ min_grid_sol(3) = grid_array3(find(min_grid_sse==search_vec));
 %    0.2000
 %    0.8000
 
-
-
 mizon_model_fn_pass = @mizon_model_fn
 
 x_mat_input = horzcat(  full_data(:, strcmp(varnames,'Capital')), ...
@@ -65,9 +64,16 @@ x_mat_input = horzcat(  full_data(:, strcmp(varnames,'Capital')), ...
   {'beta1', 'beta2', 'beta3'}, 1e-6, 250, ...
   size(full_data,1), 1, mizon_model_fn_pass, x_mat_input, .000001) ;
 
+%  values before wrote code to break out of function when reached convex section:
 %    1.3040
 %    0.2215
 %    0.8288
+
+test5 = nr_alg(test1 ,full_data(:, strcmp(varnames,'Quant')), ...
+  {'beta1', 'beta2', 'beta3'}, 1e-6, 250, 1, mizon_model_fn_pass, x_mat_input);
+%b =   1.3040
+%b =   0.2215
+%b =   0.8288
 
 
 
