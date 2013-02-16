@@ -61,7 +61,7 @@ function[betas,covb] =  nls(betas,y,names, critic_limit, iter_limit, numobs, do_
      [throwaway,definiteness] = chol(hessian);
      if definiteness==0 & stop_convex==1
        display('*******REACHED CONVEX SECTION********')
-       break
+       return
      end
     end
 

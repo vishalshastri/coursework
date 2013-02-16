@@ -39,9 +39,6 @@ for m=1:size(search_vec,1)
 
 end
 
-%search_vec_sav=search_vec;
-%search_vec = search_vec_sav;
-
 min_grid_sse = min(search_vec);
 % This will give us the min
 
@@ -60,7 +57,7 @@ mizon_model_fn_pass = @mizon_model_fn
 x_mat_input = horzcat(  full_data(:, strcmp(varnames,'Capital')), ...
     full_data(:, strcmp(varnames,'LH')) ) ;
 
-[test1, test2] = nls(min_grid_sol, full_data(:, strcmp(varnames,'Quant')), ...
+[gn_sol, cov_model1] = nls(min_grid_sol, full_data(:, strcmp(varnames,'Quant')), ...
   {'beta1', 'beta2', 'beta3'}, 1e-6, 250, ...
   size(full_data,1), 1, mizon_model_fn_pass, x_mat_input, .000001, 1) ;
 
@@ -69,11 +66,23 @@ x_mat_input = horzcat(  full_data(:, strcmp(varnames,'Capital')), ...
 %    0.2215
 %    0.8288
 
-test5 = nr_alg(test1 ,full_data(:, strcmp(varnames,'Quant')), ...
+[nr_sol, cov_model2] = nr_alg(test1 ,full_data(:, strcmp(varnames,'Quant')), ...
   {'beta1', 'beta2', 'beta3'}, 1e-6, 250, 1, mizon_model_fn_pass, x_mat_input);
 %b =   1.3040
 %b =   0.2215
 %b =   0.8288
+
+
+test_hessian = model_hess(mizon_model_fn_pass, nr_sol, x_mat_input, full_data(:, strcmp(varnames,'Quant')));
+[throwaway,definiteness] = chol(test_hessian);
+if definiteness==0 
+  display('******* AT LOCAL MINIMUM ********')
+else
+  error('****  NOT AT LOCAL MINIMUM *****')
+end
+
+
+
 
 %%%%% QUESTION 2
 
@@ -86,9 +95,9 @@ orig_obs = size(full_data,1);
 full_data = horzcat( ...
     full_data(3:orig_obs, strcmp(varnames,'CONSUME')), ...
     full_data(3:orig_obs, strcmp(varnames,'INC')), ...
-    full_data(2:(orig_obs-1), strcmp(varnames,'CONSUME')) ...
-    full_data(2:(orig_obs-1), strcmp(varnames,'INC')) ...
-    full_data(1:(orig_obs-2), strcmp(varnames,'CONSUME')) ...
+    full_data(2:(orig_obs-1), strcmp(varnames,'CONSUME')), ...
+    full_data(2:(orig_obs-1), strcmp(varnames,'INC')), ...
+    full_data(1:(orig_obs-2), strcmp(varnames,'CONSUME')), ...
     full_data(1:(orig_obs-2), strcmp(varnames,'INC')) ...
     );
 
@@ -96,16 +105,43 @@ varnames = [varnames, 'CONSUME_L1', 'INC_L1', 'CONSUME_L2', 'INC_L2']
 
 consump_model_fn_pass = @consump_model_fn
 
-[test1, test2] = nls([1 1 1 1], full_data(:, strcmp(varnames,'CONSUME')), ...
+[ar2_coef, ar2_cov] = nls([1; 1; 1; 1], full_data(:, strcmp(varnames,'CONSUME')), ...
   {'beta1', 'beta2', 'beta3', 'beta4'}, 1e-6, 250, ...
-  size(full_data,1), 1, consump_model_fn_pass, full_data, .000001, 0) 
+  size(full_data,1), 1, consump_model_fn_pass, full_data, .000001, 0) ;
 
 
+w_test_mat=[zeros(2,2) eye(2)];
 
+w_test_output = (w_test_mat * ar2_coef - [0; 0])' * inv(w_test_mat * ar2_cov * w_test_mat') * ...
+  (w_test_mat * ar2_coef - [0; 0]);
+  
+w_test_p_val = 1 - chi2cdf(w_test_output, size(w_test_mat, 1));
+fprintf('Wald Stat. (H_0: theta_1 = theta_2 = 0): %10.4f \n', w_test_output);
+fprintf('Prob Wald Stat. Assum. H_0:            %10.4f \n', w_test_p_val);
+if w_test_p_val < 0.05
+    disp('    There is, therefore, enough evidence to reject H_0');
+else
+    disp('    There is, therefore, not enough evidence to reject H_0');
+end
 
+%% QUESTION 3
 
+urlwrite('http://www.aae.wisc.edu/aae637/data/matlab/yarn-industry.xls','temp.xls');
+[full_data,varnames,raw]=xlsread('temp.xls');
 
+% 'Lot'    'Time'    'Frames'
+ 
+full_data(:, 4) = cumsum( full_data(:,strcmp(varnames,'Time')) ) ./ 1:size(full_data,1)
+ 
+full_data(:, 5) = cumsum( full_data(:,strcmp(varnames,'Frames')) ) 
+ 
+varnames = [varnames, 'Ave_Time', 'Cumul_Frames']
 
+yarn_model_fn_pass = @yarn_model_fn
+
+[yarn_coef, yarn_cov] = nls([1; 1], full_data(:, strcmp(varnames,'Ave_Time')), ...
+  {'beta1', 'beta2'}, 1e-6, 250, ...
+  size(full_data,1), 1, yarn_model_fn_pass, full_data, .000001, 0) ;
 
 
 

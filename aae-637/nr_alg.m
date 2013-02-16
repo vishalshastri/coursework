@@ -1,5 +1,5 @@
 
-function[b] = nr_alg(betas,y,parname2, critic_limit, iter_limit, do_step, func_name, x_mat)
+function[b, covb] = nr_alg(betas,y,parname2, critic_limit, iter_limit, do_step, func_name, x_mat)
 
 crit = 1;
 iter = 1;
@@ -14,7 +14,6 @@ while (critic_limit < crit ) &&  (iter < iter_limit);    % Begin do loop
      z = Grad(betas,func_name,size(x_mat,1), .000001, x_mat); % defined at JHGLL, eq. 12.2.34
      targ_grad = -2*z'*u; % defined at 12.2.33. This is not right
      targ_hess = model_hess(func_name, betas, x_mat, y);
-     display(targ_hess)
      
      sl = inv(targ_hess) * targ_grad;               % Compute full step adjustment
      if do_step == 1;
@@ -54,3 +53,27 @@ while (critic_limit < crit ) &&  (iter < iter_limit);    % Begin do loop
      crit = max(abs((b - betas)./betas));  % Evaluate change in coefficients 
      betas = b;                         % Make curret beta the new beta 
 end
+
+  %**** Compute covariance matrix *****
+  sighat2 = sse/(size(y, 1) - size(betas, 1));    % Unbiased est of error variance
+  covb = inv(z'*z).*sighat2;     % Coefficient cov matrix, JHGLL 12.2.43a             
+  % **** Print out Final Results ******/
+  fprintf('Final Results:  ');
+  disp(' ');
+  stbls=sqrt(diag(covb));        % Column vector of param. std. errors
+  tvalue=b./stbls;               % Column vector of t-values
+  df= size(y, 1)-1;                  % Degrees of freedom for t-value
+  pvalue=2*(1-tcdf(abs(tvalue),df));  % Column vector of param p-values 
+  results=horzcat(b,stbls,tvalue,pvalue); % Build results matrix
+  table_bwg(parname2,results,1);
+  disp('  ')
+  fprintf('Unbiased estimate of error variance:  %10.4f\r', sighat2);
+  ybar = mean(y);
+  sst = y'*y - size(y, 1)*(ybar^2);
+  r2 = 1 - (sse/sst);
+  disp('Note:  The R^2 value may not be between 0-1')
+  fprintf('            R-Squared: %4.3f\r', r2);
+  disp('  ')
+  disp('Variance-Covariance Matrix for Estimated Coeff.:')
+  disp(covb);
+  %**********************************************************/ 
