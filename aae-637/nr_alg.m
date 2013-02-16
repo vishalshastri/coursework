@@ -12,16 +12,17 @@ while (critic_limit < crit ) &&  (iter < iter_limit);    % Begin do loop
      %denom=z'*z -2*u'*x_2;           % Denomenator of JHGLL,eq.12.2.74
      sse = u'*u;                     % Sum of squared errors
      z = Grad(betas,func_name,size(x_mat,1), .000001, x_mat); % defined at JHGLL, eq. 12.2.34
-     targ_grad = -2*z'*u; % defined at 12.2.33
+     targ_grad = -2*z'*u; % defined at 12.2.33. This is not right
      targ_hess = model_hess(func_name, betas, x_mat, y);
+     display(targ_hess)
      
      sl = inv(targ_hess) * targ_grad;               % Compute full step adjustment
      if do_step == 1;
        s = 1;
        ss1 = 1; ss2 = 2;
       while (ss1 < ss2) && (s >=.2);  % ** Loop to determine step length
-         u1 = y - func_name(betas + s*sl/2, x_mat) ;% ** Error w/SL/2 & curr. betas
-         u2 = y - func_name(betas + s*sl, x_mat);  % ** Error w/SL & curr. betas
+         u1 = y - func_name(betas - s*sl/2, x_mat) ;% ** Error w/SL/2 & curr. betas
+         u2 = y - func_name(betas - s*sl, x_mat);  % ** Error w/SL & curr. betas
          ss1 = u1'*u1;                    % ** SSE w/SL/2 & curr. betas
          ss2 = u2'*u2;                    % ** SSE w/SL & curr. betas
          s_star=s;

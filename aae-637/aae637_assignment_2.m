@@ -62,7 +62,7 @@ x_mat_input = horzcat(  full_data(:, strcmp(varnames,'Capital')), ...
 
 [test1, test2] = nls(min_grid_sol, full_data(:, strcmp(varnames,'Quant')), ...
   {'beta1', 'beta2', 'beta3'}, 1e-6, 250, ...
-  size(full_data,1), 1, mizon_model_fn_pass, x_mat_input, .000001) ;
+  size(full_data,1), 1, mizon_model_fn_pass, x_mat_input, .000001, 1) ;
 
 %  values before wrote code to break out of function when reached convex section:
 %    1.3040
@@ -75,8 +75,43 @@ test5 = nr_alg(test1 ,full_data(:, strcmp(varnames,'Quant')), ...
 %b =   0.2215
 %b =   0.8288
 
+%%%%% QUESTION 2
 
 
-nls(betas,y,names, critic_limit, iter_limit, numobs, do_step, func_name, x_mat, dh)
+urlwrite('http://www.aae.wisc.edu/aae637/data/matlab/nl_cons_v2.xls','temp.xls');
+[full_data,varnames,raw]=xlsread('temp.xls');
+
+orig_obs = size(full_data,1);
+
+full_data = horzcat( ...
+    full_data(3:orig_obs, strcmp(varnames,'CONSUME')), ...
+    full_data(3:orig_obs, strcmp(varnames,'INC')), ...
+    full_data(2:(orig_obs-1), strcmp(varnames,'CONSUME')) ...
+    full_data(2:(orig_obs-1), strcmp(varnames,'INC')) ...
+    full_data(1:(orig_obs-2), strcmp(varnames,'CONSUME')) ...
+    full_data(1:(orig_obs-2), strcmp(varnames,'INC')) ...
+    );
+
+varnames = [varnames, 'CONSUME_L1', 'INC_L1', 'CONSUME_L2', 'INC_L2']
+
+consump_model_fn_pass = @consump_model_fn
+
+[test1, test2] = nls([1 1 1 1], full_data(:, strcmp(varnames,'CONSUME')), ...
+  {'beta1', 'beta2', 'beta3', 'beta4'}, 1e-6, 250, ...
+  size(full_data,1), 1, consump_model_fn_pass, full_data, .000001, 0) 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

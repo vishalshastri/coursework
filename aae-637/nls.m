@@ -4,7 +4,7 @@
  ****                using numerical derivatives            ****
  ***************************************************************
 %}
-function[betas,covb] =  nls(betas,y,names, critic_limit, iter_limit, numobs, do_step, func_name, x_mat, dh)
+function[betas,covb] =  nls(betas,y,names, critic_limit, iter_limit, numobs, do_step, func_name, x_mat, dh, stop_convex)
 %    global critic_limit iter_limit z numobs do_step func_name ;
     crit = 1;                   % ** Initialize critical % coef. change **
     s=1;                        % ** Initialize step length **
@@ -33,7 +33,6 @@ function[betas,covb] =  nls(betas,y,names, critic_limit, iter_limit, numobs, do_
      u = y - func_name(b, x_mat);      % ** Create errors given current betas **
      sse = u'*u;                 % ** Calc. SSE's given current betas **
      % *** Printing Intermediate Results ****
-     diary on;                        % Turn on output to file
      fprintf('i = %3.0f\r', iter);    % Print iteration number
      fprintf('SSE = %8.4f\r', sse);   % Print current SSE
      fprintf('step = %5.4f\r', s_star); % Print "current" step length
@@ -60,7 +59,7 @@ function[betas,covb] =  nls(betas,y,names, critic_limit, iter_limit, numobs, do_
      betas = b;                      % ** Create lag betas **
      hessian = model_hess(func_name, betas, x_mat, y);
      [throwaway,definiteness] = chol(hessian);
-     if definiteness==0
+     if definiteness==0 & stop_convex==1
        display('*******REACHED CONVEX SECTION********')
        break
      end
@@ -88,7 +87,6 @@ function[betas,covb] =  nls(betas,y,names, critic_limit, iter_limit, numobs, do_
   disp('  ')
   disp('Variance-Covariance Matrix for Estimated Coeff.:')
   disp(covb);
-  diary off;
   %**********************************************************/ 
 end
             
