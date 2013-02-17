@@ -4,7 +4,7 @@
  ****                using numerical derivatives            ****
  ***************************************************************
 %}
-function[betas,covb] =  nls(betas,y,names, critic_limit, iter_limit, numobs, do_step, func_name, x_mat, dh, stop_convex)
+function[betas,covb, r2] =  nls(betas,y,names, critic_limit, iter_limit, numobs, do_step, func_name, x_mat, dh, stop_convex)
 %    global critic_limit iter_limit z numobs do_step func_name ;
     crit = 1;                   % ** Initialize critical % coef. change **
     s=1;                        % ** Initialize step length **
