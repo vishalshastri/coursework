@@ -19,7 +19,7 @@ while (critic_limit < crit ) &&  (iter < iter_limit);    % Begin do loop
      if do_step == 1;
        s = 1;
        ss1 = 1; ss2 = 2;
-      while (ss1 < ss2) && (s >=.2);  % ** Loop to determine step length
+      while (ss1 < ss2) % && (s >=.2);  % ** Loop to determine step length
          u1 = y - func_name(betas - s*sl/2, x_mat) ;% ** Error w/SL/2 & curr. betas
          u2 = y - func_name(betas - s*sl, x_mat);  % ** Error w/SL & curr. betas
          ss1 = u1'*u1;                    % ** SSE w/SL/2 & curr. betas

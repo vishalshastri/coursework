@@ -272,15 +272,77 @@ varnames = [varnames, 'LH'] ;
 full_data(:, 9) = log(full_data(:,strcmp(varnames,'Quant'))) ;
 varnames = [varnames, 'Ln_Quant'] ;
 
+  
+  
+[grid_array1, grid_array2, grid_array3, grid_array4] = ndgrid(200:400, .1:.1:.9, .1:.1:2, .1:.1:2) ;
+% ndgrid(34:.1:37, -39:0.1:-35, .8:.01:.99, .8:.01:.99)
+%  1.2228e+07 37:1:45, -30:1:-20, .1:.1:.9, .1:.1:.9
+
+search_vec = ones(prod( size(grid_array1)), 1 );
+for m=1:size(search_vec,1) 
+  model_temp = ces_model_fn(  [grid_array1(m); grid_array2(m); grid_array3(m); grid_array4(m)], full_data) ;
+  search_vec(m,1) = ssefn(full_data(:, strcmp(varnames,'Quant')), model_temp ) ;
+end
+
+min_grid_sse = min(search_vec);
+min_ind = find(min_grid_sse==search_vec);
+min_grid_sol = [ grid_array1(min_ind) ; grid_array2(min_ind); grid_array3(min_ind); grid_array4(min_ind)];
+
 ces_model_fn_pass = @ces_model_fn
 
-[yarn_coef, yarn_cov] = nls([1; 1; 1; 1], full_data(:, strcmp(varnames,'Quant')), ...
+
+[ces_coef, ces_cov] = nls(min_grid_sol, full_data(:, strcmp(varnames,'Quant')), ...
   {'beta1', 'beta2', 'beta3', 'beta4'}, 1e-6, 250, ...
   size(full_data,1), 1, ces_model_fn_pass, full_data, .000001, 0) ;
+  
 
+test_hessian = model_hess(ces_model_fn_pass, ces_coef, full_data, full_data(:, strcmp(varnames,'Quant')));
+[throwaway,definiteness] = chol(test_hessian);
+if definiteness==0 
+  display('******* AT LOCAL MINIMUM ********')
+else
+  error('****  NOT AT LOCAL MINIMUM *****')
+end
+
+
+
+[grid_array1, grid_array2, grid_array3, grid_array4] = ndgrid(5000:50:6000, .1:.05:.9, .1:.05:2, 2:.5:5) ;
+% ndgrid(34:.1:37, -39:0.1:-35, .8:.01:.99, .8:.01:.99)
+%  1.2228e+07 37:1:45, -30:1:-20, .1:.1:.9, .1:.1:.9
+
+search_vec = ones(prod( size(grid_array1)), 1 );
+for m=1:size(search_vec,1) 
+  model_temp = ces_linear_model_fn(  [grid_array1(m); grid_array2(m); grid_array3(m); grid_array4(m)], full_data) ;
+  search_vec(m,1) = ssefn(full_data(:, strcmp(varnames,'Ln_Quant')), model_temp ) ;
+end
+
+min_grid_sse = min(search_vec);
+min_ind = find(min_grid_sse==search_vec);
+min_grid_sol = [ grid_array1(min_ind) ; grid_array2(min_ind); grid_array3(min_ind); grid_array4(min_ind)];
+min_grid_sol
+min_grid_sse
+
+  
 ces_linear_model_fn_pass = @ces_linear_model_fn
 
-[yarn_coef, yarn_cov] = nls([1; 1; 1; 1], full_data(:, strcmp(varnames,'Ln_Quant')), ...
+  
+[ces_lin_coef, ces_lin_cov] = nls(min_grid_sol, full_data(:, strcmp(varnames,'Ln_Quant')), ...
   {'beta1', 'beta2', 'beta3', 'beta4'}, 1e-6, 250, ...
   size(full_data,1), 1, ces_linear_model_fn_pass, full_data, .000001, 0) ;
+% SSE: 3.2027
+
+
+test_hessian = model_hess(ces_linear_model_fn_pass, real(ces_lin_coef), full_data, full_data(:, strcmp(varnames,'Ln_Quant')));
+[throwaway,definiteness] = chol(test_hessian);
+if definiteness==0 
+  display('******* AT LOCAL MINIMUM ********')
+else
+  error('****  NOT AT LOCAL MINIMUM *****')
+end
+
+
+%[ces_lin_coef, ces_lin_cov] = nr_alg(min_grid_sol ,full_data(:, strcmp(varnames,'Ln_Quant')), ...
+%  {'beta1', 'beta2', 'beta3', 'beta4'}, 1e-6, 250, 1, ces_linear_model_fn_pass, full_data);
+
+
 
