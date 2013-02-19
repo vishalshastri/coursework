@@ -9,7 +9,7 @@ function H=model_hess(f, betas, x_mat, y)
 % x : a vector at which to evaluate the Hessian of the function
  k = size(betas,1);
  fx = ssefn(y, f(betas, x_mat));
- h = eps.^(1/3)*max(abs(betas),1e-2);
+ h = eps.^(1/3)*abs(betas);%,1e-2)%;
  xh = betas+h;
  h = xh-betas;
  ee = sparse(1:k,1:k,h,k,k);

@@ -1,5 +1,7 @@
 %% QUESTION 1
 
+%% Q. 1.a
+
 path(path,'C:\Users\tdmcarthur\Documents\MATLAB\') ;
 
 urlwrite('http://www.aae.wisc.edu/aae637/data/matlab/mizon_1977.xlsx','temp.xls');
@@ -73,6 +75,8 @@ x_mat_input = horzcat(  full_data(:, strcmp(varnames,'Capital')), ...
 %b =   0.8288
 
 
+%% Q. 1.b
+
 test_hessian = model_hess(mizon_model_fn_pass, nr_sol, x_mat_input, full_data(:, strcmp(varnames,'Quant')));
 [throwaway,definiteness] = chol(test_hessian);
 if definiteness==0 
@@ -84,8 +88,9 @@ end
 
 
 
-%%%%% QUESTION 2
+%% QUESTION 2
 
+%% Q. 2.a (reformulation of the model is in yarn_model_fn.m
 
 urlwrite('http://www.aae.wisc.edu/aae637/data/matlab/nl_cons_v2.xls','temp.xls');
 [full_data,varnames,raw]=xlsread('temp.xls');
@@ -111,6 +116,8 @@ consump_model_fn_pass = @consump_model_fn;
 
 consump_ar1_model_fn_pass = @consump_ar1_model_fn;
 
+%% Q. 2.b 
+
 [ar1_coef, ar1_cov, ar1_r2] = nls([1; 1; 1], full_data(:, strcmp(varnames,'CONSUME')), ...
   {'beta1', 'beta2', 'beta3'}, 1e-6, 250, ...
   size(full_data,1), 1, consump_ar1_model_fn_pass, full_data, .000001, 0) ;
@@ -131,7 +138,7 @@ else
     disp('    There is, therefore, not enough evidence to reject H_0');
 end
 
-
+%% Q. 2.c
 
 w_test_mat=[zeros(2,2) eye(2)];
 
@@ -149,6 +156,8 @@ end
 
 %% QUESTION 3
 
+%% Q. 3.a
+
 urlwrite('http://www.aae.wisc.edu/aae637/data/matlab/yarn-industry.xls','temp.xls');
 [full_data,varnames,raw]=xlsread('temp.xls');
 
@@ -156,6 +165,8 @@ urlwrite('http://www.aae.wisc.edu/aae637/data/matlab/yarn-industry.xls','temp.xl
  
 full_data(:, 4) = cumsum( full_data(:,strcmp(varnames,'Time')) ) ./ ...
   cumsum( full_data(:,strcmp(varnames,'Frames')) ); % ./ (1:size(full_data,1))';
+
+%full_data(:, 4) = cumsum( full_data(:,strcmp(varnames,'Time')) ) ;
  
 full_data(:, 5) = cumsum( full_data(:,strcmp(varnames,'Frames')) ) ;
  
@@ -292,8 +303,12 @@ ces_model_fn_pass = @ces_model_fn
 
 
 [ces_coef, ces_cov] = nls(min_grid_sol, full_data(:, strcmp(varnames,'Quant')), ...
-  {'beta1', 'beta2', 'beta3', 'beta4'}, 1e-6, 250, ...
-  size(full_data,1), 1, ces_model_fn_pass, full_data, .000001, 0) ;
+  {'alpha', 'delta', 'rho', 'eta'}, 1e-6, 250, ...
+  size(full_data,1), 1, ces_model_fn_pass, full_data, .000000000001, 0) ;
+%      1.2361
+%    0.2018
+%   -0.1618
+%    1.0576
   
 
 test_hessian = model_hess(ces_model_fn_pass, ces_coef, full_data, full_data(:, strcmp(varnames,'Quant')));
@@ -306,30 +321,39 @@ end
 
 
 
-[grid_array1, grid_array2, grid_array3, grid_array4] = ndgrid(5000:50:6000, .1:.05:.9, .1:.05:2, 2:.5:5) ;
+%[grid_array1, grid_array2, grid_array3, grid_array4] = ndgrid(1:2:50, .1:.05:.9, -.9:.05:5, .5:.5:5) ;
 % ndgrid(34:.1:37, -39:0.1:-35, .8:.01:.99, .8:.01:.99)
 %  1.2228e+07 37:1:45, -30:1:-20, .1:.1:.9, .1:.1:.9
 
-search_vec = ones(prod( size(grid_array1)), 1 );
-for m=1:size(search_vec,1) 
-  model_temp = ces_linear_model_fn(  [grid_array1(m); grid_array2(m); grid_array3(m); grid_array4(m)], full_data) ;
-  search_vec(m,1) = ssefn(full_data(:, strcmp(varnames,'Ln_Quant')), model_temp ) ;
-end
+%search_vec = ones(prod( size(grid_array1)), 1 );
+%for m=1:size(search_vec,1) 
+%  model_temp = ces_linear_model_fn(  [grid_array1(m); grid_array2(m); grid_array3(m); %grid_array4(m)], full_data) ;
+%  search_vec(m,1) = ssefn(full_data(:, strcmp(varnames,'Ln_Quant')), model_temp ) ;
+%end
 
-min_grid_sse = min(search_vec);
-min_ind = find(min_grid_sse==search_vec);
-min_grid_sol = [ grid_array1(min_ind) ; grid_array2(min_ind); grid_array3(min_ind); grid_array4(min_ind)];
-min_grid_sol
-min_grid_sse
+%min_grid_sse = min(search_vec);
+%min_ind = find(min_grid_sse==search_vec);
+%min_grid_sol = [ grid_array1(min_ind) ; grid_array2(min_ind); grid_array3(min_ind); %grid_array4(min_ind)];
+%min_grid_sol
+%min_grid_sse
 
   
 ces_linear_model_fn_pass = @ces_linear_model_fn
 
   
-[ces_lin_coef, ces_lin_cov] = nls(min_grid_sol, full_data(:, strcmp(varnames,'Ln_Quant')), ...
-  {'beta1', 'beta2', 'beta3', 'beta4'}, 1e-6, 250, ...
-  size(full_data,1), 1, ces_linear_model_fn_pass, full_data, .000001, 0) ;
+[ces_lin_coef, ces_lin_cov] = nls(ces_coef, full_data(:, strcmp(varnames,'Ln_Quant')), ...
+  {'alpha', 'delta', 'rho', 'eta'}, 1e-6, 1000, ...
+  size(full_data,1), 1, ces_linear_model_fn_pass, full_data, .000000000001, 0) ;
 % SSE: 3.2027
+%  7.65918155722338e-08
+%  0.218956891635365
+% -0.0459031788106847
+%  0.798882076847029
+
+
+
+model_temp = ces_linear_model_fn(  real(ces_lin_coef), full_data) ;
+display(ssefn(full_data(:, strcmp(varnames,'Ln_Quant')), model_temp ) )
 
 
 test_hessian = model_hess(ces_linear_model_fn_pass, real(ces_lin_coef), full_data, full_data(:, strcmp(varnames,'Ln_Quant')));
@@ -341,8 +365,41 @@ else
 end
 
 
-%[ces_lin_coef, ces_lin_cov] = nr_alg(min_grid_sol ,full_data(:, strcmp(varnames,'Ln_Quant')), ...
-%  {'beta1', 'beta2', 'beta3', 'beta4'}, 1e-6, 250, 1, ces_linear_model_fn_pass, full_data);
+corrcoef( [ces_model_fn( ces_coef, full_data)...
+  full_data(:, strcmp(varnames,'Quant')) ] )
+
+corrcoef( [ces_model_fn( ces_lin_coef, full_data)...
+  full_data(:, strcmp(varnames,'Quant')) ] )
+  
+
+
+ces_linear_restricted_model_fn_pass = @ces_linear_restricted_model_fn
+
+[ces_lin_res_coef, ces_lin_cov] = nls(ces_lin_coef(1:3), full_data(:, strcmp(varnames,'Ln_Quant')), ...
+  {'alpha', 'delta', 'rho'}, 1e-3, 3000, ...
+  size(full_data,1), 1, ces_linear_restricted_model_fn_pass, full_data, .000000001, 0) ;
+  
+
+%% Q. 4.d
+
+w_test_mat=[ 0 0 0 1];
+
+w_test_output = (w_test_mat * ces_lin_coef - [1])' * inv(w_test_mat * ces_lin_cov * w_test_mat') * ...
+  (w_test_mat * ces_lin_coef - [1]);
+  
+w_test_p_val = 1 - chi2cdf(w_test_output, size(w_test_mat, 1));
+fprintf('Wald Stat. (H_0: eta = 1): %10.4f \n', w_test_output);
+fprintf('Prob Wald Stat. Assum. H_0:            %10.4f \n', w_test_p_val);
+if w_test_p_val < 0.05
+    disp('    There is, therefore, enough evidence to reject H_0');
+else
+    disp('    There is, therefore, not enough evidence to reject H_0');
+end
+
+%% Q. 4.e
+
+
+
 
 
 
