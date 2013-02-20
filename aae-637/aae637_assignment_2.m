@@ -405,11 +405,46 @@ end
 mean_labor = mean(full_data(:,strcmp(varnames,'LH')))
 mean_capital = mean(full_data(:,strcmp(varnames,'Capital')))
 
-- ces_lin_coef(1) * ces_lin_coef(2) * ces_lin_coef(4) * mean_capital^(-ces_lin_coef(3)-1) * ...
- (ces_lin_coef(2) * mean_capital^(-ces_lin_coef(3))-(ces_lin_coef(2)-1) * mean_labor^(-ces_lin_coef(3)))^(ces_lin_coef(4)/ces_lin_coef(3)-1)
+
+
+
+
+[ces_b,ces_cov] = nls(betas,depend,parname2);  %Call out nls estimator
+% ******  Elasticity of Substituion   **************
+
+elas_sub=ces_elas_sub(ces_b);
+fprintf('Elasticity of substitution: %6.3f', elas_sub);
+disp('  ')
+
+grad_elas_sub=Grad(ces_b,'ces_elas_sub',1);
+
+var_elas_sub=grad_elas_sub*ces_cov*grad_elas_sub';
+fprintf('Elas of Substitution SE:  %6.3f',sqrt(var_elas_sub));disp('  ');
+fprintf('Ratio of (Sub Elas - 1) and its SE:  %6.3f',...
+                   (ces_elas_sub(ces_b)-1)./sqrt(var_elas_sub));
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+mp_k= ces_lin_coef(1) * ces_lin_coef(2) * ces_lin_coef(4) * mean_capital^(-ces_lin_coef(3)-1) * ...
+ (ces_lin_coef(2) * mean_capital^(-ces_lin_coef(3))-(ces_lin_coef(2)-1) * mean_labor^(-ces_lin_coef(3)))^(-(ces_lin_coef(4)+ces_lin_coef(3))/ces_lin_coef(3))
  
-%% -a d n x^(-p-1) (d x^(-p)-(d-1) y^(-p))^(n/p-1)
- 
+%%-a d n x^(-p-1) (d x^(-p)-(d-1) y^(-p))^(n/p-1)
+%% a d     n x^(-p-1) (d x^(-p)-(d-1) y^(-p))^(-(n+p)/p) 
+%% a (1-d) n x^(-p-1) (d y^(-p)-(d-1) x^(-p))^(-(n+p)/p)
+
+mp_l = ces_lin_coef(1) * (1-ces_lin_coef(2)) * ces_lin_coef(4) * mean_labor^(-ces_lin_coef(3)-1) * ...
+ (ces_lin_coef(2) * mean_capital^(-ces_lin_coef(3))-(ces_lin_coef(2)-1) * mean_labor^(-ces_lin_coef(3)))^(-(ces_lin_coef(4)+ces_lin_coef(3))/ces_lin_coef(3))
 
 
 
@@ -421,7 +456,7 @@ test2 =log(ces_lin_coef(1)) - (ces_lin_coef(4)/ces_lin_coef(3)) .* ...
 
 (test2-test1)/dh  
 
-
+ces_mp_k( ces_lin_coef, [mean_capital mean_labor])
 
 
 
