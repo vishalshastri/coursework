@@ -163,8 +163,11 @@ urlwrite('http://www.aae.wisc.edu/aae637/data/matlab/yarn-industry.xls','temp.xl
 
 % 'Lot'    'Time'    'Frames'
  
-full_data(:, 4) = cumsum( full_data(:,strcmp(varnames,'Time')) ) ./ ...
-  cumsum( full_data(:,strcmp(varnames,'Frames')) ); % ./ (1:size(full_data,1))';
+%full_data(:, 4) = cumsum( full_data(:,strcmp(varnames,'Time')) ) ./ ...
+%  cumsum( full_data(:,strcmp(varnames,'Frames')) ); % ./ (1:size(full_data,1))';
+
+full_data(:, 4) =  full_data(:,strcmp(varnames,'Time'))  ./ ...
+  full_data(:,strcmp(varnames,'Frames')) ; % ./ (1:size(full_data,1))';
 
 %full_data(:, 4) = cumsum( full_data(:,strcmp(varnames,'Time')) ) ;
  
@@ -283,7 +286,7 @@ varnames = [varnames, 'LH'] ;
 full_data(:, 9) = log(full_data(:,strcmp(varnames,'Quant'))) ;
 varnames = [varnames, 'Ln_Quant'] ;
 
-  
+
   
 [grid_array1, grid_array2, grid_array3, grid_array4] = ndgrid(200:400, .1:.1:.9, .1:.1:2, .1:.1:2) ;
 % ndgrid(34:.1:37, -39:0.1:-35, .8:.01:.99, .8:.01:.99)
@@ -375,7 +378,7 @@ corrcoef( [ces_model_fn( ces_lin_coef, full_data)...
 
 ces_linear_restricted_model_fn_pass = @ces_linear_restricted_model_fn
 
-[ces_lin_res_coef, ces_lin_cov] = nls(ces_lin_coef(1:3), full_data(:, strcmp(varnames,'Ln_Quant')), ...
+[ces_lin_res_coef, ces_lin_res_cov] = nls(ces_lin_coef(1:3), full_data(:, strcmp(varnames,'Ln_Quant')), ...
   {'alpha', 'delta', 'rho'}, 1e-3, 3000, ...
   size(full_data,1), 1, ces_linear_restricted_model_fn_pass, full_data, .000000001, 0) ;
   
@@ -399,6 +402,43 @@ end
 %% Q. 4.e
 
 
+mean_labor = mean(full_data(:,strcmp(varnames,'LH')))
+mean_capital = mean(full_data(:,strcmp(varnames,'Capital')))
+
+- ces_lin_coef(1) * ces_lin_coef(2) * ces_lin_coef(4) * mean_capital^(-ces_lin_coef(3)-1) * ...
+ (ces_lin_coef(2) * mean_capital^(-ces_lin_coef(3))-(ces_lin_coef(2)-1) * mean_labor^(-ces_lin_coef(3)))^(ces_lin_coef(4)/ces_lin_coef(3)-1)
+ 
+%% -a d n x^(-p-1) (d x^(-p)-(d-1) y^(-p))^(n/p-1)
+ 
+
+
+
+test1 =log(ces_lin_coef(1)) - (ces_lin_coef(4)/ces_lin_coef(3)) .* ...
+      log( ces_lin_coef(2) .* (mean_capital).^(-ces_lin_coef(3)) + (1-ces_lin_coef(2)) .* mean_labor.^(-ces_lin_coef(3)) ) 
+      
+test2 =log(ces_lin_coef(1)) - (ces_lin_coef(4)/ces_lin_coef(3)) .* ...
+      log( ces_lin_coef(2) .* (mean_capital+dh).^(-ces_lin_coef(3)) + (1-ces_lin_coef(2)) .* mean_labor.^(-ces_lin_coef(3)) ) 
+
+(test2-test1)/dh  
+
+
+
+
+
+
+dh = 1e-6
+
+grad_k_1 = ces_lin_coef(1) .*  ( ces_lin_coef(2) .* (mean_capital).^(-ces_lin_coef(3)) + (1-ces_lin_coef(2)) .* mean_labor.^(-ces_lin_coef(3)) ).^(-ces_lin_coef(4)/ces_lin_coef(3)) ;
+
+grad_k_2 = ces_lin_coef(1) .*  ( ces_lin_coef(2) .* (mean_capital+dh).^(-ces_lin_coef(3)) + (1-ces_lin_coef(2)) .* mean_labor.^(-ces_lin_coef(3)) ).^(-ces_lin_coef(4)/ces_lin_coef(3)) ;
+
+mp_k=(grad_k_2-grad_k_1)/dh  
+
+grad_l_1 = ces_lin_coef(1) .*  ( ces_lin_coef(2) .* (mean_capital).^(-ces_lin_coef(3)) + (1-ces_lin_coef(2)) .* (mean_labor).^(-ces_lin_coef(3)) ).^(-ces_lin_coef(4)/ces_lin_coef(3)) ;
+
+grad_l_2 = ces_lin_coef(1) .*  ( ces_lin_coef(2) .* (mean_capital).^(-ces_lin_coef(3)) + (1-ces_lin_coef(2)) .* (mean_labor+dh).^(-ces_lin_coef(3)) ).^(-ces_lin_coef(4)/ces_lin_coef(3)) ;
+
+mp_l=(grad_l_2-grad_l_1)/dh  
 
 
 
