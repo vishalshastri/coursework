@@ -27,20 +27,9 @@ while (critic_limit < crit ) &&  (iter < iter_limit);    % Begin do loop
          s_star=s;
          s = s/2;                         % ** Update SL for next pass
        end 
-%       while (ss1 < ss2) && (v >=.1);
-%          v = v/2;
-%          b0_1= b0+ v * sl;
-%          b0_2= b0 + v* sl/2;
-%          nonlinf_1= b0_1 * x_1 + (b0_1^2) * x_2;
-%          nonlinf_2= b0_2 * x_1 + (b0_2^2) * x_2;
-%          u1 = y - nonlinf_1;
-%          u2 = y - nonlinf_2;
-%          ss1 = u1'*u1;
-%          ss2 = u2'*u2; 
-%          v_lag=v;
-%       end 
+
      end   
-     b = betas - s_star*sl; % I think we subtract here
+     b = betas - s_star*sl; 
      fprintf('i = %3.0f\r', iter);   % Print iteration number
      fprintf('SSE = %8.4f\r', sse);  % Print current SSE
      fprintf('step = %5.4f\r', s);

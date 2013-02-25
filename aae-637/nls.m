@@ -5,7 +5,6 @@
  ***************************************************************
 %}
 function[betas,covb, r2] =  nls(betas,y,names, critic_limit, iter_limit, numobs, do_step, func_name, x_mat, dh, stop_convex)
-%    global critic_limit iter_limit z numobs do_step func_name ;
     crit = 1;                   % ** Initialize critical % coef. change **
     s=1;                        % ** Initialize step length **
     iter = 1;                   % ** Initialize iteration count **
@@ -61,7 +60,9 @@ function[betas,covb, r2] =  nls(betas,y,names, critic_limit, iter_limit, numobs,
      [throwaway,definiteness] = chol(hessian);
      if definiteness==0 & stop_convex==1
        display('*******REACHED CONVEX SECTION********')
-       return
+       break
+       % So if the stop_convex option is selected, we break out of the function 
+       % when we are at a convex section
      end
     end
 
