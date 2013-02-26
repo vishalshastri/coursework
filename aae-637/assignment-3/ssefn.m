@@ -1,0 +1,1 @@
+function ret = ssefn(y, x)  ret = (y - x)' * (y - x);end
