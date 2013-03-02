@@ -258,10 +258,31 @@ beta_names = {'const', 'LnGasP', 'LnPC_Inc', 'LnPNC', 'LnPUC', 'Shock73', 'Shock
 
 [betas_crm_gas, covb_crm_gas, rho_crm_gas]=crm(transf_data(:, 2:9), transf_data(:, 1), beta_names, 0);
 
+%% Q. 3.b
+
 [betas_fgls_gas, covb_fgls_gas]= fgls_2nd_step(transf_data(:, 2:9), transf_data(:, 1), beta_names,rho_crm_gas, 0) ;
 
+%% Q. 3.c
 
-gas_rho_likelihood_fn( [betas_fgls_gas ; rho_crm_gas], transf_data);
+gas_rho_likelihood_fn_pass = @gas_rho_likelihood_fn;
+
+[betas_gas_ml_auto, cov_gas_ml_auto, llf_vec_gas_ml_auto] = max_bhhh( ...
+  [betas_fgls_gas; atanh(rho_crm_gas)], [beta_names, 'rho'], ...
+  orig_obs, 10, 1e-3, gas_rho_likelihood_fn_pass, 0, .00001, transf_data, 0, 0);
+
+Grad([betas_fgls_gas; rho_crm_gas],gas_rho_likelihood_fn_pass,orig_obs, .000001, transf_data)
+
+%% Q. 3.d.
+
+gas_rho_likelihood_fn_pass = @gas_rho_likelihood_fn;
+
+[beta_tilde_test, rho_tilde_test] = beach_mackinnon_alg(betas_fgls_gas, .001, transf_data, gas_rho_likelihood_fn_pass,[beta_names, 'rho'],  1e-4, 250)
+
+
+
+sum(gas_rho_likelihood_fn( [beta_tilde_test ; rho_tilde_test], transf_data))
+
+ 159.54
 
 
 x = transf_data(:, 2:9);
