@@ -1,4 +1,4 @@
-function [beta_tilde, rho_tilde] = beach_mackinnon_alg(betas, rho, data_mat, func_name, names, critic_limit, iter_limit)
+function [beta_tilde, rho_tilde, cov_betas] = beach_mackinnon_alg(betas, rho, data_mat, func_name, names, critic_limit, iter_limit)
 
   [nrow,ncol] = size(data_mat);
   
@@ -43,7 +43,7 @@ function [beta_tilde, rho_tilde] = beach_mackinnon_alg(betas, rho, data_mat, fun
   
   rho = rho_tilde;
   
-  betas_rho =[betas;rho]
+  betas_rho =[betas;rho];
   
       disp('  ');
       disp('  ');

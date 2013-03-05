@@ -1,4 +1,4 @@
-function[betas,covb]=fgls_2nd_step(x,y,names,rho,intercept)     
+function[betas,covb,rho]=fgls_2nd_step(x,y,names,rho,intercept)     
    [numr,numc]=size(x);                 % Original size of the exogenous data matrix
  %  if intercept == 1;                        % 1 indicates an intercept, 0 no intercept
  %  	    x = horzcat(ones(numr,1),x); % Add a vector of 1's
@@ -61,7 +61,7 @@ function[betas,covb]=fgls_2nd_step(x,y,names,rho,intercept)
    disp('  ');
    fprintf('F-Statistic: %4.4f', f_stat)
    disp('  ');
-   fprintf('Durbin-Watson Statistic: %1.4f', dw_stat)
+%   fprintf('Durbin-Watson Statistic: %1.4f', dw_stat)
    disp('  ');
    fprintf('rho estimate: %1.4f', rho)
    disp('  ');

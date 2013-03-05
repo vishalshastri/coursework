@@ -38,13 +38,16 @@ for i=vars_rescaled
   finaldata(:, strcmp(targ_vars, i)) = finaldata(:, strcmp(targ_vars, i)) ./ 10;
 end
 
+x_vars = finaldata(:, 3:size(finaldata,2));
+
+rand_start_vals = inv(x_vars' * x_vars) * x_vars' * finaldata(:, 1)
 
 count_likelihood_fn_pass = @count_likelihood_fn
 
 [betas_rand_full, cov_rand_full, llf_vec_rand_full] = max_bhhh( ...
-  repmat(0.2, length(targ_vars)-2, 1), targ_vars(3:length(targ_vars)), ...
+  rand_start_vals, targ_vars(3:length(targ_vars))  ,  ...
   orig_obs, 250, 1e-6, count_likelihood_fn_pass, 1, .000001, finaldata, 0, 0);
-  
+% repmat(0.2, length(targ_vars)-2, 1), targ_vars(3:length(targ_vars))  
 
 targ_vars = {'mdvis' 'mdvislnfact' 'const' 'logc' 'idp' 'fmde' 'linc' 'lnum' 'xage' 'female' ...
   'child' 'fchild' 'black' 'educdec' 'physlm' 'disea'};
@@ -90,6 +93,22 @@ end
 
 
 %% Q. 1.c
+
+
+
+
+
+
+
+%% Q. 1.f
+
+rand_nls_model_pass = @rand_nls_model
+
+[betas_rand_nls, cov_rand_nls, r2_rand_nls] = nls(betas_rand_full, finaldata(:,1), ...
+  {'const' 'logc' 'idp' 'fmde' 'linc' 'lnum' 'xage' 'female' ...
+  'child' 'fchild' 'black' 'educdec' 'physlm' 'disea' 'hlthg' 'hlthf' 'hlthp'},  ...
+  1e-6, 250, ...
+  size(full_data,1), 1, rand_nls_model_pass, finaldata(:, 3:size(finaldata,2)), .000001, 0) ;
 
 
 
@@ -253,14 +272,15 @@ transf_data = horzcat( ...
     full_data(:, strcmp(varnames,'Recess')) ...
     );
     
-beta_names = {'const', 'LnGasP', 'LnPC_Inc', 'LnPNC', 'LnPUC', 'Shock73', 'Shock79', 'Recess'}
+beta_names = {'const', 'LnGasP', 'LnPC_Inc', 'LnPNC', 'LnPUC', 'Shock73', 'Shock79', 'Recess'};
 
 
 [betas_crm_gas, covb_crm_gas, rho_crm_gas]=crm(transf_data(:, 2:9), transf_data(:, 1), beta_names, 0);
 
+
 %% Q. 3.b
 
-[betas_fgls_gas, covb_fgls_gas]= fgls_2nd_step(transf_data(:, 2:9), transf_data(:, 1), beta_names,rho_crm_gas, 0) ;
+[betas_fgls_gas, covb_fgls_gas, rho_fgls_gas]= fgls_2nd_step(transf_data(:, 2:9), transf_data(:, 1), beta_names,rho_crm_gas, 0) ;
 
 %% Q. 3.c
 
@@ -268,17 +288,164 @@ gas_rho_likelihood_fn_pass = @gas_rho_likelihood_fn;
 
 [betas_gas_ml_auto, cov_gas_ml_auto, llf_vec_gas_ml_auto] = max_bhhh( ...
   [betas_fgls_gas; atanh(rho_crm_gas)], [beta_names, 'rho'], ...
-  orig_obs, 10, 1e-3, gas_rho_likelihood_fn_pass, 0, .00001, transf_data, 0, 0);
+  orig_obs, 250, 1e-3, gas_rho_likelihood_fn_pass, 0, .00001, transf_data, 0, 0);
 
-Grad([betas_fgls_gas; rho_crm_gas],gas_rho_likelihood_fn_pass,orig_obs, .000001, transf_data)
 
 %% Q. 3.d.
 
 gas_rho_likelihood_fn_pass = @gas_rho_likelihood_fn;
 
-[beta_tilde_test, rho_tilde_test] = beach_mackinnon_alg(betas_fgls_gas, .001, transf_data, gas_rho_likelihood_fn_pass,[beta_names, 'rho'],  1e-4, 250)
+[betas_b_m, rho_b_m, cov_betas_b_m] = beach_mackinnon_alg(betas_fgls_gas, .001, transf_data, gas_rho_likelihood_fn_pass,[beta_names, 'rho'],  1e-4, 250);
+
+%% Q. 3.e.
+
+% Need to put rho in here:
+
+%rho_crm_gas
+%sqrt( (1-rho^2)/numr )
+
+estimates = horzcat([betas_crm_gas; rho_crm_gas], ...
+  [betas_fgls_gas; rho_fgls_gas],...
+  betas_gas_ml_auto, ...
+  [betas_b_m; rho_b_m], ...
+  sqrt([diag(covb_crm_gas); (1-rho_crm_gas^2)/orig_obs] ), ...
+  sqrt([diag(covb_fgls_gas); (1-rho_fgls_gas^2)/orig_obs] ), ...
+  sqrt(diag(cov_gas_ml_auto)), ...
+  sqrt(diag(cov_betas_b_m)) );
+  
+% TODO: need to put tanh on ML rho?
+
+estimates = estimates';
+
+[f.numpars,f.numest] = size(estimates);
+
+parnames = {'CRM_v' 'FGLSv' 'ML__v' 'B&M_v' 'CRM_se' 'FGLSse' 'B&M_se' 'ML__se' };
+
+header = {'Mod', 'const', 'GasP', 'PCInc', 'PNC', 'PUC', 'Sh73', 'Sh79', 'Rec','Rho'};
+fprintf('--------------------------------------------------------------------- \n');
+fprintf('%5s %6s %6s %6s %6s %6s %6s %6s %6s %6s %80s', header{1}, header{2}, ...
+          header{3}, header{4}, header{5}, header{6}, header{7}, header{8}, header{9}, header{10})
+fprintf('\n -------------------------------------------------------------------- \n');
+for i = 1:f.numpars
+    fprintf('%6s %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f \n', ...
+        parnames{i}, estimates(i,:));
+end
+disp('  ');     
 
 
+
+z_stats = horzcat([betas_crm_gas; rho_crm_gas] ./ sqrt([diag(covb_crm_gas); (1-rho_crm_gas^2)/orig_obs] ), ...
+  [betas_fgls_gas; rho_fgls_gas] ./ sqrt([diag(covb_fgls_gas); (1-rho_fgls_gas^2)/orig_obs] ),...
+  betas_gas_ml_auto ./ sqrt(diag(cov_gas_ml_auto)), ...
+  [betas_b_m; rho_b_m] ./ sqrt(diag(cov_betas_b_m)) ...
+   );
+
+z_stats = z_stats'
+
+[f.numpars,f.numest] = size(z_stats);
+
+parnames = {'CRM' 'FGLS' 'ML' 'B&M' };
+
+header = {'Mod', 'const', 'GasP', 'PCInc', 'PNC', 'PUC', 'Sh73', 'Sh79', 'Rec','Rho'};
+fprintf('-----------------------*********Z-STATS*********--------------------- \n');
+fprintf('--------------------------------------------------------------------- \n');
+fprintf('%5s %6s %6s %6s %6s %6s %6s %6s %6s %6s %80s', header{1}, header{2}, ...
+          header{3}, header{4}, header{5}, header{6}, header{7}, header{8}, header{9}, header{10})
+fprintf('\n -------------------------------------------------------------------- \n');
+for i = 1:f.numpars
+    fprintf('%6s %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f \n', ...
+        parnames{i}, z_stats(i,:));
+end
+disp('  ');     
+
+
+%% Q. 3.f.
+
+header = {'const', 'GasP', 'PCInc', 'PNC', 'PUC', 'Sh73', 'Sh79', 'Rec','Rho'};
+
+
+w_test_mat=[zeros(2,2) eye(2)];
+
+w_test_mat = [0 0 1 -1  0
+              0 0 1  0 -1
+
+w_test_output = (w_test_mat * ar2_coef - [0; 0])' * inv(w_test_mat * ar2_cov * w_test_mat') * ...
+  (w_test_mat * ar2_coef - [0; 0]);
+  
+w_test_p_val = 1 - chi2cdf(w_test_output, size(w_test_mat, 1));
+fprintf('Wald Stat. (H_0: theta_1 = theta_2 = 0): %10.4f \n', w_test_output);
+fprintf('Prob Wald Stat. Assum. H_0:            %10.4f \n', w_test_p_val);
+if w_test_p_val < 0.05
+    disp('    There is, therefore, enough evidence to reject H_0');
+else
+    disp('    There is, therefore, not enough evidence to reject H_0');
+end
+
+
+
+
+coef_mat = horzcat([betas_crm_gas; rho_crm_gas] , ...
+  [betas_fgls_gas; rho_fgls_gas] ,...
+  betas_gas_ml_auto , ...
+  [betas_b_m; rho_b_m]  ...
+   );
+
+
+cov_mats = cell(1, 4);
+
+cov_mats{1} = covb_crm_gas(1:5,1:5);
+cov_mats{2} = covb_fgls_gas(1:5,1:5);
+cov_mats{3} = cov_gas_ml_auto(1:5,1:5);
+cov_mats{4} = cov_betas_b_m(1:5,1:5);
+
+model_names = {'CRM', 'FGLS', 'ML', 'B&M'};
+
+
+for i=1:4
+
+%deriv:
+%w_test_mat=[ 0 0 -(ces_lin_coef(3)+1)^-2 0 ] ;
+% p. 543 of Judge et al.
+
+  R_mat = [0 0 1 -1  0;
+           0 0 1  0 -1];
+
+  w_test_output = (R_mat * coef_mat(1:5, i) - [0])' * ...
+    inv(R_mat * cov_mats{i} * R_mat') * ...
+    (R_mat * coef_mat(1:5, i) - [0]);
+  
+  w_test_p_val = 1 - chi2cdf(w_test_output, size(R_mat, 1));
+  fprintf('Wald Stat. (B_2 = B_3 = B_4) for %s method: %10.4f \n', model_names{i}, w_test_output);
+  fprintf('Prob Wald Stat. Assum. H_0 for %s method:  %10.4f \n', model_names{i}, w_test_p_val);
+  if w_test_p_val < 0.05
+      disp('    There is, therefore, enough evidence to reject H_0');
+  else
+      disp('    There is, therefore, not enough evidence to reject H_0');
+  end
+  disp('    ');
+
+end
+
+
+
+
+
+
+
+
+
+
+betas./std
+
+
+
+
+
+
+
+
+
+Grad([betas_fgls_gas; rho_crm_gas],gas_rho_likelihood_fn_pass,orig_obs, .000001, transf_data)
 
 sum(gas_rho_likelihood_fn( [beta_tilde_test ; rho_tilde_test], transf_data))
 
