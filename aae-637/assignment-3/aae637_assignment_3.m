@@ -40,14 +40,16 @@ end
 
 x_vars = finaldata(:, 3:size(finaldata,2));
 
-rand_start_vals = inv(x_vars' * x_vars) * x_vars' * finaldata(:, 1)
+rand_start_vals = inv(x_vars' * x_vars) * x_vars' * log( 1 + finaldata(:, 1) )
+% OLS starting values actually mess things up, must use log of Y
 
 count_likelihood_fn_pass = @count_likelihood_fn
 
 [betas_rand_full, cov_rand_full, llf_vec_rand_full] = max_bhhh( ...
-  rand_start_vals, targ_vars(3:length(targ_vars))  ,  ...
-  orig_obs, 250, 1e-6, count_likelihood_fn_pass, 1, .000001, finaldata, 0, 0);
-% repmat(0.2, length(targ_vars)-2, 1), targ_vars(3:length(targ_vars))  
+  rand_start_vals , targ_vars(3:length(targ_vars))  ,  ...
+  orig_obs, 250, 1e-4, count_likelihood_fn_pass, 1, .000001, finaldata, 0, 0);
+% repmat(0.2, length(targ_vars)-2, 1) 
+% rand_start_vals
 
 targ_vars = {'mdvis' 'mdvislnfact' 'const' 'logc' 'idp' 'fmde' 'linc' 'lnum' 'xage' 'female' ...
   'child' 'fchild' 'black' 'educdec' 'physlm' 'disea'};
@@ -94,8 +96,130 @@ end
 
 %% Q. 1.c
 
+rand_nls_model_pass = @rand_nls_model;
+
+marg_input_good = mean(finaldata(:, 3:size(finaldata,2)));
+marg_input_good(14:16) = [1 0 0];
+
+marg_effect_good = exp(marg_input_good * betas_rand_full) * betas_rand_full(2)
+
+%marg_effect_good = Grad(betas_rand_full,rand_nls_model_pass, ...
+%  1, .00001, marg_input_good); 
+
+%marg_effect_good = marg_input_good' .* betas_rand_full
+
+%marg_effect_good = marg_effect_good(2);
+
+marg_input_poor = mean(finaldata(:, 3:size(finaldata,2)));
+marg_input_poor(14:16) = [0 0 1];
+
+marg_effect_poor = exp(marg_input_poor * betas_rand_full) * betas_rand_full(2)
+
+%marg_effect_poor = Grad(betas_rand_full,rand_nls_model_pass, ...
+%  1, .00001, marg_input_poor); 
+
+%marg_effect_poor = marg_input_poor' .* betas_rand_full
+
+%marg_effect_poor = marg_effect_poor(2);
+
+marg_effect_good
+marg_effect_poor
+
+exp(marg_input_good * betas_rand_full) * betas_rand_full(2)
+
+gamma_hat_fn_pass = @gamma_hat_fn
+
+F_hat_deriv = Grad(betas_rand_full,gamma_hat_fn_pass, ...
+  length(betas_rand_full), .00001, marg_input_good); 
+% By p. 733 of Greene 7th edition
+
+diag(F_hat_deriv);
+
+cov_good= F_hat_deriv * cov_rand_full * F_hat_deriv';
+
+var_good = cov_good(2,2)
+
+F_hat_deriv = Grad(betas_rand_full,gamma_hat_fn_pass, ...
+  length(betas_rand_full), .00001, marg_input_poor); 
+  
+cov_poor= F_hat_deriv * cov_rand_full * F_hat_deriv';
+
+var_poor = cov_poor(2,2)
+
+Welch_test = (marg_effect_good - marg_effect_poor) / ...
+  sqrt(  var_good/orig_obs + var_poor/orig_obs     )
+  
+%Now, 2-tailed T-test:
+
+p_val = 1 - tcdf(Welch_test, orig_obs - length(cov_rand_full));
+fprintf('\n T-Stat. ME of ch in LOGC for good and poor health are equal:   %10.4f \n',Welch_test);
+fprintf('Prob T-Stat. Assum. H_0:               %10.4f \n',p_val);
+if p_val < .05/2
+    disp('    There is, therefore, enough evidence to reject H_0');
+else
+    disp('    There is, therefore, not enough evidence to reject H_0');
+end
+  
+
+%% Q. 1.d
+  
+
+income_elast = betas_rand_full(5);
+% due to http://cameron.econ.ucdavis.edu/racd/simplepoisson.pdf
+% and http://mpra.ub.uni-muenchen.de/19895/1/MPRA_paper_19895.pdf
 
 
+t_stat = income_elast ./  sqrt(cov_rand_full(5,5))
+
+p_val = 1 - tcdf(t_stat, orig_obs - length(cov_rand_full));
+fprintf('\n T-Stat. Elasticity of income on visits ==1 :   %10.4f \n',t_stat);
+fprintf('Prob T-Stat. Assum. H_0:               %10.4f \n',p_val);
+if p_val < .05/2
+    disp('    There is, therefore, enough evidence to reject H_0');
+else
+    disp('    There is, therefore, not enough evidence to reject H_0');
+end
+  
+
+
+%% Q. 1.e
+
+marg_input_female = mean(finaldata(:, 3:size(finaldata,2)));
+marg_input_female(8) = 1;
+
+marg_input_male = mean(finaldata(:, 3:size(finaldata,2)));
+marg_input_male(8) = 0;
+
+female_rel_effect = exp( marg_input_female * betas_rand_full ) - ...
+  exp( marg_input_male * betas_rand_full );
+  
+
+  
+  
+  
+diag(F_hat_deriv)
+
+
+
+
+
+Y = poisspdf(X,lambda)
+
+
+poisspdf(exp(marg_input_poor * betas_rand_full), exp(marg_input_poor * betas_rand_full)) 
+
+
+marg_eff_cov = diag(F_hat_deriv)' * cov_rand_full * diag(F_hat_deriv)
+
+diag(marg_eff_cov)
+
+
+rand_nls_model(betas, x_mat)
+
+exp(
+
+gamma_hat_deriv_mat = exp(betas_rand_full' * finaldata(:, 3:size(finaldata,2))') * eye() ...
+   * finaldata(:, 3:size(finaldata,2))'
 
 
 

@@ -18,8 +18,8 @@ function [betas, cov_betas, llf_vec] = max_bhhh(b0, names, numobs, iter_limit, c
    while ((crit > critic_limit) & (iter<= iter_limit)); 
       if mult_hetero==1       
         z = Grad(b0,func_name, 1, dh, data_mat);
-        H = info_mat_hetero(b0, data_mat, num_betas)
-        db = inv(H) * z'
+        H = info_mat_hetero(b0, data_mat, num_betas);
+        db = inv(H) * z';
 %        H = ml_hess(func_name, b0, data_mat);
 %        db = -inv(H ./ numobs) * z'
       else                
@@ -29,7 +29,7 @@ function [betas, cov_betas, llf_vec] = max_bhhh(b0, names, numobs, iter_limit, c
         db = inv(H)*g;                  % Compute full step adjustment 
       end
       if do_step == 1;                % Use a variable step length 
-       s = 1;                         % Reset base step length 
+       s = do_step;                         % Reset base step length 
        li1 = 0; li2 = 1;              % ** Intialize LLF's under 2 step lengths
        while (li1 < li2) %&& (s >=.2); % ** Loop to determine step length
           li1 = sum(func_name(b0 + s*db, data_mat));  %Eval. LLF at higher SL
