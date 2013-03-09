@@ -47,7 +47,7 @@ count_likelihood_fn_pass = @count_likelihood_fn
 
 [betas_rand_full, cov_rand_full, llf_vec_rand_full] = max_bhhh( ...
   rand_start_vals , targ_vars(3:length(targ_vars))  ,  ...
-  orig_obs, 250, 1e-4, count_likelihood_fn_pass, 1, .000001, finaldata, 0, 0);
+  orig_obs, 250, 1e-5, count_likelihood_fn_pass, 1, .000001, finaldata, 0, 0);
 % repmat(0.2, length(targ_vars)-2, 1) 
 % rand_start_vals
 
@@ -250,24 +250,30 @@ clear
 urlwrite('http://www.aae.wisc.edu/aae637/data/matlab/US_gas_use.xlsx','temp.xls');
 [full_data,varnames,raw]=xlsread('temp.xls');
 
+full_data(:,2) = full_data(:,strcmp(varnames,'Pop'))/1000000;
+full_data(:,3) = full_data(:,strcmp(varnames,'GasP'))/10;
+full_data(:,5) = full_data(:,strcmp(varnames,'PC_Inc'))/1000;
+full_data(:,6) = full_data(:,strcmp(varnames,'PNC'))/10;
+full_data(:,7) = full_data(:,strcmp(varnames,'PUC'))/10;
+
 orig_obs = size(full_data,1);
 
-vars_rescaled = varnames(max(full_data)>=10);
+%vars_rescaled = varnames(max(full_data)>=10);
 
-while length(vars_rescaled)>0
-  for i=vars_rescaled
-    full_data(:, strcmp(varnames, i)) = full_data(:, strcmp(varnames, i)) ./ 10;
-  end
-vars_rescaled = varnames(max(full_data)>=10);
-end
+%while length(vars_rescaled)>0
+%  for i=vars_rescaled
+%    full_data(:, strcmp(varnames, i)) = full_data(:, strcmp(varnames, i)) ./ 10;
+%  end
+%vars_rescaled = varnames(max(full_data)>=10);
+%end
 
 
 
 
 
 transf_data = horzcat( ...
-    full_data(2:orig_obs, strcmp(varnames,'Q_Gas')) ./  ...
-      full_data(2:orig_obs, strcmp(varnames,'Pop')), ...
+    log( full_data(2:orig_obs, strcmp(varnames,'Q_Gas')) ./  ...
+      full_data(2:orig_obs, strcmp(varnames,'Pop')) ), ...
     repmat(1, orig_obs-1, 1), ...
     log( full_data(2:orig_obs, strcmp(varnames,'GasP')) ), ...
     log( full_data(2:orig_obs, strcmp(varnames,'PC_Inc')) ), ...
@@ -292,6 +298,12 @@ start_vals = (transf_data_x' * transf_data_x)^-1 * transf_data_x' * transf_data(
 
 gas_likelihood_fn([start_vals; 0.2; 0.2; 0.2; 0.2; 0.2], transf_data)
 
+start_vals_ethan = [ -2.4922 -0.0798  0.1368 -0.1322  0.0937  1.7287  1.7523  0.7414  0.9071 -6.0928  0.0013 -1.2544 -0.3427 -0.7759  ];
+
+start_vals_ethan = start_vals_ethan';
+
+gas_likelihood_fn(start_vals_ethan, transf_data)
+
 gas_likelihood_fn_pass = @gas_likelihood_fn
 
 beta_names = {'const', 'LnGasP', 'LnPC_Inc', 'LnPNC', 'LnPUC', 'Shock73', 'Shock79', 'Recess', ...
@@ -299,7 +311,18 @@ beta_names = {'const', 'LnGasP', 'LnPC_Inc', 'LnPNC', 'LnPUC', 'Shock73', 'Shock
 
 [betas_gas, cov_gas, llf_vec_gas] = max_bhhh( ...
   [start_vals; repmat(.02, 5, 1)], beta_names, ...
-  size(transf_data, 1), 250, 1e-6, gas_likelihood_fn_pass, 1, .0000001, transf_data, 1, 9);
+  size(transf_data, 1), 250, 1e-4, gas_likelihood_fn_pass, 1, .0000001, transf_data, 1, 9);
+
+
+sum(  (transf_data(:,1) - transf_data(:, 2:10) * start_vals_ethan(1:9)).^2 )
+
+sum(  (transf_data(:,1) - mean(transf_data(:,1))).^2 )
+
+sum(  (transf_data(:,1) - transf_data(:, 2:10) * betas_gas(1:9)).^2 )
+
+inv( transf_data(:, 2:10)' * transf_data(:, 2:10) ) * transf_data(:, 2:10)' * transf_data(:, 1)
+
+
 
 
 %% Wald test

@@ -72,7 +72,8 @@ function [betas, cov_betas, llf_vec] = max_bhhh(b0, names, numobs, iter_limit, c
    end
    llf_vec=func_name(b0, data_mat); % Vector of Log-Likelihood values
    if mult_hetero==1  
-     cov_betas=inv(Grad(b0,func_name, 1, dh, data_mat)' * Grad(b0,func_name, 1, dh, data_mat)); 
+%     cov_betas=inv(Grad(b0,func_name, 1, dh, data_mat)' * Grad(b0,func_name, 1, dh, data_mat)); 
+     cov_betas=inv(H);
      % BHHH method for Param. Cov. calculation
    else
     cov_betas=inv(H); 
