@@ -32,7 +32,7 @@ targ_vars = {'mdvis' 'mdvislnfact' 'const' 'logc' 'idp' 'fmde' 'linc' 'lnum' 'xa
 finaldata=pull_data(varnames,targ_vars,full_data);
 
 vars_rescaled = targ_vars(max(finaldata)>=10);
-vars_rescaled = vars_rescaled(~strcmp(vars_rescaled,'mdvis') & ~strcmp(vars_rescaled,'mdvislnfact'));
+vars_rescaled = vars_rescaled(~strcmp(vars_rescaled,'mdvis') & ~strcmp(vars_rescaled,'mdvislnfact') & ~strcmp(vars_rescaled,'linc'));
 
 for i=vars_rescaled
   finaldata(:, strcmp(targ_vars, i)) = finaldata(:, strcmp(targ_vars, i)) ./ 10;
@@ -85,7 +85,7 @@ end
 lr_test_output = 2 * ( sum(llf_vec_rand_full) - sum(llf_vec_rand_restricted));
 
 lr_test_p_val = 1 - chi2cdf(lr_test_output, 3);
-fprintf('Wald Stat. (H_0: hlthg = hlthf = hlthp = 0): %10.4f \n', lr_test_output);
+fprintf('LR Stat. (H_0: hlthg = hlthf = hlthp = 0): %10.4f \n', lr_test_output);
 fprintf('Prob Wald Stat. Assum. H_0:            %10.4f \n', lr_test_p_val);
 if lr_test_p_val < 0.05
     disp('    There is, therefore, enough evidence to reject H_0');
@@ -169,7 +169,7 @@ income_elast = betas_rand_full(5);
 % and http://mpra.ub.uni-muenchen.de/19895/1/MPRA_paper_19895.pdf
 
 
-t_stat = income_elast ./  sqrt(cov_rand_full(5,5))
+t_stat = (1 - income_elast ) ./  sqrt(cov_rand_full(5,5))
 
 p_val = 1 - tcdf(t_stat, orig_obs - length(cov_rand_full));
 fprintf('\n T-Stat. Elasticity of income on visits ==1 :   %10.4f \n',t_stat);
@@ -327,11 +327,12 @@ inv( transf_data(:, 2:10)' * transf_data(:, 2:10) ) * transf_data(:, 2:10)' * tr
 
 %% Wald test
 
-gas_wald_stat = betas_gas(10:14)' * ( [0 1 1 1 1] * ...
-   inv( 2 .* transf_data(:, 11:15)' *  transf_data(:, (11:15))) * ...
-    [0 1 1 1 1]' ) * betas_gas(10:14);
+gas_wald_stat = betas_gas(11:14)' * inv( 2 .* [zeros(4,1) eye(4)] * ...
+   inv(  transf_data(:, 11:15)' *  transf_data(:, (11:15))) * ...
+    [zeros(4,1) eye(4)]' ) * betas_gas(11:14)
 % eq. 12.3.93 of JHGLL
 
+    
 chi_bwg(0.05,4,gas_wald_stat);
 
 %% LR test
@@ -345,22 +346,24 @@ ols_est_gas = inv(transf_data(:, 2:10)' * transf_data(:, 2:10)) * ...
   
 resid_gas = transf_data(:, 1) - transf_data(:, 2:10) * ols_est_gas;
 
-gas_lr_stat = size(transf_data, 1) * log(resid_gas' * resid_gas ./ size(transf_data, 1)) - ...
+gas_lr_stat = size(transf_data, 1) * log(resid_gas' * resid_gas ./ (size(transf_data, 1) )) - ...
   sum( transf_data(:, 11:15) * betas_gas(10:14))
 % by eq. 12.3.102 of JHGLL
+
+
   
 chi_bwg(0.05,4,gas_lr_stat);
 
 
 %% LM test
 
-q_vec_gas = resid_gas .^ 2 - ( resid_gas' * resid_gas ./ size(transf_data, 1) );
+q_vec_gas = resid_gas .^ 2 - ( resid_gas' * resid_gas ./ size(transf_data, 1)  );
 
 
 gas_lm_stat = q_vec_gas' * transf_data(:, 11:15) * ...
   inv( transf_data(:, 11:15)' *  transf_data(:, (11:15)) ) * ...
   transf_data(:, 11:15)' * q_vec_gas ...
-  ./ (2 * ( resid_gas' * resid_gas ./ size(transf_data, 1) )^2 );
+  ./ (2 * ( resid_gas' * resid_gas ./ size(transf_data, 1) )^2 )
 % by JHGLL, eq. 12.3.99
 
 chi_bwg(0.05,4,gas_lm_stat);
@@ -511,22 +514,22 @@ disp('  ');
 header = {'const', 'GasP', 'PCInc', 'PNC', 'PUC', 'Sh73', 'Sh79', 'Rec','Rho'};
 
 
-w_test_mat=[zeros(2,2) eye(2)];
+%w_test_mat=[zeros(2,2) eye(2)];
 
-w_test_mat = [0 0 1 -1  0
-              0 0 1  0 -1
+%w_test_mat = [0 0 1 -1  0
+%              0 0 1  0 -1
 
-w_test_output = (w_test_mat * ar2_coef - [0; 0])' * inv(w_test_mat * ar2_cov * w_test_mat') * ...
-  (w_test_mat * ar2_coef - [0; 0]);
+%w_test_output = (w_test_mat * ar2_coef - [0; 0])' * inv(w_test_mat * ar2_cov * w_test_mat') * ...
+%  (w_test_mat * ar2_coef - [0; 0]);
   
-w_test_p_val = 1 - chi2cdf(w_test_output, size(w_test_mat, 1));
-fprintf('Wald Stat. (H_0: theta_1 = theta_2 = 0): %10.4f \n', w_test_output);
-fprintf('Prob Wald Stat. Assum. H_0:            %10.4f \n', w_test_p_val);
-if w_test_p_val < 0.05
-    disp('    There is, therefore, enough evidence to reject H_0');
-else
-    disp('    There is, therefore, not enough evidence to reject H_0');
-end
+%w_test_p_val = 1 - chi2cdf(w_test_output, size(w_test_mat, 1));
+%fprintf('Wald Stat. (H_0: theta_1 = theta_2 = 0): %10.4f \n', w_test_output);
+%fprintf('Prob Wald Stat. Assum. H_0:            %10.4f \n', w_test_p_val);
+%if w_test_p_val < 0.05
+%    disp('    There is, therefore, enough evidence to reject H_0');
+%else
+%    disp('    There is, therefore, not enough evidence to reject H_0');
+%end
 
 
 
