@@ -17,13 +17,13 @@ function [beta_tilde, rho_tilde, cov_betas] = beach_mackinnon_alg(betas, rho, da
   
   e_hat = data_mat(:,1)- data_mat(:,2:ncol) * beta_tilde ;
   
-  a_input = -(nrow-2) * sum(e_hat(2:nrow)' * e_hat(1:(nrow-1))) / ...
-    ( (nrow-1) * sum( e_hat(2:nrow).^ 2 - e_hat(1).^2 ) );
+  a_input = -(nrow-2) * sum(e_hat(2:nrow) .* e_hat(1:(nrow-1))) / ...
+    ( (nrow-1) * sum( e_hat(1:(nrow-1)).^ 2 - e_hat(1).^2 ) );
     
   b_input = ( (nrow-1) * e_hat(1).^2 - nrow * sum(e_hat(1:(nrow-1)).^2) - sum(e_hat(2:nrow).^2) ) / ...
-  ( (nrow-1) * sum( e_hat(2:nrow).^ 2 - e_hat(1).^2 ) );
+  ( (nrow-1) * sum( e_hat(1:(nrow-1)).^ 2 - e_hat(1).^2 ) );
   
-  c_input = nrow * sum(e_hat(2:nrow)' * e_hat(1:(nrow-1))) / ...
+  c_input = nrow * sum(e_hat(2:nrow) .* e_hat(1:(nrow-1))) / ...
     ( (nrow-1) * sum( e_hat(2:nrow).^ 2 - e_hat(1).^2 ) );
   
   p_input = b_input - a_input^2 / 3;
@@ -34,14 +34,12 @@ function [beta_tilde, rho_tilde, cov_betas] = beach_mackinnon_alg(betas, rho, da
     
   rho_tilde = -2 * sqrt(-p_input/3) * cos( phi_input/3 + pi/3) - a_input/3;
   
-  rho_tilde = real(rho_tilde);
   
-  crit = max(abs(([beta_tilde; rho_tilde]-[betas ; rho])./[betas ; rho]));
-  iter = iter + 1;
+
 
   betas = beta_tilde;
   
-  rho = rho_tilde;
+  rho = real(rho_tilde);
   
   betas_rho =[betas;rho];
   
@@ -68,12 +66,14 @@ function [beta_tilde, rho_tilde, cov_betas] = beach_mackinnon_alg(betas, rho, da
          disp('  ');
         end 
   
+  crit = max(abs(([beta_tilde; rho_tilde]-[betas ; rho])./[betas ; rho]));
+  iter = iter + 1;
+  
   
   end
   
   sig_sq_mu = (data_mat(:,1)-data_mat(:,2:ncol) * betas)' * ...
     (data_mat(:,1)-data_mat(:,2:ncol) * betas) ./ nrow;
-  % Still not sure if this is how you compute sig_sq_mu
   
   cov_betas = eye(length(betas)+1);
   

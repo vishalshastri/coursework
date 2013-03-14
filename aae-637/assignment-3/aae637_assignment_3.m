@@ -59,6 +59,7 @@ mdvis_actual = finaldata(:, strcmp(targ_vars, 'mdvis'));
 
 r_2_p = 1 - sum( ( ( mdvis_actual - mdvis_hat ) ./ sqrt(mdvis_hat) ).^2 ) / ...
 sum( ( ( mdvis_actual - mean(mdvis_actual) ) ./ sqrt(mean(mdvis_actual)) ).^2 ) ;
+% p. 844 of Greene 7th Edition
 
 fprintf('Standardized residual R-Sq_p = %2.4f', r_2_p)
 disp('  ')
@@ -78,8 +79,8 @@ end
 
 
 [betas_rand_restricted, cov_rand_restricted, llf_vec_rand_restricted] = max_bhhh( ...
-  repmat(0.2, length(targ_vars)-2, 1), targ_vars(3:length(targ_vars)), ...
-  orig_obs, 250, 1e-6, count_likelihood_fn_pass, 1, .000001, restricted_data, 0);
+  betas_rand_full(1:(length(betas_rand_full)-3)), targ_vars(3:length(targ_vars)), ...
+  orig_obs, 250, 1e-5, count_likelihood_fn_pass, 1, .000001, restricted_data, 0);
   
   
 lr_test_output = 2 * ( sum(llf_vec_rand_full) - sum(llf_vec_rand_restricted));
@@ -99,60 +100,36 @@ end
 rand_nls_model_pass = @rand_nls_model;
 
 marg_input_good = mean(finaldata(:, 3:size(finaldata,2)));
-marg_input_good(14:16) = [1 0 0];
+marg_input_good(15:17) = [1 0 0];
 
-marg_effect_good = exp(marg_input_good * betas_rand_full) * betas_rand_full(2)
+marg_effect_good = exp(marg_input_good * betas_rand_full) * betas_rand_full(2);
 
-%marg_effect_good = Grad(betas_rand_full,rand_nls_model_pass, ...
-%  1, .00001, marg_input_good); 
-
-%marg_effect_good = marg_input_good' .* betas_rand_full
-
-%marg_effect_good = marg_effect_good(2);
 
 marg_input_poor = mean(finaldata(:, 3:size(finaldata,2)));
-marg_input_poor(14:16) = [0 0 1];
+marg_input_poor(15:17) = [0 0 1];
 
-marg_effect_poor = exp(marg_input_poor * betas_rand_full) * betas_rand_full(2)
+marg_effect_poor = exp(marg_input_poor * betas_rand_full) * betas_rand_full(2);
 
-%marg_effect_poor = Grad(betas_rand_full,rand_nls_model_pass, ...
-%  1, .00001, marg_input_poor); 
 
-%marg_effect_poor = marg_input_poor' .* betas_rand_full
-
-%marg_effect_poor = marg_effect_poor(2);
-
-marg_effect_good
-marg_effect_poor
-
-exp(marg_input_good * betas_rand_full) * betas_rand_full(2)
+display(marg_effect_good)
+display(marg_effect_poor)
 
 gamma_hat_fn_pass = @gamma_hat_fn
 
-F_hat_deriv = Grad(betas_rand_full,gamma_hat_fn_pass, ...
-  length(betas_rand_full), .00001, marg_input_good); 
+health_gamma_hat_fn_pass = @health_gamma_hat_fn
+
+F_hat_deriv = Grad(betas_rand_full, health_gamma_hat_fn_pass,1 , .00001, finaldata);
 % By p. 733 of Greene 7th edition
 
-diag(F_hat_deriv);
-
-cov_good= F_hat_deriv * cov_rand_full * F_hat_deriv';
-
-var_good = cov_good(2,2)
-
-F_hat_deriv = Grad(betas_rand_full,gamma_hat_fn_pass, ...
-  length(betas_rand_full), .00001, marg_input_poor); 
-  
-cov_poor= F_hat_deriv * cov_rand_full * F_hat_deriv';
-
-var_poor = cov_poor(2,2)
-
-Welch_test = (marg_effect_good - marg_effect_poor) / ...
-  sqrt(  var_good/orig_obs + var_poor/orig_obs     )
   
 %Now, 2-tailed T-test:
 
-p_val = 1 - tcdf(Welch_test, orig_obs - length(cov_rand_full));
-fprintf('\n T-Stat. ME of ch in LOGC for good and poor health are equal:   %10.4f \n',Welch_test);
+st_error_health = F_hat_deriv * cov_rand_full * F_hat_deriv'
+
+t_stat_health = (marg_effect_good - marg_effect_poor) / sqrt(  st_error_health  )
+
+p_val = 1 - tcdf(t_stat_health, orig_obs - length(cov_rand_full));
+fprintf('\n T-Stat. ME of ch in LOGC for good and poor health are equal:   %10.4f \n',t_stat_health);
 fprintf('Prob T-Stat. Assum. H_0:               %10.4f \n',p_val);
 if p_val < .05/2
     disp('    There is, therefore, enough evidence to reject H_0');
@@ -168,6 +145,7 @@ income_elast = betas_rand_full(5);
 % due to http://cameron.econ.ucdavis.edu/racd/simplepoisson.pdf
 % and http://mpra.ub.uni-muenchen.de/19895/1/MPRA_paper_19895.pdf
 
+display(income_elast)
 
 t_stat = (1 - income_elast ) ./  sqrt(cov_rand_full(5,5))
 
@@ -193,35 +171,19 @@ marg_input_male(8) = 0;
 female_rel_effect = exp( marg_input_female * betas_rand_full ) - ...
   exp( marg_input_male * betas_rand_full );
   
+display(female_rel_effect)
+  
+% Use delta method
 
+female_rel_fn_pass = @female_rel_fn
+
+female_delta_vec = Grad(betas_rand_full, female_rel_fn_pass, 1, .00001, finaldata);
+  
+female_marg_effect_variance = female_delta_vec * cov_rand_full * female_delta_vec';
+
+display(  female_marg_effect_variance)
   
   
-  
-diag(F_hat_deriv)
-
-
-
-
-
-Y = poisspdf(X,lambda)
-
-
-poisspdf(exp(marg_input_poor * betas_rand_full), exp(marg_input_poor * betas_rand_full)) 
-
-
-marg_eff_cov = diag(F_hat_deriv)' * cov_rand_full * diag(F_hat_deriv)
-
-diag(marg_eff_cov)
-
-
-rand_nls_model(betas, x_mat)
-
-exp(
-
-gamma_hat_deriv_mat = exp(betas_rand_full' * finaldata(:, 3:size(finaldata,2))') * eye() ...
-   * finaldata(:, 3:size(finaldata,2))'
-
-
 
 
 %% Q. 1.f
@@ -234,10 +196,20 @@ rand_nls_model_pass = @rand_nls_model
   1e-6, 250, ...
   size(full_data,1), 1, rand_nls_model_pass, finaldata(:, 3:size(finaldata,2)), .000001, 0) ;
 
+rand_unrestr_likelihood = count_likelihood_fn(betas_rand_full, finaldata);
 
+rand_restr_likelihood = count_likelihood_fn(betas_rand_nls, finaldata);
 
+lr_test_output = 2 * ( sum(rand_unrestr_likelihood) - sum(rand_restr_likelihood));
 
-
+lr_test_p_val = 1 - chi2cdf(lr_test_output, 3);
+fprintf('LR Stat. (Unrestricted and restricted results are equal): %10.4f \n', lr_test_output);
+fprintf('Prob Wald Stat. Assum. H_0:            %10.4f \n', lr_test_p_val);
+if lr_test_p_val < 0.05
+    disp('    There is, therefore, enough evidence to reject H_0');
+else
+    disp('    There is, therefore, not enough evidence to reject H_0');
+end
 
 
 %% Question 2
@@ -296,14 +268,6 @@ transf_data = horzcat( ...
 transf_data_x = transf_data(:, 2:10);
 start_vals = (transf_data_x' * transf_data_x)^-1 * transf_data_x' * transf_data(:, 1);
 
-gas_likelihood_fn([start_vals; 0.2; 0.2; 0.2; 0.2; 0.2], transf_data)
-
-start_vals_ethan = [ -2.4922 -0.0798  0.1368 -0.1322  0.0937  1.7287  1.7523  0.7414  0.9071 -6.0928  0.0013 -1.2544 -0.3427 -0.7759  ];
-
-start_vals_ethan = start_vals_ethan';
-
-gas_likelihood_fn(start_vals_ethan, transf_data)
-
 gas_likelihood_fn_pass = @gas_likelihood_fn
 
 beta_names = {'const', 'LnGasP', 'LnPC_Inc', 'LnPNC', 'LnPUC', 'Shock73', 'Shock79', 'Recess', ...
@@ -313,14 +277,6 @@ beta_names = {'const', 'LnGasP', 'LnPC_Inc', 'LnPNC', 'LnPUC', 'Shock73', 'Shock
   [start_vals; repmat(.02, 5, 1)], beta_names, ...
   size(transf_data, 1), 250, 1e-4, gas_likelihood_fn_pass, 1, .0000001, transf_data, 1, 9);
 
-
-sum(  (transf_data(:,1) - transf_data(:, 2:10) * start_vals_ethan(1:9)).^2 )
-
-sum(  (transf_data(:,1) - mean(transf_data(:,1))).^2 )
-
-sum(  (transf_data(:,1) - transf_data(:, 2:10) * betas_gas(1:9)).^2 )
-
-inv( transf_data(:, 2:10)' * transf_data(:, 2:10) ) * transf_data(:, 2:10)' * transf_data(:, 1)
 
 
 
@@ -372,6 +328,19 @@ chi_bwg(0.05,4,gas_lm_stat);
 %% Q. 2.b
 
 
+% Null that ksi_P =< -1
+
+w_test_mat = [0 1/(1-betas_gas(9)) 0 repmat(0,1,5) betas_gas(2)/(1-betas_gas(9))^2 repmat(0,1,5)];
+
+eval_mat = betas_gas(2)/(1-betas_gas(9));
+
+w_test_output = (eval_mat + [1])' * inv(w_test_mat * cov_gas * w_test_mat') * ...
+  (eval_mat + [1]);
+  
+display(w_test_output)
+  
+chi_bwg(0.05,1,w_test_output);
+
 
 
 % Null that ksi_I=1
@@ -383,9 +352,25 @@ eval_mat = betas_gas(3)/(1-betas_gas(9));
 w_test_output = (eval_mat - [1])' * inv(w_test_mat * cov_gas * w_test_mat') * ...
   (eval_mat - [1]);
   
-chi_bwg(0.05,1,w_test_output);
+display(w_test_output)
+  
+chi_bwg(0.05/2,1,w_test_output);
+
+% Null that ksi_I = 1 & ksi_P =< -1
   
 
+w_test_mat = [0 1/(1-betas_gas(9)) 0 repmat(0,1,5) betas_gas(2)/(1-betas_gas(9))^2 repmat(0,1,5) ;
+              0 0 1/(1-betas_gas(9)) repmat(0,1,5) betas_gas(3)/(1-betas_gas(9))^2 repmat(0,1,5)];
+
+eval_mat = [betas_gas(2)/(1-betas_gas(9));
+            betas_gas(3)/(1-betas_gas(9))];
+            
+w_test_output = (eval_mat - [-1; 1])' * inv(w_test_mat * cov_gas * w_test_mat') * ...
+  (eval_mat - [-1; 1]);
+  
+display(w_test_output)
+  
+chi_bwg(0.05/2,1,w_test_output);
 
 % Question 3
 
@@ -408,10 +393,12 @@ while length(vars_rescaled)>0
 vars_rescaled = varnames(max(full_data)>=10);
 end
 
+% full_data(:, strcmp(varnames,'Pop')) = full_data(:, strcmp(varnames,'Pop'))/1000
+
 
 transf_data = horzcat( ...
-    full_data(:, strcmp(varnames,'Q_Gas')) ./  ...
-      full_data(:, strcmp(varnames,'Pop')), ...
+    log( full_data(:, strcmp(varnames,'Q_Gas')) ./  ...
+      full_data(:, strcmp(varnames,'Pop'))), ...
     repmat(1, orig_obs, 1), ...
     log( full_data(:, strcmp(varnames,'GasP')) ), ...
     log( full_data(:, strcmp(varnames,'PC_Inc')) ), ...
@@ -445,14 +432,12 @@ gas_rho_likelihood_fn_pass = @gas_rho_likelihood_fn;
 
 gas_rho_likelihood_fn_pass = @gas_rho_likelihood_fn;
 
-[betas_b_m, rho_b_m, cov_betas_b_m] = beach_mackinnon_alg(betas_fgls_gas, .001, transf_data, gas_rho_likelihood_fn_pass,[beta_names, 'rho'],  1e-4, 250);
+[betas_b_m, rho_b_m, cov_betas_b_m] = beach_mackinnon_alg(betas_fgls_gas, rho_fgls_gas, transf_data, gas_rho_likelihood_fn_pass,[beta_names, 'rho'],  1e-6, 250);
+
 
 %% Q. 3.e.
 
-% Need to put rho in here:
 
-%rho_crm_gas
-%sqrt( (1-rho^2)/numr )
 
 estimates = horzcat([betas_crm_gas; rho_crm_gas], ...
   [betas_fgls_gas; rho_fgls_gas],...
@@ -463,7 +448,7 @@ estimates = horzcat([betas_crm_gas; rho_crm_gas], ...
   sqrt(diag(cov_gas_ml_auto)), ...
   sqrt(diag(cov_betas_b_m)) );
   
-% TODO: need to put tanh on ML rho?
+
 
 estimates = estimates';
 
@@ -499,11 +484,11 @@ parnames = {'CRM' 'FGLS' 'ML' 'B&M' };
 header = {'Mod', 'const', 'GasP', 'PCInc', 'PNC', 'PUC', 'Sh73', 'Sh79', 'Rec','Rho'};
 fprintf('-----------------------*********Z-STATS*********--------------------- \n');
 fprintf('--------------------------------------------------------------------- \n');
-fprintf('%5s %6s %6s %6s %6s %6s %6s %6s %6s %6s %80s', header{1}, header{2}, ...
+fprintf('%5s %7s %6s %6s %6s %6s %6s %6s %6s %6s %80s', header{1}, header{2}, ...
           header{3}, header{4}, header{5}, header{6}, header{7}, header{8}, header{9}, header{10})
 fprintf('\n -------------------------------------------------------------------- \n');
 for i = 1:f.numpars
-    fprintf('%6s %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f \n', ...
+    fprintf('%6s %7.3f %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f \n', ...
         parnames{i}, z_stats(i,:));
 end
 disp('  ');     
@@ -512,26 +497,6 @@ disp('  ');
 %% Q. 3.f.
 
 header = {'const', 'GasP', 'PCInc', 'PNC', 'PUC', 'Sh73', 'Sh79', 'Rec','Rho'};
-
-
-%w_test_mat=[zeros(2,2) eye(2)];
-
-%w_test_mat = [0 0 1 -1  0
-%              0 0 1  0 -1
-
-%w_test_output = (w_test_mat * ar2_coef - [0; 0])' * inv(w_test_mat * ar2_cov * w_test_mat') * ...
-%  (w_test_mat * ar2_coef - [0; 0]);
-  
-%w_test_p_val = 1 - chi2cdf(w_test_output, size(w_test_mat, 1));
-%fprintf('Wald Stat. (H_0: theta_1 = theta_2 = 0): %10.4f \n', w_test_output);
-%fprintf('Prob Wald Stat. Assum. H_0:            %10.4f \n', w_test_p_val);
-%if w_test_p_val < 0.05
-%    disp('    There is, therefore, enough evidence to reject H_0');
-%else
-%    disp('    There is, therefore, not enough evidence to reject H_0');
-%end
-
-
 
 
 coef_mat = horzcat([betas_crm_gas; rho_crm_gas] , ...
@@ -553,10 +518,6 @@ model_names = {'CRM', 'FGLS', 'ML', 'B&M'};
 
 for i=1:4
 
-%deriv:
-%w_test_mat=[ 0 0 -(ces_lin_coef(3)+1)^-2 0 ] ;
-% p. 543 of Judge et al.
-
   R_mat = [0 0 1 -1  0;
            0 0 1  0 -1];
 
@@ -564,7 +525,7 @@ for i=1:4
     inv(R_mat * cov_mats{i} * R_mat') * ...
     (R_mat * coef_mat(1:5, i) - [0]);
   
-  w_test_p_val = 1 - chi2cdf(w_test_output, size(R_mat, 1));
+  w_test_p_val = 1 - chi2cdf(real(w_test_output), size(R_mat, 1));
   fprintf('Wald Stat. (B_2 = B_3 = B_4) for %s method: %10.4f \n', model_names{i}, w_test_output);
   fprintf('Prob Wald Stat. Assum. H_0 for %s method:  %10.4f \n', model_names{i}, w_test_p_val);
   if w_test_p_val < 0.05
@@ -577,211 +538,4 @@ for i=1:4
 end
 
 
-
-
-
-
-
-
-
-
-betas./std
-
-
-
-
-
-
-
-
-
-Grad([betas_fgls_gas; rho_crm_gas],gas_rho_likelihood_fn_pass,orig_obs, .000001, transf_data)
-
-sum(gas_rho_likelihood_fn( [beta_tilde_test ; rho_tilde_test], transf_data))
-
- 159.54
-
-
-x = transf_data(:, 2:9);
-y = transf_data(:, 1);
-
-numr=size(transf_data,1);
-numk = 8;
-
-psi_mat=eye(numr);
-
-rho=.5
-
-for i=1:numr
-  for j=1:numr
-    psi_mat(i, j) = rho^(abs(j-i));
-  end
-end
-
-psi_mat = psi_mat .* 1/(1-rho^2);
-
-betas_fg = inv(x' * inv(psi_mat) * x) * x' * inv(psi_mat) * y
-
-sigma2_Vu = ( (y - x * betas_fg)' * inv(psi_mat) * (y - x * betas_fg) )/(numr-numk)
-
-sigma2_Vu .* inv(x' * inv(psi_mat) * x) 
-
-
-
-
-
-
-
-
-
-
-
-rho = 0.6504
-numr  = 52
- 
-rho / ( sqrt( (1-rho^2)/numr ) / sqrt(numr) )
-
-
-
-
-
-test_mat = info_mat_hetero([start_vals; repmat(.02, 5, 1)], transf_data, 9);
-
-inv(test_mat) * Grad([start_vals; repmat(.02, 5, 1)],gas_likelihood_fn_pass, 1, .0000001, transf_data)'
-
-
-
-
-
-inv(ml_hess(gas_likelihood_fn_pass, [start_vals; repmat(.00002, 5, 1)], transf_data))
-
-test_hess = ml_hess(gas_likelihood_fn_pass, [start_vals; repmat(.00002, 5, 1)], transf_data) 
-
-
-
-
-
-( transf_data(:, 1) - transf_data(:, 2:size(transf_data,2)) * vertcat(start_vals, repmat(0, 5, 1)) ).^2 - ...
-  ( transf_data(:, 1) - transf_data(:, 2:size(transf_data,2)) * vertcat(start_vals, repmat(0, 5, 1)) ).^2 
-
-
-gas_likelihood_fn(vertcat(start_vals, repmat(.00002, 5, 1)), transf_data) - ...
-gas_likelihood_fn(vertcat(start_vals(1:8), start_vals(9)-.2, repmat(.00002, 5, 1)), transf_data)
-
-
-betas = vertcat(start_vals, repmat(.2, 5, 1));
-  BETA  = vertcat(betas(1:9), repmat(0, 5, 1));
-  ALPHA = vertcat(repmat(0, 9, 1), betas(10:length(betas)) ) ;
-
-data_mat = transf_data;
-
-sum( ...
-    -(1/2)*log(2*pi) - ...
-    data_mat(:, 2:size(data_mat,2)) * ALPHA - ...
-    exp( - data_mat(:, 2:size(data_mat,2)) * ALPHA) .* ...
-    ( data_mat(:, 1) - data_mat(:, 2:size(data_mat,2)) * BETA ) .^2 ...
-    )
-    
-    exp( - data_mat(:, 2:size(data_mat,2)) * (ALPHA./100)) .* ...
-    ( data_mat(:, 1) - data_mat(:, 2:size(data_mat,2)) * BETA ) .^2 
-
-
-
-( data_mat(:, 1) - data_mat(:, 2:size(data_mat,2)) * BETA ) .^2
-
-    'Year'
-    'Pop'
-    'GasP'
-    'Q_Gas'
-    'PC_Inc'
-    'PNC'
-    'PUC'
-    'PPT'
-    'PD'
-    'PN'
-    'PS'
-    'Shock73'
-    'Shock79'
-    'Recess'
-
-
-
-
-varnames = ['mdvis'  'mdvislnfact' 'const' varnames(~strcmp(varnames,'mdvis')) ];
-
-
-full_data = horzcat(full_data(:, strcmp(varnames,'mdvis')), ...
-    repmat(0, orig_obs, 1), ...
-    repmat(1, orig_obs, 1), ...
-    full_data(:, ~strcmp(varnames,'mdvis')) ...
-    );
-varnames = ['mdvis'  'mdvislnfact' 'const' varnames(~strcmp(varnames,'mdvis')) ];
-
-for i=1:size(full_data, 1) 
-  if full_data(i, 1) ~= 0
-    full_data(i, 2) = sum(log(1:full_data(i, 1)));
-  end
-end
-
-targ_vars = {'mdvis' 'mdvislnfact' 'const' 'logc' 'idp' 'fmde' 'linc' 'lnum' 'xage' 'female' ...
-  'child' 'fchild' 'black' 'educdec' 'physlm' 'disea' 'hlthg' 'hlthf' 'hlthp'};
-
-finaldata=pull_data(varnames,targ_vars,full_data);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  
-  
-  
-%%%% ALTERNATIVE
-
-targ_vars = {'mdvis' 'mdvislnfact' 'const' 'logc' 'idp' };
-
-finaldata=pull_data(varnames,targ_vars,full_data);
-
-vars_rescaled = targ_vars(max(finaldata)>=10);
-vars_rescaled = vars_rescaled(~strcmp(vars_rescaled,'mdvis') & ~strcmp(vars_rescaled,'mdvislnfact'));
-
-for i=vars_rescaled
-  finaldata(:, strcmp(targ_vars, i)) = finaldata(:, strcmp(targ_vars, i)) ./ 10;
-end
-
-[betas_test, cov_betas_test, llf_vec_test] = max_bhhh( ...
-  repmat(0.2, length(targ_vars)-2, 1), targ_vars(3:length(targ_vars)), ...
-  orig_obs, 250, 1e-6, count_likelihood_fn_pass, 1, .000001, finaldata);
-
-
-test_grad=Grad(repmat(1, length(targ_vars)-2, 1),count_likelihood_fn_pass,orig_obs, .000001, finaldata);
-  
-  b0, names, numobs, iter_limit, critic_limit, func_name, do_step, dh, data_mat)
-  
-  numc = 8
-  
-  R = [zeros(numc-1,1) eye(numc-1)];
-  betas = betas_crm_rand;
-  
-  transf_data(:, 2:9)
-   
-   f_stat= (R * betas(1:numc))' * inv(R * (sse/(numr-numc-1)) .* inv(x'*x) * R') * (R * betas);
   

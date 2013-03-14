@@ -11,7 +11,7 @@ function[betas,covb,rho]=crm(x,y,names,intercept)
    ehat = y - x*betas;                          % Error Vector
    sse = ehat'*ehat;                          % Sum of Squared Errors 
    sighat2 = sse/df;                         %Unbiased Estimate of Error Variance  
-   % Is this sighat2 above right?
+    
    covb = sighat2*inv(x'*x);           % Parameter Covariance Matrix 
    ybar = mean(y);                          % Mean of the dependant variable
    tss = y'*y - numr*(ybar^2);         % Total Sum of Squared Deviations from Mean 
@@ -26,7 +26,7 @@ function[betas,covb,rho]=crm(x,y,names,intercept)
    f_stat= (R * betas)' * inv(R * ((sse/(numr-numc-1)) .* inv(x'*x)) * R') * (R * betas);
    % By eq. 5-16 of Greene, p. 159
    
-   dw_stat = sum( (ehat(2:numr)-ehat(1:(numr-1)) .^2)) / sse;
+   dw_stat = sum( (ehat(2:numr)-ehat(1:(numr-1)) ).^2) / sse;
    
    rho = ( ehat(2:numr)' * ehat(1:(numr-1)) ) / sum( ehat(1:(numr-1)) .^2 );
    % by equation 20-19 of Greene (p. 962)
@@ -36,7 +36,29 @@ function[betas,covb,rho]=crm(x,y,names,intercept)
    
    disp('  ');
    disp('  ');
-   disp('Final results:');
+   disp('Final results (traditional CRM standard errors):');
+   results=horzcat(betas,stbls,tvalue,pvalue); % Build results matrix
+   table_bwg(names,results,9);
+   
+   psi_mat=eye(numr);
+
+   for i=1:numr
+     for j=1:numr
+       psi_mat(i, j) = rho^(abs(j-i));
+     end
+   end
+
+   psi_mat = psi_mat .* 1/(1-rho^2);
+    
+   covb = sighat2 * inv(x'*x) * x' * psi_mat *x * inv(x'*x);  % Parameter Covariance Matrix 
+
+   stbls = sqrt(diag(covb));	        % Coefficient Standard Errors 
+   tvalue=betas./stbls;                        % Coefficient t-values w/ H0:  Beta=0 
+   pvalue=2*(1-tcdf(abs(tvalue),df));   % Coefficient p-value (two tail) 
+   
+   
+   
+   disp('Final results (correct but inefficient standard errors):');
    results=horzcat(betas,stbls,tvalue,pvalue); % Build results matrix
    table_bwg(names,results,9);
    disp('  ');
