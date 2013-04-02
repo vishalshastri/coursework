@@ -1,4 +1,4 @@
-function [bn,cov_p,LLF_vec] = probit_bwg(b0, data_mat, parname, func_name, do_step, iter_limit, critic_limit)
+function [bn,cov_p,LLF_vec] = probit_bwg(b0, data_mat, parname, func_name, do_step, iter_limit, critic_limit, hetero)
 %{
 **************************************************************************
 ** At this point there are several ways to proceed.  The general
