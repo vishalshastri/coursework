@@ -7,6 +7,6 @@ function [tot_llf] = probit_llf_hetero(b0, data_mat)
    b0 = b0(1:num_betas);
    cdf_prob = normcdf(rhsvar*b0 ./ exp(z_mat*gammas));
    llf = depend.*log(cdf_prob) + (1-depend).*log(1-cdf_prob);
-   tot_llf=sum(llf);    
+   tot_llf=llf;    
 end
 

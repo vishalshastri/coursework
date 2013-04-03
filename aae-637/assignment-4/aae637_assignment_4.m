@@ -81,7 +81,7 @@ t_stat_fluid_inc_elast = fluid_inc_elast_val / sqrt(  st_error_fluid_inc_elast  
 
 % One-sided test
 p_val = 1 - tcdf(t_stat_fluid_inc_elast, size(mod_data, 1) - length(fluid_betas));
-fprintf('\nT-Stat. Income elasticity is positive:   %10.4f \n',t_stat_child);
+fprintf('\nT-Stat. Income elasticity is positive:   %10.4f \n',t_stat_fluid_inc_elast);
 fprintf('Prob T-Stat. Assum. H_0:               %10.4f \n',p_val);
 if p_val < .05
     disp('    There is, therefore, enough evidence to reject H_0');
@@ -204,16 +204,16 @@ hetero_data = horzcat(  mod_data, ...
     full_data(:, strcmp(varnames,'perfafh')) ...
     );
 
-
-quick_sol = [-1.4237; -0.0828;  0.5615;  0.0599;  0.3262;  0.9715;  0.7076; ...  
- -0.7034;  0.1163;  0.1113;  0.2192;  0.2561;  0.0489  ]
+% TODO: delete this:
+quick_sol = [ -1.4276 ; -0.0828;  0.5650;  0.0598;  0.3265;  0.9737;  0.7086  ;
+ -0.7051;  0.1177;  0.1132;  0.2193;  0.2573;  0.0506  ]
 % [fluid_betas; repmat(0, 5, 1)]
 
 [hetero_fluid_betas, hetero_fluid_cov, hetero_fluid_llf_vec]  = max_bhhh([fluid_betas; repmat(0, 5, 1)], ...
   {'const', 'num_yung', 'incomet', 'yung_x_inc', 'sm_city', 'city', 'refrig', 'perfafh' ...
   'het_perg' 'het_ref' 'het_reg' 'het_inc' 'het_perf'}, ...
-  size(hetero_data, 1), 250, 1e-4, @probit_llf_hetero, 1, 0.000001, ...
-  hetero_data, 1, 8)
+  size(hetero_data, 1), 250, 1e-6, @probit_llf_hetero, 1, 0.000001, ...
+  hetero_data, 0, 8);
 
 
 
@@ -231,7 +231,57 @@ end
 
 %% Q. 2.b
 
-% TODO
+beta_temp = hetero_fluid_betas(1:8);
+x_temp = mean(hetero_data(:, 2:9));
+x_temp(3:4) = x_temp(3:4)*0.70;
+z_temp = mean(hetero_data(:, 10:end));
+z_temp(4) = z_temp(4)*0.70;
+gam_temp = hetero_fluid_betas(9:end);
+inc_mean = mean(hetero_data(:, 4)) * 0.7;
+
+inc_elast_het_70 = normpdf( (x_temp * beta_temp) / exp(z_temp * gam_temp) ) * ...
+  (( (beta_temp(2) + beta_temp(3) * inc_mean) - ...
+    (x_temp * beta_temp) * gam_temp(4) ) / ...
+    exp(z_temp * gam_temp) ) * ...
+  normcdf( ( x_temp * beta_temp) / exp(z_temp * gam_temp) )
+    
+beta_temp = hetero_fluid_betas(1:8);
+x_temp = mean(hetero_data(:, 2:9));
+x_temp(3:4) = x_temp(3:4) * 1.30;
+z_temp = mean(hetero_data(:, 10:end));
+z_temp(4) = z_temp(4) * 1.30;
+gam_temp = hetero_fluid_betas(9:end);
+inc_mean = mean(hetero_data(:, 4)) * 1.3;
+
+inc_elast_het_130 = normpdf( ( x_temp * beta_temp) / exp(z_temp * gam_temp) ) * ...
+  (( (beta_temp(2) + beta_temp(3) * inc_mean) - ...
+    (x_temp * beta_temp) * gam_temp(4) ) / ...
+    exp(z_temp * gam_temp) ) * ...
+  normcdf( (x_temp * beta_temp) / exp(z_temp * gam_temp) )
+
+
+
+F_hat_deriv = Grad(hetero_fluid_betas, @inc_elast_het_70_130_fn, 1, .00001, hetero_data);
+
+
+st_error_inc_het = F_hat_deriv * hetero_fluid_cov * F_hat_deriv';
+
+t_stat_inc_het = (inc_elast_het_70 - inc_elast_het_130) / sqrt(  st_error_child  );
+
+p_val = 1 - tcdf(t_stat_inc_het, size(mod_data, 1) - length(fluid_betas));
+fprintf('\nT-Stat. Inc. elast. w/70%%\n and 130%% of mean income are equal:   %10.4f \n',t_stat_inc_het);
+fprintf('Prob T-Stat. Assum. H_0:               %10.4f \n',p_val);
+if p_val < .05/2
+    disp('    There is, therefore, enough evidence to reject H_0');
+else
+    disp('    There is, therefore, not enough evidence to reject H_0');
+end
+
+
+
+
+
+
 
 %% QUESTION 3
 
@@ -375,6 +425,13 @@ end
 
 
 
+
+
+
+
+git add .
+git commit -m 'Almost done with AAE637 assignment 4'
+git push origin master
 
 
 parname={'ONE','W_AGE','W_AGESQ','W_EDU','FAMINC'}; 
