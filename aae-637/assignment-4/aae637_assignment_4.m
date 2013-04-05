@@ -220,10 +220,7 @@ hetero_data = horzcat(  mod_data, ...
     full_data(:, strcmp(varnames,'perfafh')) ...
     );
 
-% TODO: delete this:
-quick_sol = [ -1.4276 ; -0.0828;  0.5650;  0.0598;  0.3265;  0.9737;  0.7086  ;
- -0.7051;  0.1177;  0.1132;  0.2193;  0.2573;  0.0506  ]
-% [fluid_betas; repmat(0, 5, 1)]
+
 
 [hetero_fluid_betas, hetero_fluid_cov, hetero_fluid_llf_vec]  = max_bhhh([fluid_betas; repmat(0, 5, 1)], ...
   {'const', 'num_yung', 'incomet', 'yung_x_inc', 'sm_city', 'city', 'refrig', 'perfafh' ...
@@ -246,14 +243,15 @@ else
 end
 
 %% Q. 2.b
-
+less_than_70_inc_index = hetero_data(:, 4) < mean(hetero_data(:, 4))*0.7
 beta_temp = hetero_fluid_betas(1:8);
-x_temp = mean(hetero_data(:, 2:9));
-x_temp(3:4) = x_temp(3:4)*0.70;
-z_temp = mean(hetero_data(:, 10:end));
-z_temp(4) = z_temp(4)*0.70;
+x_temp = mean(hetero_data(less_than_70_inc_index  , 2:9));
+%x_temp(3:4) = x_temp(3:4)*0.70;
+z_temp = mean(hetero_data( less_than_70_inc_index, 10:end));
+%z_temp(4) = z_temp(4)*0.70;
 gam_temp = hetero_fluid_betas(9:end);
-inc_mean = mean(hetero_data(:, 4)) * 0.7;
+%inc_mean = mean(hetero_data(:, 4)) * 0.7;
+inc_mean = mean(x_temp(less_than_70_inc_index, 4))
 
 inc_elast_het_70 = normpdf( (x_temp * beta_temp) / exp(z_temp * gam_temp) ) * ...
   (( (beta_temp(3) + beta_temp(4) * inc_mean) - ...
@@ -261,14 +259,15 @@ inc_elast_het_70 = normpdf( (x_temp * beta_temp) / exp(z_temp * gam_temp) ) * ..
     exp(z_temp * gam_temp) ) * ...
   normcdf( ( x_temp * beta_temp) / exp(z_temp * gam_temp) )
   % Greene p. 754
-    
+
+less_than_130_inc_index = hetero_data(:, 4) < mean(hetero_data(:, 4))*1.3
 beta_temp = hetero_fluid_betas(1:8);
-x_temp = mean(hetero_data(:, 2:9));
-x_temp(3:4) = x_temp(3:4) * 1.30;
-z_temp = mean(hetero_data(:, 10:end));
-z_temp(4) = z_temp(4) * 1.30;
+x_temp = mean(hetero_data(less_than_130_inc_index, 2:9));
+%x_temp(3:4) = x_temp(3:4) * 1.30;
+z_temp = mean(hetero_data(less_than_130_inc_index, 10:end));
+%z_temp(4) = z_temp(4) * 1.30;
 gam_temp = hetero_fluid_betas(9:end);
-inc_mean = mean(hetero_data(:, 4)) * 1.3;
+inc_mean = mean(x_temp(less_than_130_inc_index, 4))
 
 inc_elast_het_130 = normpdf( ( x_temp * beta_temp) / exp(z_temp * gam_temp) ) * ...
   (( (beta_temp(3) + beta_temp(4) * inc_mean) - ...
@@ -462,7 +461,7 @@ end
 
 
 git add .
-git commit -m 'Almost done with AAE637 assignment 4'
+git commit -m 'Another draft of  AAE637 assignment 4'
 git push origin master
 
 
