@@ -4,6 +4,9 @@
 
 path(path,'C:\Users\tdmcarthur\Documents\MATLAB\') ;
 
+clear;
+clc;
+
 urlwrite('http://www.aae.wisc.edu/aae637/data/matlab/fluid_probit_data.xls','temp.xls');
 [full_data,varnames,raw]=xlsread('temp.xls');
 
@@ -80,11 +83,11 @@ st_error_fluid_inc_elast = F_hat_deriv * fluid_cov * F_hat_deriv';
 
 t_stat_fluid_inc_elast = fluid_inc_elast_val / sqrt(  st_error_fluid_inc_elast  );
 
-% One-sided test
+% two-sided test
 p_val = 1 - tcdf(t_stat_fluid_inc_elast, size(mod_data, 1) - length(fluid_betas));
 fprintf('\nT-Stat. Income elasticity is positive:   %10.4f \n',t_stat_fluid_inc_elast);
 fprintf('Prob T-Stat. Assum. H_0:               %10.4f \n',p_val);
-if p_val < .05
+if p_val < .05/2
     disp('    There is, therefore, enough evidence to reject H_0');
 else
     disp('    There is, therefore, not enough evidence to reject H_0');
@@ -180,16 +183,8 @@ mean_ch_3_150 = mean_ch_3;
 
 
 
-
-
-
-% F_hat_deriv = Grad(fluid_betas, @child_gamma_hat_fn, 1, .00001, mod_data);
-
 F_hat_deriv = (normpdf(mean_ch_2_50) - normpdf(mean_ch_3_50)) - ...
    (normpdf(mean_ch_2_150) - normpdf(mean_ch_3_150)) ;
-% But maybe it is:
-% (normpdf(mean_ch_2_50-mean_ch_3_50)) - ...
-%   (normpdf(mean_ch_2_150 - mean_ch_3_150)) 
 
 st_error_child = F_hat_deriv * fluid_cov * F_hat_deriv';
 
@@ -243,15 +238,12 @@ else
 end
 
 %% Q. 2.b
-less_than_70_inc_index = hetero_data(:, 4) < mean(hetero_data(:, 4))*0.7
+less_than_70_inc_index = hetero_data(:, 4) <= mean(hetero_data(:, 4))*0.7;
 beta_temp = hetero_fluid_betas(1:8);
 x_temp = mean(hetero_data(less_than_70_inc_index  , 2:9));
-%x_temp(3:4) = x_temp(3:4)*0.70;
 z_temp = mean(hetero_data( less_than_70_inc_index, 10:end));
-%z_temp(4) = z_temp(4)*0.70;
 gam_temp = hetero_fluid_betas(9:end);
-%inc_mean = mean(hetero_data(:, 4)) * 0.7;
-inc_mean = mean(x_temp(less_than_70_inc_index, 4))
+inc_mean = mean(x_temp(:, 4));
 
 inc_elast_het_70 = normpdf( (x_temp * beta_temp) / exp(z_temp * gam_temp) ) * ...
   (( (beta_temp(3) + beta_temp(4) * inc_mean) - ...
@@ -260,14 +252,12 @@ inc_elast_het_70 = normpdf( (x_temp * beta_temp) / exp(z_temp * gam_temp) ) * ..
   normcdf( ( x_temp * beta_temp) / exp(z_temp * gam_temp) )
   % Greene p. 754
 
-less_than_130_inc_index = hetero_data(:, 4) < mean(hetero_data(:, 4))*1.3
+less_than_130_inc_index = hetero_data(:, 4) >= mean(hetero_data(:, 4))*1.3;
 beta_temp = hetero_fluid_betas(1:8);
 x_temp = mean(hetero_data(less_than_130_inc_index, 2:9));
-%x_temp(3:4) = x_temp(3:4) * 1.30;
 z_temp = mean(hetero_data(less_than_130_inc_index, 10:end));
-%z_temp(4) = z_temp(4) * 1.30;
 gam_temp = hetero_fluid_betas(9:end);
-inc_mean = mean(x_temp(less_than_130_inc_index, 4))
+inc_mean = mean(x_temp(:, 4));
 
 inc_elast_het_130 = normpdf( ( x_temp * beta_temp) / exp(z_temp * gam_temp) ) * ...
   (( (beta_temp(3) + beta_temp(4) * inc_mean) - ...
@@ -282,7 +272,7 @@ F_hat_deriv = Grad(hetero_fluid_betas, @inc_elast_het_70_130_fn, 1, .00001, hete
 
 st_error_inc_het = F_hat_deriv * hetero_fluid_cov * F_hat_deriv';
 
-t_stat_inc_het = (inc_elast_het_70 - inc_elast_het_130) / sqrt(  st_error_child  );
+t_stat_inc_het = abs(inc_elast_het_70 - inc_elast_het_130) / sqrt(  st_error_child  );
 
 p_val = 1 - tcdf(t_stat_inc_het, size(mod_data, 1) - length(fluid_betas));
 fprintf('\nT-Stat. Inc. elast. w/70%%\n and 130%% of mean income are equal:   %10.4f \n',t_stat_inc_het);
@@ -311,15 +301,6 @@ urlwrite('http://www.aae.wisc.edu/aae637/data/matlab/greene_credit_v4.xls','temp
 
 full_data = full_data(full_data(:, strcmp(varnames,'Active'))~=0, :);
 
-%mod_data = horzcat( ...
-%    full_data(:, strcmp(varnames,'Majordrg')) > 0, ...
-%    repmat(1, size(full_data, 1), 1), ...
-%    full_data(:, strcmp(varnames,'Age'))/100, ...
-%   (full_data(:, strcmp(varnames,'Age'))/100).^2, ...
-%    full_data(:, strcmp(varnames,'Inc_per'))/10, ...
-%    full_data(:, strcmp(varnames,'Avgexp'))/1000, ...
-%    full_data(:, strcmp(varnames,'Ownrent')) ...
-%    );
     
 mod_data = horzcat( ...
     full_data(:, strcmp(varnames,'Majordrg')) > 0, ...
@@ -456,19 +437,3 @@ end
 
 
 
-
-
-
-
-git add .
-git commit -m 'Another draft of  AAE637 assignment 4'
-git push origin master
-
-
-parname={'ONE','W_AGE','W_AGESQ','W_EDU','FAMINC'}; 
-critic_limit=1e-6;              % Critical % change in parameters
-iter_limit=250;                 % Maximum number of iterations
-do_step=1;                      % =1 variable step length, 0 fixed 
-func_name =('probit_llf');      % Identify LLF function
-alpha=.05;                      % Type I Error Probability 
-dh = 0.000001;
