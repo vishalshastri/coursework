@@ -6,11 +6,8 @@ load 'invest.dat';
 
 %% 8.3.a
 
-%invest = horzcat( invest(:, 1), repmat(1, size(invest, 1), 1), invest(:, 2:end));
-
 beta = ((invest(:, 2:end)'*invest(:, 2:end))^-1)*invest(:, 2:end)'*invest(:, 1) ;
 
-% df = size(invest, 1) - 4; 
 df = size(invest, 1) - 3;                       
 ehat = invest(:, 1) - invest(:, 2:end) * beta;                          
 sse = ehat'*ehat;                         
@@ -21,7 +18,6 @@ covb = sighat2*inv(invest(:, 2:end)'*invest(:, 2:end));
 stbls = sqrt(diag(covb));	        
 
 
-%paramnames = {'constant', 'tobin_Q','cash_asset','debt_asset'}
 paramnames = {'tobin_Q','cash_asset','debt_asset'}
 
 for i=1:length(paramnames)
@@ -46,7 +42,7 @@ end
 wald_stat = beta(2:3)' * inv( [zeros(2,1) eye(2)] * ...
    covb * [zeros(2,1) eye(2)]' ) * beta(2:3);
 
-chi_bwg(0.05,7,wald_stat);
+%chi_bwg(0.05,7,wald_stat);
 
 w_test_p_val = 1 - chi2cdf(wald_stat, 2);
 fprintf('Wald Stat. (H_0: cash_asset = debt_asset = 0): %10.4f \n', wald_stat);
@@ -71,13 +67,13 @@ end
 
 %% 8.3.d
 
-invest_quad = horzcat( invest(:, 1), ...
+invest_quad = horzcat( invest, ...
   invest(:, 2).^2, ...
   invest(:, 3).^2, ...
   invest(:, 4).^2, ...
   invest(:, 2) .* invest(:, 3), ...
   invest(:, 2) .* invest(:, 4), ...
-  invest(:, 3) .* invest(:, 4), ...  
+  invest(:, 3) .* invest(:, 4) ...  
   );
 
 
@@ -92,10 +88,10 @@ covb = sighat2*inv(invest_quad(:, 2:end)'*invest_quad(:, 2:end));
 
 stbls = sqrt(diag(covb));	
 
-wald_stat = beta(4:end)' * inv( [zeros(6,1) eye(6)] * ...
-   covb * [zeros(6,1) eye(6)]' ) * beta(4:end);
+wald_stat = beta(4:end)' * inv( [zeros(6,3) eye(6)] * ...
+   covb * [zeros(6,3) eye(6)]' ) * beta(4:end);
 
-chi_bwg(0.05,7,wald_stat);
+%chi_bwg(0.05,7,wald_stat);
 
 w_test_p_val = 1 - chi2cdf(wald_stat, 2);
 fprintf('Wald Stat. (H_0: All interaction and quadratic coef. are zero): %10.4f \n', wald_stat);
@@ -106,8 +102,8 @@ else
     disp('    There is, therefore, not enough evidence to reject H_0');
 end
 
-p. 183
-reg for classes
+%p. 183
+%reg for classes
 
 
 %% 8.4.a
@@ -136,9 +132,9 @@ covb = inv(nerlov_tranf(:, 2:end)'*nerlov_tranf(:, 2:end)) * ...
   ( nerlov_tranf(:, 2:end)' * diag(ehat.^2)  * nerlov_tranf(:, 2:end) ) * ...
   inv(nerlov_tranf(:, 2:end)'*nerlov_tranf(:, 2:end)) ... 
    ;  
-% No DF?
- 
 
+ 
+stbls = sqrt(diag(covb));
 
 paramnames = {'log_Q','log_PL', 'log_PK', 'log_PF'}
 
@@ -162,6 +158,32 @@ r_mat = [zeros(3,2) eye(3)]';
 beta_cls = beta - inv(x_mat_temp'*x_mat_temp)*r_mat* ...     
   inv(r_mat'*inv(x_mat_temp'*x_mat_temp)*r_mat)* ...
   (r_mat'*beta-1)
+  
+df = size(nerlov_tranf, 1) - 5;                       
+ehat = nerlov_tranf(:, 1) - nerlov_tranf(:, 2:end) * beta_cls;                          
+sse = ehat'*ehat;                         
+sighat2 = sse/df;                         
+
+%covb = sighat2*inv(nerlov_tranf(:, 2:end)'*nerlov_tranf(:, 2:end));          
+covb = inv(nerlov_tranf(:, 2:end)'*nerlov_tranf(:, 2:end)) * ...
+  ( nerlov_tranf(:, 2:end)' * diag(ehat.^2)  * nerlov_tranf(:, 2:end) ) * ...
+  inv(nerlov_tranf(:, 2:end)'*nerlov_tranf(:, 2:end)) ... 
+   ;  
+
+
+stbls = sqrt(diag(covb));
+
+paramnames = {'log_Q','log_PL', 'log_PK', 'log_PF'}
+
+for i=1:length(paramnames)
+ fprintf('Param estimate for %s is: %3.4f \n', ...
+   paramnames{i}, beta_cls(i)   )
+end
+
+for i=1:length(paramnames)
+ fprintf('Standard error for %s is: %3.4f \n', ...
+   paramnames{i}, stbls(i)   )
+end
 
 
 %% 8.4.d
@@ -172,14 +194,58 @@ beta_cls = beta - inv(x_mat_temp'*x_mat_temp)*r_mat* ...
 beta_emd = beta - covb*r_mat* ...     
   inv(r_mat'*covb*r_mat)* ...
   (r_mat'*beta-1)
+  
+df = size(nerlov_tranf, 1) - 5;                       
+ehat = nerlov_tranf(:, 1) - nerlov_tranf(:, 2:end) * beta_emd;                          
+sse = ehat'*ehat;                         
+sighat2 = sse/df;                         
+
+%covb = sighat2*inv(nerlov_tranf(:, 2:end)'*nerlov_tranf(:, 2:end));          
+covb = inv(nerlov_tranf(:, 2:end)'*nerlov_tranf(:, 2:end)) * ...
+  ( nerlov_tranf(:, 2:end)' * diag(ehat.^2)  * nerlov_tranf(:, 2:end) ) * ...
+  inv(nerlov_tranf(:, 2:end)'*nerlov_tranf(:, 2:end)) ... 
+   ;  
+
+
+stbls = sqrt(diag(covb));
+
+paramnames = {'log_Q','log_PL', 'log_PK', 'log_PF'}
+
+for i=1:length(paramnames)
+ fprintf('Param estimate for %s is: %3.4f \n', ...
+   paramnames{i}, beta_emd(i)   )
+end
+
+for i=1:length(paramnames)
+ fprintf('Standard error for %s is: %3.4f \n', ...
+   paramnames{i}, stbls(i)   )
+end
+
+
 
 %% 8.4.e
 
 
-wald_stat = (r_mat'*beta-1)' * inv( r_mat * ...
-   covb * r_mat' ) * (r_mat'*beta-1);
 
-chi_bwg(0.05,7,wald_stat);
+beta = ((nerlov_tranf(:, 2:end)'*nerlov_tranf(:, 2:end))^-1)*nerlov_tranf(:, 2:end)'*nerlov_tranf(:, 1) ;
+
+df = size(nerlov_tranf, 1) - 5;                       
+ehat = nerlov_tranf(:, 1) - nerlov_tranf(:, 2:end) * beta;                          
+sse = ehat'*ehat;                         
+sighat2 = sse/df;                         
+
+%covb = sighat2*inv(nerlov_tranf(:, 2:end)'*nerlov_tranf(:, 2:end));          
+covb = inv(nerlov_tranf(:, 2:end)'*nerlov_tranf(:, 2:end)) * ...
+  ( nerlov_tranf(:, 2:end)' * diag(ehat.^2)  * nerlov_tranf(:, 2:end) ) * ...
+  inv(nerlov_tranf(:, 2:end)'*nerlov_tranf(:, 2:end)) ... 
+   ;  
+
+ 
+
+wald_stat = (r_mat'*beta-1)' * inv( r_mat' * ...
+   covb * r_mat ) * (r_mat'*beta-1);
+
+%chi_bwg(0.05,7,wald_stat);
 
 w_test_p_val = 1 - chi2cdf(wald_stat, 2);
 fprintf('Wald Stat. (H_0: All interaction and quadratic coef. are zero): %10.4f \n', wald_stat);
@@ -193,9 +259,9 @@ end
 
 %% 8.4.f
 
-Test H0 : b3 +b4 +b5 = 1 using a minimum distance statistic
+%Test H0 : b3 +b4 +b5 = 1 using a minimum distance statistic
 
-Since the hypothesis is linear, the mimimu distance statistic Jn is the same as the Wald statistic
+%Since the hypothesis is linear, the mimimu distance statistic Jn is the same as the Wald statistic
 
 %% 9.2.a
 
@@ -233,7 +299,7 @@ pvalue=2*(1-tcdf(abs(tvalue),df));
 
 pvalue(6)
 
-%% 9.2.b
+%% 9.2.b/c
 
 %x_mat_temp = nerlov_tranf(:, 2:end);
 %r_mat = [zeros(3,2) eye(3)]';
@@ -293,9 +359,9 @@ end
 
 
 
-%% 9.2.c
+%% 9.2.d
 
-% z = Grad(betas,func_name,numobs, dh, x_mat);
+
 
 m_deriv = horzcat(  ...
   repmat(1, size(nerlov, 1), 1), ...
@@ -484,7 +550,7 @@ stbls = sqrt(diag(covb));
 wald_stat = alpha_tilde(2:4)' * inv( [zeros(3,1) eye(3)] * ...
    covb * [zeros(3,1) eye(3)]' ) * alpha_tilde(2:4);
 
-chi_bwg(0.05,7,wald_stat);
+%chi_bwg(0.05,7,wald_stat);
 
 w_test_p_val = 1 - chi2cdf(wald_stat, 2);
 fprintf('Wald Stat. (H_0: cash_asset = debt_asset = 0): %10.4f \n', wald_stat);
@@ -525,113 +591,4 @@ for i=1:length(paramnames)
 end
 
 
-%% 9.3.h.
-
-
-
-
-
-
-
-EX age ndep
-
-
-
-
-SOUTH
-HISP
-CLER
-
-
-
-
-
-ED sq
-ED and FE interact
-ED sq and FE interact
-
-NDEP  and FE interact
-
-
-
-
-
-
-
-http://www.ssc.wisc.edu/~bhansen/710/cps78.pdf
-
-
-
-
-
-
-
-
-
-
-
-
-
-paramnames = {'log_Q','log_PL', 'log_PK', 'log_PF'}
-
-for i=1:length(paramnames)
- fprintf('Param estimate for %s is: %3.4f \n', ...
-   paramnames{i}, beta(i)   )
-end
-
-for i=1:length(paramnames)
- fprintf('Standard error for %s is: %3.4f \n', ...
-   paramnames{i}, stbls(i)   )
-end
-
-
-
-
-
-
-
-
-
-
-
-% a.
-e_hat= invest(:, 9)-invest(:, [1, 7, 10, 11])*((invest(:, [1, 7, 10, 11])'*invest(:, [1, 7, 10, 11]))^-1)*invest(:, [1, 7, 10, 11])'*invest(:, 9) ;
-sum(e_hat)
-
-% b.
-sum(invest(:, 1)'*e_hat)
-
-% c.
-sum(invest(:, 7)'*e_hat)
-
-% d.
-sum((invest(:, 1).^2)'*e_hat)
-
-% e.
-sum(invest(:, 10)'*e_hat)
-
-% f.
-sum((invest(:, [1, 7, 10, 11])*((invest(:, [1, 7, 10, 11])'*invest(:, [1, 7, 10, 11]))^-1)*invest(:, [1, 7, 10, 11])'*invest(:, 9) )'*e_hat)
-
-% g.
-e_hat'*e_hat
-
-% h.
-1-e_hat'*e_hat/sum((invest(:, 9)-mean(invest(:, 9)))'*(invest(:, 9)-mean(invest(:, 9))))
-
-% 3.20
-
-beta1 = ((invest(:, [ 7, 10, 11])'*invest(:, [7, 10, 11]))^-1)*invest(:, [7, 10, 11])'*invest(:, 9) 
-e_hat1= invest(:, 9)-invest(:, [7, 10, 11])*((invest(:, [7, 10, 11])'*invest(:, [7, 10, 11]))^-1)*invest(:, [7, 10, 11])'*invest(:, 9) ;
-
-
-beta2 = ((invest(:, [ 7, 10, 11])'*invest(:, [7, 10, 11]))^-1)*invest(:, [7, 10, 11])'*invest(:, 1) 
-e_hat2= invest(:, 1)-invest(:, [7, 10, 11])*((invest(:, [7, 10, 11])'*invest(:, [7, 10, 11]))^-1)*invest(:, [7, 10, 11])'*invest(:, 1) ;
-
-beta3 = ((e_hat2'*e_hat2)^-1)*e_hat2'*e_hat1
-e_hat3= e_hat1-e_hat2*((e_hat2'*e_hat2)^-1)*e_hat2'*e_hat1 ;
-
-1-e_hat3'*e_hat3/sum((e_hat1-mean(e_hat1))'*(e_hat1-mean(e_hat1)))
-
-e_hat3'*e_hat3
 
