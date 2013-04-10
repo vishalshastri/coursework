@@ -145,3 +145,15 @@ if do_marginal == 1;
 end   
 diary off;
 close all;
+
+
+
+% Tinkering below:
+
+bi_cdf_marg=g_1.*gamma_1'+g_2.*gamma_2'; %**Partial of Bivariate CDF, p.743***
+
+bi_cdf_elast = g_1.*gamma_1' .* Mean_of_exog_1 ./  + ...
+  g_2.*gamma_2'
+
+
+
