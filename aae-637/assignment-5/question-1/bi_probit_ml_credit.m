@@ -8,7 +8,7 @@
 clear;					         % Command to clear memory 
 clc;                             % Command to clear command window
 global critic_limit iter_limit rhsvar numobs do_step func_name dh ...
-    parname depend numc2 numc_1 numc_2 iter rhsvar1 rhsvar2 q1 q2;
+    parname depend numc2 numc_1 numc_2 iter rhsvar1 rhsvar2 q1 q2 combined_rhs;
 
 urlwrite('http://www.aae.wisc.edu/aae637/data/matlab/greene_credit_v4.xls','temp.xls');
 [base_data,varnames,raw]=xlsread('temp.xls');
@@ -143,17 +143,73 @@ if do_marginal == 1;
 	disp('This is partial of E(y1|y2=1):');
 	table_bwg(parname_marginal,part_y1_y2_1(2:length(bi_cdf_marg)),3);		
 end   
-diary off;
-close all;
+
+
+rho_mat = [1 rho; rho 1]
+% ELASTICITY BELOW:
+bi_cdf_elast = bi_cdf_marg .* (combined_rhs / ...
+  mvncdf([combined_rhs*gamma_1 combined_rhs*gamma_2], 0, rho_mat) );
+% by page 783 of 7th ed. Greene
+
+disp('This is bivariate probability elasticity of both=1:');
+table_bwg(parname_marginal,bi_cdf_elast(2:length(bi_cdf_elast))',3);
+
+
+elast_y1_y2_1 = part_y1_y2_1' .* ( combined_rhs / ...
+      (mvncdf([combined_rhs*gamma_1 combined_rhs*gamma_2], 0, rho_mat) / ...
+        normcdf(combined_rhs*gamma_2) ) );
+% by page 783 of 7th ed. Greene
+
+disp('This is elasticity of E(y1|y2=1):');
+table_bwg(parname_marginal,elast_y1_y2_1(2:length(elast_y1_y2_1)),3);	
 
 
 
-% Tinkering below:
+elast_val = bi_cdf_elast(3)
+  
+F_hat_deriv = Grad([gamma_1 ; gamma_2 ; bp_bi; rho],'joint_credit_elast_fn',1);
+F_hat_deriv = F_hat_deriv(13:22);
 
-bi_cdf_marg=g_1.*gamma_1'+g_2.*gamma_2'; %**Partial of Bivariate CDF, p.743***
+st_error_elast = F_hat_deriv * covbp_bi * F_hat_deriv';
 
-bi_cdf_elast = g_1.*gamma_1' .* Mean_of_exog_1 ./  + ...
-  g_2.*gamma_2'
+t_stat_elast = elast_val / sqrt(  st_error_elast  );
+
+% two-sided test
+p_val = 1 - tcdf(t_stat_elast, size(base_data, 1) - length(F_hat_deriv));
+fprintf('\nT-Stat. Income elasticity is zero (under joint):   %10.4f \n',t_stat_elast);
+fprintf('Prob T-Stat. Assum. H_0:               %10.4f \n',p_val);
+if p_val < .05/2
+    disp('    There is, therefore, enough evidence to reject H_0');
+else
+    disp('    There is, therefore, not enough evidence to reject H_0');
+end
+
+
+
+
+elast_val = elast_y1_y2_1(3)
+  
+F_hat_deriv = Grad([gamma_1 ; gamma_2 ; bp_bi; rho],'cond_credit_elast_fn',1);
+F_hat_deriv = F_hat_deriv(13:22);
+
+st_error_elast = F_hat_deriv * covbp_bi * F_hat_deriv';
+
+t_stat_elast = elast_val / sqrt(  st_error_elast  );
+
+% two-sided test
+p_val = 1 - tcdf(t_stat_elast, size(base_data, 1) - length(F_hat_deriv));
+fprintf('\nT-Stat. Income elasticity is zero (under conditional):   %10.4f \n',t_stat_elast);
+fprintf('Prob T-Stat. Assum. H_0:               %10.4f \n',p_val);
+if p_val < .05/2
+    disp('    There is, therefore, enough evidence to reject H_0');
+else
+    disp('    There is, therefore, not enough evidence to reject H_0');
+end
+
+
+
+
+
 
 
 

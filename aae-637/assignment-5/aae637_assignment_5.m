@@ -142,10 +142,6 @@ disp('This is the elas. effect of Term. Time on Mode Choice Prob.');
 disp('******************************************************');
 table_bwg(mode_name,elas_effects2,5);
 disp('******************************************************'); 
-disp('This is the elas. effect of Air_D*Inc on Mode Choice Prob.');
-disp('******************************************************');
-table_bwg(mode_name,elas_effects3,5);
-disp('******************************************************');
 
 
 F_hat_deriv = Grad(fish_betas, @beach_cost_elast_fn, 1, .00001, fish_data);
@@ -217,7 +213,11 @@ end
 
 %% Q. 2.d
 
-%% TODO
+disp('This is the elas. effect of Priv_D*Inc on Mode Choice Prob.');
+disp('******************************************************');
+table_bwg(mode_name,elas_effects3,5);
+disp('******************************************************');
+
 
 
 
@@ -239,17 +239,160 @@ ord_fish_data = horzcat(repmat(1, size(full_data,1), 1), full_data(:, 2:end));
 rhsvar = ord_fish_data(:, [1 2 3 16]);
 
 start_vals = inv(rhsvar'*rhsvar)*rhsvar'*full_data(:, 1);
-
-
 start_vals=vertcat(start_vals,0.1,1.1);  
 
 [fish_betas, fish_cov, fish_llf_vec]  = max_bhhh(start_vals, ...
-  {'const' 'cost' 'c_rate' 'income' 'mu_pier' 'mu_priv' 'mu_chart'}, ...
+  {'const' 'cost' 'c_rate' 'income' 'mu_pier' 'mu_priv' }, ...
   size(ord_fish_data, 1), ...
   250, 1e-6, @fish_ordered_llf, 1, 0.000001, ...
   ord_fish_data, 0, 0);
 
+%% Q. 3.b
 
+mean_rhsvar = mean(rhsvar(:, 1:4));
+x_beta = mean_rhsvar*fish_betas(1:4);
+mu_1 = fish_betas(5);
+mu_2 = fish_betas(6);
+
+day_cost_beach_elast = -normpdf(-x_beta) * fish_betas(2) * ...
+  (mean_rhsvar(2) / normcdf(-x_beta) )
+  
+day_cost_pier_elast = ( normpdf(-x_beta) - normpdf(mu_1 - x_beta ) ) * fish_betas(2) * ...
+  (mean_rhsvar(2) / (normcdf(mu_1 - x_beta) - normcdf(-x_beta) ) )
+
+day_cost_priv_elast = ( normpdf(mu_1-x_beta) - normpdf(mu_2 - x_beta ) ) * fish_betas(2) * ...
+  (mean_rhsvar(2) / (normcdf(mu_2 - x_beta) - normcdf(mu_1-x_beta) ) )
+
+day_cost_charter_elast = ( normpdf(mu_2 - x_beta ) ) * fish_betas(2) * ...
+  (mean_rhsvar(2) / (1-normcdf(mu_2 - x_beta)) )
+
+
+
+
+
+day_cost_beach_elast = fish_elast_fn([fish_betas; 2; 1], rhsvar)
+day_cost_pier_elast = fish_elast_fn([fish_betas; 2; 2], rhsvar)
+day_cost_priv_elast = fish_elast_fn([fish_betas; 2; 3], rhsvar)
+day_cost_charter_elast = fish_elast_fn([fish_betas; 2; 4], rhsvar)
+
+
+inc_beach_elast = fish_elast_fn([fish_betas; 4; 1], rhsvar)
+inc_pier_elast = fish_elast_fn([fish_betas; 4; 2], rhsvar)
+inc_priv_elast = fish_elast_fn([fish_betas; 4; 3], rhsvar)
+inc_charter_elast = fish_elast_fn([fish_betas; 4; 4], rhsvar)
+
+elast_args = cell(2, 8);
+
+elast_args{1,1} = [fish_betas; 2; 1]
+elast_args{1,2} = [fish_betas; 2; 2]
+elast_args{1,3} = [fish_betas; 2; 3]
+elast_args{1,4} = [fish_betas; 2; 4]
+
+elast_args{2,1} = '\nT-Stat. H0: Elasticity impact of cost on beach is zero:   %10.4f \n'
+elast_args{2,2} = '\nT-Stat. H0: Elasticity impact of cost on pier is zero:   %10.4f \n'
+elast_args{2,3} = '\nT-Stat. H0: Elasticity impact of cost on private is zero:   %10.4f \n'
+elast_args{2,4} = '\nT-Stat. H0: Elasticity impact of cost on charter is zero:   %10.4f \n'
+
+elast_args{1,5} = [fish_betas; 4; 1]
+elast_args{1,6} = [fish_betas; 4; 2]
+elast_args{1,7} = [fish_betas; 4; 3]
+elast_args{1,8} = [fish_betas; 4; 4]
+
+elast_args{2,5} = '\nT-Stat. H0: Elasticity impact of inc on beach is zero:   %10.4f \n'
+elast_args{2,6} = '\nT-Stat. H0: Elasticity impact of inc on pier is zero:   %10.4f \n'
+elast_args{2,7} = '\nT-Stat. H0: Elasticity impact of inc on private is zero:   %10.4f \n'
+elast_args{2,8} = '\nT-Stat. H0: Elasticity impact of inc on charter is zero:   %10.4f \n'
+
+for i=1:8
+
+  F_hat_deriv = Grad(elast_args{1,i}, @fish_elast_fn, 1, .00001, rhsvar);
+  F_hat_deriv = F_hat_deriv(1:6);
+  st_error_inc_elast = F_hat_deriv * fish_cov * F_hat_deriv';
+  t_stat_inc_elast = abs(fish_elast_fn(elast_args{1,i}, rhsvar)) / sqrt(  st_error_inc_elast );
+
+  % two-sided test
+  p_val = 1 - tcdf(t_stat_inc_elast, size(ord_fish_data, 1) - size(fish_cov,1) );
+  fprintf(elast_args{2,i},t_stat_inc_elast);
+  fprintf('Prob T-Stat. Assum. H_0:               %10.4f \n',p_val);
+  if p_val < .05/2
+      disp('    There is, therefore, enough evidence to reject H_0');
+  else
+      disp('    There is, therefore, not enough evidence to reject H_0');
+  end
+
+end
+
+
+
+
+
+
+
+
+
+F_hat_deriv = Grad(fish_betas, @pier_chart_dif_elast_fn, 1, .00001, fish_data);
+st_error_inc_elast = F_hat_deriv * hessian_cov * F_hat_deriv';
+t_stat_inc_elast = abs(elas_effects1(2,2) - elas_effects1(4,4)) / sqrt(  st_error_inc_elast );
+
+% two-sided test
+p_val = 1 - tcdf(t_stat_inc_elast, size(fish_data, 1) - size(fish_data, 1)/size(unique(fish_data(:, 1)),1));
+fprintf('\nT-Stat. H0: Pier & Charter cost elasticity are equal:   %10.4f \n',t_stat_inc_elast);
+fprintf('Prob T-Stat. Assum. H_0:               %10.4f \n',p_val);
+if p_val < .05/2
+    disp('    There is, therefore, enough evidence to reject H_0');
+else
+    disp('    There is, therefore, not enough evidence to reject H_0');
+end
+
+
+
+
+
+
+%% Q. 3.c
+
+start_vals=vertcat(fish_betas, 0);  
+
+[fish_het_betas, fish_het_cov, fish_het_llf_vec]  = max_bhhh(start_vals, ...
+  {'const' 'cost' 'c_rate' 'income' 'mu_pier' 'mu_priv' 'sigma'}, ...
+  size(ord_fish_data, 1), ...
+  250, 1e-6, @fish_het_ordered_llf, 1, 0.000001, ...
+  ord_fish_data, 0, 0);
+  
+
+lr_test_output = 2 * ( sum(fish_het_llf_vec) - sum(fish_llf_vec));
+
+lr_test_p_val = 1 - chi2cdf(lr_test_output, 1);
+fprintf('LR Stat. (H_0: hlthg = hlthf = hlthp = 0): %10.4f \n', lr_test_output);
+fprintf('Prob Wald Stat. Assum. H_0:            %10.4f \n', lr_test_p_val);
+if lr_test_p_val < 0.05
+    disp('    There is, therefore, enough evidence to reject H_0');
+else
+    disp('    There is, therefore, not enough evidence to reject H_0');
+end
+
+
+% TODO: Elasticities
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+LLF = -1343.4994
+LLF = -1344.7452
 
 
 fish_ordered_llf(start_vals, ord_fish_data)
@@ -258,7 +401,7 @@ fish_ordered_llf(start_vals, ord_fish_data)
 inv(full_data'*full_data)
 
 
-test = Grad(start_vals,@fish_ordered_llf,size(ord_fish_data, 1), 0.000001, ord_fish_data);
+test = Grad(start_vals,@fish_het_ordered_llf,size(ord_fish_data, 1), 0.000001, ord_fish_data);
 
 inv(test'*test)
 
