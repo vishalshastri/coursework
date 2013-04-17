@@ -31,7 +31,6 @@ start_vals = inv(fish_data(:, 3:end)'*fish_data(:, 3:end))*fish_data(:, 3:end)'*
   250, 1e-6, @cond_logit_llf, 1, 0.000001, ...
   fish_data, 0, 0);
 
-%TODO: is there an impact?? second-guessing - just the p value or the mean of data or ??
 
 hessian_cov=inv(-ml_hess(@tot_cond_logit_llf, fish_betas, fish_data));  
                                  %** Hessian Based Cov. Matrix **
@@ -43,6 +42,30 @@ results2=horzcat(fish_betas,se_hess,tvalue2,pvalue2);
 disp('  ');
 disp('*****Conditional Logit Results:  Hessian Based Cov *****');
 table_bwg({'cost' 'c_rate' 'inc_x_priv' 'pier' 'priv_boat' 'chart_boat'},results2,1);
+
+
+[fish_no_inc_betas, fish_no_inc_cov, fish_no_inc_llf_vec]  = max_bhhh(start_vals([1 2 4:6]), ...
+  {'cost' 'c_rate' 'pier' 'priv_boat' 'chart_boat'}, ...
+  size(fish_data, 1)/size(unique(fish_data(:, 1)), 1), ...
+  250, 1e-6, @cond_logit_llf, 1, 0.000001, ...
+  fish_data(:, [1:4 6:8]), 0, 0);
+
+
+lr_test_output = 2 * ( sum(fish_llf_vec) - sum(fish_no_inc_llf_vec));
+
+lr_test_p_val = 1 - chi2cdf(lr_test_output, 1);
+fprintf('LR Stat. (H_0: Income has no impact on fishing mode choice): %10.4f \n', lr_test_output);
+fprintf('Prob Wald Stat. Assum. H_0:            %10.4f \n', lr_test_p_val);
+if lr_test_p_val < 0.05
+    disp('    There is, therefore, enough evidence to reject H_0');
+else
+    disp('    There is, therefore, not enough evidence to reject H_0');
+end
+
+
+
+
+
 
 %% Q. 2.b
 
@@ -268,8 +291,6 @@ day_cost_charter_elast = ( normpdf(mu_2 - x_beta ) ) * fish_betas(2) * ...
 
 
 
-
-
 day_cost_beach_elast = fish_elast_fn([fish_betas; 2; 1], rhsvar)
 day_cost_pier_elast = fish_elast_fn([fish_betas; 2; 2], rhsvar)
 day_cost_priv_elast = fish_elast_fn([fish_betas; 2; 3], rhsvar)
@@ -283,25 +304,25 @@ inc_charter_elast = fish_elast_fn([fish_betas; 4; 4], rhsvar)
 
 elast_args = cell(2, 8);
 
-elast_args{1,1} = [fish_betas; 2; 1]
-elast_args{1,2} = [fish_betas; 2; 2]
-elast_args{1,3} = [fish_betas; 2; 3]
-elast_args{1,4} = [fish_betas; 2; 4]
+elast_args{1,1} = [fish_betas; 2; 1];
+elast_args{1,2} = [fish_betas; 2; 2];
+elast_args{1,3} = [fish_betas; 2; 3];
+elast_args{1,4} = [fish_betas; 2; 4];
 
-elast_args{2,1} = '\nT-Stat. H0: Elasticity impact of cost on beach is zero:   %10.4f \n'
-elast_args{2,2} = '\nT-Stat. H0: Elasticity impact of cost on pier is zero:   %10.4f \n'
-elast_args{2,3} = '\nT-Stat. H0: Elasticity impact of cost on private is zero:   %10.4f \n'
-elast_args{2,4} = '\nT-Stat. H0: Elasticity impact of cost on charter is zero:   %10.4f \n'
+elast_args{2,1} = '\nT-Stat. H0: Elasticity impact of cost on beach is zero:   %10.4f \n';
+elast_args{2,2} = '\nT-Stat. H0: Elasticity impact of cost on pier is zero:   %10.4f \n';
+elast_args{2,3} = '\nT-Stat. H0: Elasticity impact of cost on private is zero:   %10.4f \n';
+elast_args{2,4} = '\nT-Stat. H0: Elasticity impact of cost on charter is zero:   %10.4f \n';
 
-elast_args{1,5} = [fish_betas; 4; 1]
-elast_args{1,6} = [fish_betas; 4; 2]
-elast_args{1,7} = [fish_betas; 4; 3]
-elast_args{1,8} = [fish_betas; 4; 4]
+elast_args{1,5} = [fish_betas; 4; 1];
+elast_args{1,6} = [fish_betas; 4; 2];
+elast_args{1,7} = [fish_betas; 4; 3];
+elast_args{1,8} = [fish_betas; 4; 4];
 
-elast_args{2,5} = '\nT-Stat. H0: Elasticity impact of inc on beach is zero:   %10.4f \n'
-elast_args{2,6} = '\nT-Stat. H0: Elasticity impact of inc on pier is zero:   %10.4f \n'
-elast_args{2,7} = '\nT-Stat. H0: Elasticity impact of inc on private is zero:   %10.4f \n'
-elast_args{2,8} = '\nT-Stat. H0: Elasticity impact of inc on charter is zero:   %10.4f \n'
+elast_args{2,5} = '\nT-Stat. H0: Elasticity impact of inc on beach is zero:   %10.4f \n';
+elast_args{2,6} = '\nT-Stat. H0: Elasticity impact of inc on pier is zero:   %10.4f \n';
+elast_args{2,7} = '\nT-Stat. H0: Elasticity impact of inc on private is zero:   %10.4f \n';
+elast_args{2,8} = '\nT-Stat. H0: Elasticity impact of inc on charter is zero:   %10.4f \n';
 
 for i=1:8
 
@@ -322,27 +343,6 @@ for i=1:8
 
 end
 
-
-
-
-
-
-
-
-
-F_hat_deriv = Grad(fish_betas, @pier_chart_dif_elast_fn, 1, .00001, fish_data);
-st_error_inc_elast = F_hat_deriv * hessian_cov * F_hat_deriv';
-t_stat_inc_elast = abs(elas_effects1(2,2) - elas_effects1(4,4)) / sqrt(  st_error_inc_elast );
-
-% two-sided test
-p_val = 1 - tcdf(t_stat_inc_elast, size(fish_data, 1) - size(fish_data, 1)/size(unique(fish_data(:, 1)),1));
-fprintf('\nT-Stat. H0: Pier & Charter cost elasticity are equal:   %10.4f \n',t_stat_inc_elast);
-fprintf('Prob T-Stat. Assum. H_0:               %10.4f \n',p_val);
-if p_val < .05/2
-    disp('    There is, therefore, enough evidence to reject H_0');
-else
-    disp('    There is, therefore, not enough evidence to reject H_0');
-end
 
 
 
@@ -376,12 +376,65 @@ end
 
 
 
+x_beta = mean(ord_fish_data(:, [1 2 3 16])) * fish_het_betas(1:4);
+
+sigma_est = exp( mean(ord_fish_data(:,16)) * fish_het_betas(end));
+
+mu_2 = fish_het_betas(6);
+
+inc_chart_elast_het =  normpdf(  (mu_2 - x_beta)./sigma_est ) * ...
+  ( ( fish_het_betas(4) - (mu_2 - x_beta)*fish_het_betas(end) ) / sigma_est ) * ...
+  mean(ord_fish_data(:,16)) * normcdf(  (mu_2 - x_beta)./sigma_est )
+
+%p. 754 of Greene 7th ed
+
+F_hat_deriv = Grad(fish_het_betas, @fish_elast_het_fn, 1, .00001, ord_fish_data);
+%  F_hat_deriv = F_hat_deriv;
+st_error_inc_elast = F_hat_deriv * fish_het_cov * F_hat_deriv';
+t_stat_inc_elast = abs(inc_chart_elast_het) / sqrt(  st_error_inc_elast );
+
+% two-sided test
+p_val = 1 - tcdf(t_stat_inc_elast, size(ord_fish_data, 1) - size(fish_het_cov,1) );
+fprintf('\nT-Stat. H0: Elasticity impact of income on charter is zero:   %10.4f \n',t_stat_inc_elast);
+fprintf('Prob T-Stat. Assum. H_0:               %10.4f \n',p_val);
+if p_val < .05/2
+    disp('    There is, therefore, enough evidence to reject H_0');
+else
+    disp('    There is, therefore, not enough evidence to reject H_0');
+end
 
 
 
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+sigma_est = exp(z_mat*gamm);
+
+
+log(1-normcdf((mu(j-1)-argue)./sigma_est))
+
+
+day_cost_charter_elast = ( normpdf(mu_2 - x_beta ) ) * fish_betas(2) * ...
+  (mean_rhsvar(2) / (1-normcdf(mu_2 - x_beta)) )
+
+
+
+
+
+
+marginal:
+nrom
 
 
 
