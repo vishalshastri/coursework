@@ -35,8 +35,7 @@ function [ret] = cond_credit_elast_fn(b0)
 	rho_mat = [1 rho; rho 1];
   % ELASTICITY BELOW:
   elast_y1_y2_1 = part_y1_y2_1' .* ( combined_rhs / ...
-      (mvncdf([combined_rhs*gamma_1 combined_rhs*gamma_2], 0, rho_mat) / ...
-        normcdf(combined_rhs*gamma_2) ) );
+      (mvncdf([combined_rhs*gamma_1 combined_rhs*gamma_2], 0, rho_mat)) );
   ret = elast_y1_y2_1(3);
 
 end   

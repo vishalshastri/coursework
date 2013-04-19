@@ -9,7 +9,9 @@ urlwrite('http://www.aae.wisc.edu/aae637/data/matlab/New_fish_file.xls','temp.xl
 fish_data = horzcat( ...
   full_data(:, 2), ...
   full_data(:, 3:5), ...
+  (full_data(:, 2)==2) .* full_data(:, 6), ...
   (full_data(:, 2)==3) .* full_data(:, 6), ...
+  (full_data(:, 2)==4) .* full_data(:, 6), ...
   full_data(:, 2)==2, ...
   full_data(:, 2)==3, ...
   full_data(:, 2)==4 ...
@@ -26,7 +28,7 @@ mean(full_data(full_data(:,2)==4 & full_data(:,3)==1, 6))
 start_vals = inv(fish_data(:, 3:end)'*fish_data(:, 3:end))*fish_data(:, 3:end)'*fish_data(:, 2);
 
 [fish_betas, fish_cov, fish_llf_vec]  = max_bhhh(start_vals, ...
-  {'cost' 'c_rate' 'inc_x_priv' 'pier' 'priv_boat' 'chart_boat'}, ...
+  {'cost' 'c_rate' 'inc_x_pier' 'inc_x_priv' 'inc_x_chart' 'pier' 'priv_boat' 'chart_boat'}, ...
   size(fish_data, 1)/size(unique(fish_data(:, 1)), 1), ...
   250, 1e-6, @cond_logit_llf, 1, 0.000001, ...
   fish_data, 0, 0);
@@ -44,11 +46,11 @@ disp('*****Conditional Logit Results:  Hessian Based Cov *****');
 table_bwg({'cost' 'c_rate' 'inc_x_priv' 'pier' 'priv_boat' 'chart_boat'},results2,1);
 
 
-[fish_no_inc_betas, fish_no_inc_cov, fish_no_inc_llf_vec]  = max_bhhh(start_vals([1 2 4:6]), ...
+[fish_no_inc_betas, fish_no_inc_cov, fish_no_inc_llf_vec]  = max_bhhh(start_vals([1 2 6:8]), ...
   {'cost' 'c_rate' 'pier' 'priv_boat' 'chart_boat'}, ...
   size(fish_data, 1)/size(unique(fish_data(:, 1)), 1), ...
   250, 1e-6, @cond_logit_llf, 1, 0.000001, ...
-  fish_data(:, [1:4 6:8]), 0, 0);
+  fish_data(:, [1:4 8:10]), 0, 0);
 
 
 lr_test_output = 2 * ( sum(fish_llf_vec) - sum(fish_no_inc_llf_vec));
@@ -70,14 +72,16 @@ end
 %% Q. 2.b
 
 
-fish_data_omit = fish_data( fish_data(:, end)==0, 1:(end-1));
+fish_data_omit = fish_data( fish_data(:, end)==0, [1:6 8:9]);
+
+
 
 % full_data(:, 3:6), 
 
 start_vals = inv(fish_data_omit(:, 3:end)'*fish_data_omit(:, 3:end))*fish_data_omit(:, 3:end)'*fish_data_omit(:, 2);
 
 [fish_omit_betas, fish_omit_cov, fish_omit_llf_vec]  = max_bhhh(start_vals, ...
-  {'cost' 'c_rate' 'inc_x_priv' 'pier' 'priv_boat'}, ...
+  {'cost' 'c_rate' 'inc_x_pier' 'inc_x_priv' 'pier' 'priv_boat'}, ...
   size(fish_data_omit, 1)/size(unique(fish_data_omit(:, 1)), 1), ...
   250, 1e-6, @cond_logit_llf, 1, 0.000001, ...
   fish_data_omit, 0, 0);
@@ -86,10 +90,10 @@ hessian_cov_omit=inv(-ml_hess(@tot_cond_logit_llf, fish_omit_betas, fish_data_om
 
 
 
-beta_dif = fish_betas(1:(end-1)) - fish_omit_betas;
+beta_dif =  fish_omit_betas - fish_betas([1:4 6:7]);
 
 chi_square = beta_dif' * ...
-  inv( hessian_cov_omit - hessian_cov(1:(end-1), 1:(end-1)) ) * ...
+  inv( hessian_cov_omit - hessian_cov([1:4 6:7], [1:4 6:7]) ) * ...
   beta_dif;
 
        %***** Chi-square Stat, Greene, p.724 ********
@@ -162,9 +166,9 @@ disp('******************************************************');
 table_bwg(mode_name,elas_effects1,5);
 disp('******************************************************'); 
 disp('This is the elas. effect of Term. Time on Mode Choice Prob.');
-disp('******************************************************');
-table_bwg(mode_name,elas_effects2,5);
-disp('******************************************************'); 
+%disp('******************************************************');
+%table_bwg(mode_name,elas_effects2,5);
+%disp('******************************************************'); 
 
 
 F_hat_deriv = Grad(fish_betas, @beach_cost_elast_fn, 1, .00001, fish_data);
@@ -174,6 +178,23 @@ t_stat_inc_elast = abs(elas_effects1(1,1)) / sqrt(  st_error_inc_elast );
 % two-sided test
 p_val = 1 - tcdf(t_stat_inc_elast, size(fish_data, 1) - size(fish_data, 1)/size(unique(fish_data(:, 1)),1));
 fprintf('\nT-Stat. H0: Beach cost elasticity is zero:   %10.4f \n',t_stat_inc_elast);
+fprintf('Prob T-Stat. Assum. H_0:               %10.4f \n',p_val);
+if p_val < .05/2
+    disp('    There is, therefore, enough evidence to reject H_0');
+else
+    disp('    There is, therefore, not enough evidence to reject H_0');
+end
+
+
+
+
+F_hat_deriv = Grad(fish_betas, @pier_cost_elast_fn, 1, .00001, fish_data);
+st_error_inc_elast = F_hat_deriv * hessian_cov * F_hat_deriv';
+t_stat_inc_elast = abs(elas_effects1(2,2)) / sqrt(  st_error_inc_elast );
+
+% two-sided test
+p_val = 1 - tcdf(t_stat_inc_elast, size(fish_data, 1) - size(fish_data, 1)/size(unique(fish_data(:, 1)),1));
+fprintf('\nT-Stat. H0: Pier cost elasticity is zero:   %10.4f \n',t_stat_inc_elast);
 fprintf('Prob T-Stat. Assum. H_0:               %10.4f \n',p_val);
 if p_val < .05/2
     disp('    There is, therefore, enough evidence to reject H_0');
@@ -202,7 +223,7 @@ end
 
 F_hat_deriv = Grad(fish_betas, @chart_cost_elast_fn, 1, .00001, fish_data);
 st_error_inc_elast = F_hat_deriv * hessian_cov * F_hat_deriv';
-t_stat_inc_elast = abs(elas_effects1(3,3)) / sqrt(  st_error_inc_elast );
+t_stat_inc_elast = abs(elas_effects1(4,4)) / sqrt(  st_error_inc_elast );
 
 % two-sided test
 p_val = 1 - tcdf(t_stat_inc_elast, size(fish_data, 1) - size(fish_data, 1)/size(unique(fish_data(:, 1)),1));
@@ -236,10 +257,15 @@ end
 
 %% Q. 2.d
 
-disp('This is the elas. effect of Priv_D*Inc on Mode Choice Prob.');
-disp('******************************************************');
-table_bwg(mode_name,elas_effects3,5);
-disp('******************************************************');
+%disp('This is the elas. effect of Priv_D*Inc on Mode Choice Prob.');
+%disp('******************************************************');
+%table_bwg(mode_name,elas_effects3,5);
+%disp('******************************************************');
+%ABOVE IS WRONG
+
+inc_elas_pier = mean_mode(3,2) .* (1-est_prob(2))*fish_betas(3)
+inc_elas_priv = mean_mode(4,3) .* (1-est_prob(3))*fish_betas(4)
+inc_elas_charter = mean_mode(5,4) .* (1-est_prob(4))*fish_betas(5)
 
 
 
@@ -354,7 +380,7 @@ end
 start_vals=vertcat(fish_betas, 0);  
 
 [fish_het_betas, fish_het_cov, fish_het_llf_vec]  = max_bhhh(start_vals, ...
-  {'const' 'cost' 'c_rate' 'income' 'mu_pier' 'mu_priv' 'sigma'}, ...
+  {'const' 'cost' 'c_rate' 'income' 'mu_pier' 'mu_priv' 'gamma'}, ...
   size(ord_fish_data, 1), ...
   250, 1e-6, @fish_het_ordered_llf, 1, 0.000001, ...
   ord_fish_data, 0, 0);
@@ -372,9 +398,6 @@ else
 end
 
 
-% TODO: Elasticities
-
-
 
 x_beta = mean(ord_fish_data(:, [1 2 3 16])) * fish_het_betas(1:4);
 
@@ -382,9 +405,21 @@ sigma_est = exp( mean(ord_fish_data(:,16)) * fish_het_betas(end));
 
 mu_2 = fish_het_betas(6);
 
-inc_chart_elast_het =  normpdf(  (mu_2 - x_beta)./sigma_est ) * ...
-  ( ( fish_het_betas(4) - (mu_2 - x_beta)*fish_het_betas(end) ) / sigma_est ) * ...
-  mean(ord_fish_data(:,16)) * normcdf(  (mu_2 - x_beta)./sigma_est )
+
+
+%inc_chart_elast_het =  normpdf(  (mu_2 - x_beta)./sigma_est ) * ...
+%  ( ( fish_het_betas(4) - (mu_2 - x_beta)*fish_het_betas(end) ) / sigma_est ) * ...
+%  mean(ord_fish_data(:,16)) * normcdf(  (mu_2 - x_beta)./sigma_est )
+  
+  
+inc_chart_elast_het =  - (normpdf(  (mu_2 - x_beta) ) ./sigma_est ) * ...
+  ( fish_het_betas(4) ./sigma_est ) * ...
+  mean(ord_fish_data(:,16)) / (1 - normcdf(  (mu_2 - x_beta)./sigma_est ))
+
+% by eq. 32 of http://www.jstor.org/stable/10.2307/2991765  
+
+
+
 
 %p. 754 of Greene 7th ed
 
@@ -409,164 +444,5 @@ end
 
 
 
+% Logit specification http://trb.metapress.com/content/cr62u0r1040x4h68/fulltext.pdf
 
-
-
-
-
-
-
-
-
-
-sigma_est = exp(z_mat*gamm);
-
-
-log(1-normcdf((mu(j-1)-argue)./sigma_est))
-
-
-day_cost_charter_elast = ( normpdf(mu_2 - x_beta ) ) * fish_betas(2) * ...
-  (mean_rhsvar(2) / (1-normcdf(mu_2 - x_beta)) )
-
-
-
-
-
-
-marginal:
-nrom
-
-
-
-
-
-
-
-
-
-LLF = -1343.4994
-LLF = -1344.7452
-
-
-fish_ordered_llf(start_vals, ord_fish_data)
-
-
-inv(full_data'*full_data)
-
-
-test = Grad(start_vals,@fish_het_ordered_llf,size(ord_fish_data, 1), 0.000001, ord_fish_data);
-
-inv(test'*test)
-
-
-dummy_mat = ord_fish_data(:, 5:7);
-test = abs(sum(dummy_mat, 2)-1)
-
-
-
-RHS is Day_cost and catch_rate and intercept and Mnth_Inc
-{must add intercept}
-OK, instructions say that we need intercept, but colineraity
-dummy_mat is Beach_D through Chart_D
-
-num_val is length(unique(depend))
-num_mu = num_val - 1
-
-Choice Var is useful to get OLS starting vals
-
-  Columns 1 through 5
-
-    'Choice'    'Day_Cost'    'CtchRate'    'Beach_D'    'Pier_D'
-
-  Columns 6 through 10
-
-    'Boat_D'    'Chart_D'    'Beach_V'    'Pier_V'    'Boat_V'
-
-  Columns 11 through 14
-
-    'Chart_V'    'ctch_bch'    'ctch_pie'    'ctch_bt'
-
-  Columns 15 through 16
-
-    'ctch_cht'    'Mnth_Inc'
-
-
-
-
-
-
-
-
-
-
-test = cond_logit_llf(start_vals, fish_data)
-
-
-    'HHID'    'MODE_ID'    'CHOICE'    'COST'    'C_RATE'
-
-  Column 6
-
-    'INCOME'
-
-
-
-
-
-
-clear;					         % Command to clear memory 
-clc;                             % Command to clear command window
-global critic_limit iter_limit rhsvar numobs do_step func_name dh ...
-    parname numc nalts num_ind mode_id mode mean_mode mode_name ...
-    numvar mean_mat weight;
-urlwrite('http://www.aae.wisc.edu/aae637/data/matlab/table_f_21_2.xls','temp.xls');
-[base_data,varnames,raw]=xlsread('temp.xls');
-[numobs,numc]=size(base_data);  % Determine size of full data matrix
-%{
-****************** Full data set  *********************************
-******* Note the Number of Obs. is nalts*number of orig. obs. *****
-*******************************************************************
-%}
-base_var={'GC','T_TIME'};
-mode_var={'MODE'};	               %*** Identify Mode Actually Used ***
-modeid_var={'MODE_ID'};            %*** Identify Mode Option ***
-hhinc_var={'HH_INC'};
-tempvar=pull_data(varnames,base_var,base_data);
-mode=pull_data(varnames,mode_var,base_data);
-mode_id=pull_data(varnames,modeid_var,base_data);
-hh_inc=pull_data(varnames,hhinc_var,base_data);
-dum_air=mode_id == 1;                 %*** Dummy Variable for Air ***
-dum_train=mode_id == 2;               %*** Dummy Variable for Train ***
-dum_bus=mode_id == 3;                 %*** Dummy variable for Bus ***
-air_hhinc=dum_air.*hh_inc;     %*** Interaction of Air Dummy and HHINC ***
-rhsvar=horzcat(tempvar,air_hhinc,dum_air,dum_train,dum_bus);
-mode_name={'Air','Train','Bus','Auto'};
-parname={'beta_g','beta_t','gamma_H','alpha_air','alp_train','alpha_bus'};
-                                %***** Define Parameter Names *****
-critic_limit=1e-6;              % Critical % change in parameters
-iter_limit=250;                 % Maximum number of iterations
-do_step=1;                      % =1 variable step length, 0 fixed 
-func_name =('cond_logit_llf');  % Identify LLF function
-alpha=.05;                      % Type I Error Probability 
-dh = 0.000001;
-actual_p=vertcat(0.14,0.13,0.09,0.64);	%*** Pop. choice probability ***
-numvar=3;                       %*** Number of Variables to est elas.***
-b0=vertcat(.45,1,.01,1,1,.1);     %*** Starting Values ***
-%************************************************************************
-[nalts,nc]=size(unique(mode_id));    %*** Number of Alternatives ***
-num_ind=numobs./nalts;               %*** Number of Individuals ***
-selected=mode_id(mode==1,:);
-for i=1:nalts;                        %*** Sample choice prob. ***
-   temp=selected(selected==i,:);
-   [numindtemp,nc]=size(temp);
-   if i == 1;
-      sample_p=numindtemp./num_ind;
-   else
-      sample_p=vertcat(sample_p,(numindtemp./num_ind));
-   end;
-end;
-weight=actual_p./sample_p;       %*** Weights used in choice prob. ***
-
-%*************************************************************************  
-disp('Now the Maximum Likelihood Iterations Begin for Conditonal Logit');
-numobs=num_ind;
-[bp_multi,covbp_multi,llf]=max_bhhh(b0,parname); 
