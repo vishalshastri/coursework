@@ -55,9 +55,9 @@ table_bwg({'cost' 'c_rate' 'inc_x_priv' 'pier' 'priv_boat' 'chart_boat'},results
 
 lr_test_output = 2 * ( sum(fish_llf_vec) - sum(fish_no_inc_llf_vec));
 
-lr_test_p_val = 1 - chi2cdf(lr_test_output, 1);
+lr_test_p_val = 1 - chi2cdf(lr_test_output, 3);
 fprintf('LR Stat. (H_0: Income has no impact on fishing mode choice): %10.4f \n', lr_test_output);
-fprintf('Prob Wald Stat. Assum. H_0:            %10.4f \n', lr_test_p_val);
+fprintf('Prob Assum. H_0:            %10.4f \n', lr_test_p_val);
 if lr_test_p_val < 0.05
     disp('    There is, therefore, enough evidence to reject H_0');
 else
@@ -99,8 +99,8 @@ chi_square = beta_dif' * ...
        %***** Chi-square Stat, Greene, p.724 ********
 fprintf('This is the IIA Chi_square for charter boat: %6.4f',chi_square); 
 disp('  ');
-fprintf('Degrees of Freedom:%4.0f', length(fish_betas)); disp('  ');
-chi_sq_critical=chi_bwg(0.05,length(fish_betas),chi_square);
+fprintf('Degrees of Freedom:%4.0f', length(fish_omit_betas)); disp('  ');
+chi_sq_critical=chi_bwg(0.05,length(fish_omit_betas),chi_square);
 
 
 %% Q. 2.c
@@ -165,7 +165,7 @@ disp('This is the elas. effect of Mode Cost on Mode Choice Prob.');
 disp('******************************************************');
 table_bwg(mode_name,elas_effects1,5);
 disp('******************************************************'); 
-disp('This is the elas. effect of Term. Time on Mode Choice Prob.');
+%disp('This is the elas. effect of Term. Time on Mode Choice Prob.');
 %disp('******************************************************');
 %table_bwg(mode_name,elas_effects2,5);
 %disp('******************************************************'); 
@@ -257,12 +257,6 @@ end
 
 %% Q. 2.d
 
-%disp('This is the elas. effect of Priv_D*Inc on Mode Choice Prob.');
-%disp('******************************************************');
-%table_bwg(mode_name,elas_effects3,5);
-%disp('******************************************************');
-%ABOVE IS WRONG
-
 inc_elas_pier = mean_mode(3,2) .* (1-est_prob(2))*fish_betas(3)
 inc_elas_priv = mean_mode(4,3) .* (1-est_prob(3))*fish_betas(4)
 inc_elas_charter = mean_mode(5,4) .* (1-est_prob(4))*fish_betas(5)
@@ -352,6 +346,9 @@ elast_args{2,8} = '\nT-Stat. H0: Elasticity impact of inc on charter is zero:   
 
 for i=1:8
 
+  disp('  ')
+  disp(fish_elast_fn(elast_args{1,i}, rhsvar))
+
   F_hat_deriv = Grad(elast_args{1,i}, @fish_elast_fn, 1, .00001, rhsvar);
   F_hat_deriv = F_hat_deriv(1:6);
   st_error_inc_elast = F_hat_deriv * fish_cov * F_hat_deriv';
@@ -389,8 +386,8 @@ start_vals=vertcat(fish_betas, 0);
 lr_test_output = 2 * ( sum(fish_het_llf_vec) - sum(fish_llf_vec));
 
 lr_test_p_val = 1 - chi2cdf(lr_test_output, 1);
-fprintf('LR Stat. (H_0: hlthg = hlthf = hlthp = 0): %10.4f \n', lr_test_output);
-fprintf('Prob Wald Stat. Assum. H_0:            %10.4f \n', lr_test_p_val);
+fprintf('LR Stat. (H_0: Error is homoskedastic): %10.4f \n', lr_test_output);
+fprintf('Prob Assum. H_0:            %10.4f \n', lr_test_p_val);
 if lr_test_p_val < 0.05
     disp('    There is, therefore, enough evidence to reject H_0');
 else
@@ -407,18 +404,14 @@ mu_2 = fish_het_betas(6);
 
 
 
-%inc_chart_elast_het =  normpdf(  (mu_2 - x_beta)./sigma_est ) * ...
-%  ( ( fish_het_betas(4) - (mu_2 - x_beta)*fish_het_betas(end) ) / sigma_est ) * ...
-%  mean(ord_fish_data(:,16)) * normcdf(  (mu_2 - x_beta)./sigma_est )
+
   
   
-inc_chart_elast_het =  - (normpdf(  (mu_2 - x_beta) ) ./sigma_est ) * ...
+inc_chart_elast_het =  (normpdf(  (mu_2 - x_beta) ) ./sigma_est ) * ...
   ( fish_het_betas(4) ./sigma_est ) * ...
-  mean(ord_fish_data(:,16)) / (1 - normcdf(  (mu_2 - x_beta)./sigma_est ))
+  (mean(ord_fish_data(:,16)) / (1 - normcdf(  (mu_2 - x_beta)./sigma_est )))
 
 % by eq. 32 of http://www.jstor.org/stable/10.2307/2991765  
-
-
 
 
 %p. 754 of Greene 7th ed
@@ -439,6 +432,11 @@ else
 end
 
 
+
+
+%inc_chart_elast_het =  normpdf(  (mu_2 - x_beta)./sigma_est ) * ...
+%  ( ( fish_het_betas(4) - (mu_2 - x_beta)*fish_het_betas(end) ) / sigma_est ) * ...
+%  mean(ord_fish_data(:,16)) * normcdf(  (mu_2 - x_beta)./sigma_est )
 
 
 

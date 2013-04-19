@@ -156,8 +156,9 @@ table_bwg(parname_marginal,bi_cdf_elast(2:length(bi_cdf_elast))',3);
 
 
 elast_y1_y2_1 = part_y1_y2_1' .* ( combined_rhs / ...
-      (mvncdf([combined_rhs*gamma_1 combined_rhs*gamma_2], 0, rho_mat) / ...
-        normcdf(combined_rhs*gamma_2) ) );
+      (mvncdf([combined_rhs*gamma_1 combined_rhs*gamma_2], 0, rho_mat) ) )
+     % / ...
+      %  normcdf(combined_rhs*gamma_2) ) );
 % by page 783 of 7th ed. Greene
 
 disp('This is elasticity of E(y1|y2=1):');
