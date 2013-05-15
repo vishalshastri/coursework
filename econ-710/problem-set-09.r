@@ -18,12 +18,12 @@ summary(card.2sls )
 
 card.2sls.extended <- systemfit( I(log(wage)) ~ educ + exper + I(exper^2) + south + black,
 												method = "2SLS", 
-												inst= ~ exper + I(exper^2) + south + black + nearc4 + nearc2 + fathereduc, data=card.df)
+												inst= ~ exper + I(exper^2) + south + black + nearc4 + nearc2 + fathereduc + mothereduc, data=card.df)
 
 summary(card.2sls.extended )
 
 inst.vars <- with(card.df, 
-									data.frame(exper, exper^2, south, black, nearc4, nearc2, fathereduc)
+									data.frame(exper, exper^2, south, black, nearc4, nearc2, fathereduc,  mothereduc)
 )
 
 weight.mat<- var(inst.vars - card.2sls$eq[[1]]$residuals)
@@ -33,15 +33,35 @@ install.packages("gmm")
 library("gmm")
 
 card.gmm <- gmm(I(log(wage)) ~ educ + exper + I(exper^2) + south + black, 
-						~ exper + I(exper^2) + south + black + nearc4 + nearc2 + fathereduc, 
+						~ exper + I(exper^2) + south + black + nearc4 + nearc2 + fathereduc  + mothereduc, 
 						data=card.df,
 						type="twoStep", wmatrix="optimal")
+
+summary(card.gmm )
 
 specTest(card.gmm)
 
 
 
 
+
+
+
+no.0.median <- function(x) {
+	if (all(x==0)) {stop("all zeros!!!!")}
+			median(x[x!=0], na.rm=TRUE)
+}
+
+apply(df, MARGIN=2, FUN=no.0.median)
+
+
+test.mat <- matrix(c(1:10, (1:10)^2), ncol=2)
+
+solve(t(test.mat) %*% test.mat)
+
+test.mat <- matrix(c(2, 2^2), ncol=2)
+
+solve(t(test.mat) %*% test.mat)
 
 ### DELETE BELOW
 
