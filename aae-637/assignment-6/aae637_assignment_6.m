@@ -223,7 +223,122 @@ end
 
 %% Q. 2.b
 
-% TODO
+
+
+cheese_demand_elast_val = cheese_demand_elast(cheese_iop_betas, cheese_iop_data)
+
+cheese_purchase_elast_val = cheese_purchase_elast(cheese_iop_betas, cheese_iop_data)
+
+
+
+F_hat_deriv = Grad(cheese_iop_betas, @med_inc_elast, 1, .00001, cheese_iop_data);
+
+% Grad(x0,func,num_row, dh, x_mat)
+%F_hat_deriv = F_hat_deriv(1:6);
+
+st_error_elast = F_hat_deriv * cheese_iop_cov * F_hat_deriv';
+
+t_stat_elast = cheese_demand_elast_val  / sqrt(  st_error_elast  );
+
+% two-sided test
+p_val = 1 - tcdf(t_stat_elast, size(med_data, 1) - length(F_hat_deriv));
+fprintf('\nT-Stat. Inc elast is 0 for demand :   %10.4f \n',t_stat_elast);
+fprintf('Prob T-Stat. Assum. H_0:               %10.4f \n',p_val);
+if p_val < .05/2
+    disp('    There is, therefore, enough evidence to reject H_0');
+else
+    disp('    There is, therefore, not enough evidence to reject H_0');
+end
+
+
+
+
+F_hat_deriv = Grad(cheese_iop_betas, @med_inc_elast, 1, .00001, cheese_iop_data);
+
+% Grad(x0,func,num_row, dh, x_mat)
+%F_hat_deriv = F_hat_deriv(1:6);
+
+st_error_elast = F_hat_deriv * cheese_iop_cov * F_hat_deriv';
+
+t_stat_elast = cheese_purchase_elast_val / sqrt(  st_error_elast  );
+
+% two-sided test
+p_val = 1 - tcdf(t_stat_elast, size(med_data, 1) - length(F_hat_deriv));
+fprintf('\nT-Stat. Inc elast is 0 for purchases :   %10.4f \n',t_stat_elast);
+fprintf('Prob T-Stat. Assum. H_0:               %10.4f \n',p_val);
+if p_val < .05/2
+    disp('    There is, therefore, enough evidence to reject H_0');
+else
+    disp('    There is, therefore, not enough evidence to reject H_0');
+end
+
+
+
+
+
+cheese_demand_price_elast_val = cheese_demand_price_elast(cheese_iop_betas, cheese_iop_data)
+
+cheese_purchase_price_elast_val = cheese_purchase_price_elast(cheese_iop_betas, cheese_iop_data)
+
+
+
+F_hat_deriv = Grad(cheese_iop_betas, @med_inc_elast, 1, .00001, cheese_iop_data);
+
+% Grad(x0,func,num_row, dh, x_mat)
+%F_hat_deriv = F_hat_deriv(1:6);
+
+st_error_elast = F_hat_deriv * cheese_iop_cov * F_hat_deriv';
+
+t_stat_elast = cheese_demand_price_elast_val  / sqrt(  st_error_elast  );
+
+% two-sided test
+p_val = 1 - tcdf(t_stat_elast, size(med_data, 1) - length(F_hat_deriv));
+fprintf('\nT-Stat. Inc elast is 0 for demand :   %10.4f \n',t_stat_elast);
+fprintf('Prob T-Stat. Assum. H_0:               %10.4f \n',p_val);
+if p_val < .05/2
+    disp('    There is, therefore, enough evidence to reject H_0');
+else
+    disp('    There is, therefore, not enough evidence to reject H_0');
+end
+
+
+
+
+F_hat_deriv = Grad(cheese_iop_betas, @med_inc_elast, 1, .00001, cheese_iop_data);
+
+% Grad(x0,func,num_row, dh, x_mat)
+%F_hat_deriv = F_hat_deriv(1:6);
+
+st_error_elast = F_hat_deriv * cheese_iop_cov * F_hat_deriv';
+
+t_stat_elast = cheese_purchase_price_elast_val / sqrt(  st_error_elast  );
+
+% two-sided test
+p_val = 1 - tcdf(t_stat_elast, size(med_data, 1) - length(F_hat_deriv));
+fprintf('\nT-Stat. Inc elast is 0 for purchases :   %10.4f \n',t_stat_elast);
+fprintf('Prob T-Stat. Assum. H_0:               %10.4f \n',p_val);
+if p_val < .05/2
+    disp('    There is, therefore, enough evidence to reject H_0');
+else
+    disp('    There is, therefore, not enough evidence to reject H_0');
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 %% Q. 2.c
@@ -342,6 +457,9 @@ parname_marginal={'WifeAge','Income','Avg_Exp','OwnRent','SelfEmpl'};
 	table_bwg(parname_marginal,part_y1_y2_1(2:length(bi_cdf_marg)),3);		
 
 
+
+
+
 b1_bi=med_yes_rho_betas(1:6);
 b2_bi=med_yes_rho_betas(7:10);
 
@@ -350,9 +468,9 @@ gamma_2=vertcat(b2_bi(1:2),0,0, b2_bi(3), 0, b2_bi(4)); %** gamma_2 of full dime
 
 q1_mn=1;
 q2_mn=1;
-w1_mn=q1_mn.*(mean(med_data(3:9))*gamma_1); 
-w2_mn=q2_mn.*(mean(med_data(3:9))*gamma_2); 
-rho = tanh(med_yes_rho_betas(11))
+w1_mn=q1_mn.*(mean(med_data(:,3:9))*gamma_1); 
+w2_mn=q2_mn.*(mean(med_data(:,3:9))*gamma_2); 
+rho = tanh(med_yes_rho_betas(11));
 
 rho_star_mn=q1_mn.*q2_mn.*rho;        %** Defined on p.740, Greene ***
 numer_1=w2_mn-rho_star_mn.*w1_mn;     %** Numerator of 17.52, p.740 ***
@@ -360,14 +478,95 @@ numer_2=w1_mn-rho_star_mn.*w2_mn;     %** Numerator of 17.52, p.740 ***
 denom=sqrt(1-rho_star_mn^2);          %** Denomenator of 17.52, p.740 ***
 g_1=normpdf(w1_mn).*normcdf(numer_1./denom);%** Defined by 17.52, p.740 ***
 g_2=normpdf(w2_mn).*normcdf(numer_2./denom);%** Defined by 17.52, p.740 ***
-bi_cdf_marg=g_1.*gamma_1'+g_2.*gamma_2'; %**Partial of Bivariate CDF, p.743***
+%bi_cdf_marg=g_1.*gamma_1+g_2.*gamma_2; %**Partial of Bivariate CDF, p.743***
+bi_cdf_marg=g_1.*gamma_1'+g_2.*gamma_2';
 
-bi_cdf_marg(2)
-
-normpdf(med_data(3:8)*med_yes_rho_betas(1:6)) * med_yes_rho_betas(2) * ...
-   mean(med_data(:, 4))/ normcdf(med_data(3:8)*med_yes_rho_betas(1:6))
+med_inc_elast_val = normpdf(mean(med_data(:, 3:8))*med_yes_rho_betas(1:6)) * med_yes_rho_betas(2) * ...
+   mean(med_data(:, 4))/ normcdf(mean(med_data(:,3:8))*med_yes_rho_betas(1:6))
 
 
+  
+F_hat_deriv = Grad(med_yes_rho_betas, @med_inc_elast, 1, .00001, med_data);
+% Oops, mis-named this function
+
+% Grad(x0,func,num_row, dh, x_mat)
+F_hat_deriv = F_hat_deriv(1:6);
+
+st_error_elast = F_hat_deriv * med_yes_rho_cov(1:6,1:6) * F_hat_deriv';
+
+t_stat_elast = med_inc_elast_val / sqrt(  st_error_elast  );
+
+% two-sided test
+p_val = 1 - tcdf(t_stat_elast, size(med_data, 1) - length(F_hat_deriv));
+fprintf('\nT-Stat. Age elasticity is zero :   %10.4f \n',t_stat_elast);
+fprintf('Prob T-Stat. Assum. H_0:               %10.4f \n',p_val);
+if p_val < .05/2
+    disp('    There is, therefore, enough evidence to reject H_0');
+else
+    disp('    There is, therefore, not enough evidence to reject H_0');
+end
+
+
+
+
+omega=[1 rho_star_mn;rho_star_mn 1];
+mu=[0 0];
+lim_bi=[w1_mn w2_mn];
+part_2_2=(g_2-mvncdf(lim_bi,mu,omega).*normpdf(w2_mn)./normcdf(w2_mn)).*gamma_2;
+part_y1_y2_1=(1./normcdf(w2_mn)).*(g_1*gamma_1+part_2_2);
+rho_mat = [1 rho; rho 1]
+
+elast_y1_y2_1 = part_y1_y2_1' .* ( mean(med_data(:,3:9)) / ...
+      (mvncdf([mean(med_data(:,3:9))*gamma_1 mean(med_data(:,3:9))*gamma_2], 0, rho_mat) ) )
+
+
+elast_val = elast_y1_y2_1(2)
+
+F_hat_deriv = Grad(med_yes_rho_betas, @med_cond_prob, 1, .00001, med_data);
+
+
+% Grad(x0,func,num_row, dh, x_mat)
+%F_hat_deriv = F_hat_deriv(1:6);
+
+st_error_elast = F_hat_deriv * med_yes_rho_cov * F_hat_deriv';
+
+t_stat_elast = elast_val / sqrt(  st_error_elast  );
+
+% two-sided test
+p_val = 1 - tcdf(t_stat_elast, size(med_data, 1) - length(F_hat_deriv));
+fprintf('\nT-Stat. Age elasticity is zero (conditional prob) :   %10.4f \n',t_stat_elast);
+fprintf('Prob T-Stat. Assum. H_0:               %10.4f \n',p_val);
+if p_val < .05/2
+    disp('    There is, therefore, enough evidence to reject H_0');
+else
+    disp('    There is, therefore, not enough evidence to reject H_0');
+end
+
+
+
+
+% TODO: DELETE BELOW:
+
+F_hat_deriv = Grad([gamma_1 ; gamma_2 ; bp_bi; rho],'cond_credit_elast_fn',1);
+F_hat_deriv = F_hat_deriv(13:22);
+
+st_error_elast = F_hat_deriv * covbp_bi * F_hat_deriv';
+
+t_stat_elast = elast_val / sqrt(  st_error_elast  );
+
+% two-sided test
+p_val = 1 - tcdf(t_stat_elast, size(base_data, 1) - length(F_hat_deriv));
+fprintf('\nT-Stat. Income elasticity is zero (under conditional):   %10.4f \n',t_stat_elast);
+fprintf('Prob T-Stat. Assum. H_0:               %10.4f \n',p_val);
+if p_val < .05/2
+    disp('    There is, therefore, enough evidence to reject H_0');
+else
+    disp('    There is, therefore, not enough evidence to reject H_0');
+end
+
+
+
+ med_inc_elast
 
 
 
