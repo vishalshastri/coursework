@@ -231,7 +231,7 @@ cheese_purchase_elast_val = cheese_purchase_elast(cheese_iop_betas, cheese_iop_d
 
 
 
-F_hat_deriv = Grad(cheese_iop_betas, @med_inc_elast, 1, .00001, cheese_iop_data);
+F_hat_deriv = Grad(cheese_iop_betas, @cheese_demand_elast, 1, .00001, cheese_iop_data);
 
 % Grad(x0,func,num_row, dh, x_mat)
 %F_hat_deriv = F_hat_deriv(1:6);
@@ -253,7 +253,7 @@ end
 
 
 
-F_hat_deriv = Grad(cheese_iop_betas, @med_inc_elast, 1, .00001, cheese_iop_data);
+F_hat_deriv = Grad(cheese_iop_betas, @cheese_purchase_elast, 1, .00001, cheese_iop_data);
 
 % Grad(x0,func,num_row, dh, x_mat)
 %F_hat_deriv = F_hat_deriv(1:6);
@@ -282,14 +282,14 @@ cheese_purchase_price_elast_val = cheese_purchase_price_elast(cheese_iop_betas, 
 
 
 
-F_hat_deriv = Grad(cheese_iop_betas, @med_inc_elast, 1, .00001, cheese_iop_data);
+F_hat_deriv = Grad(cheese_iop_betas, @cheese_demand_price_elast, 1, .00001, cheese_iop_data);
 
 % Grad(x0,func,num_row, dh, x_mat)
 %F_hat_deriv = F_hat_deriv(1:6);
 
 st_error_elast = F_hat_deriv * cheese_iop_cov * F_hat_deriv';
 
-t_stat_elast = cheese_demand_price_elast_val  / sqrt(  st_error_elast  );
+t_stat_elast = abs(cheese_demand_price_elast_val  / sqrt(  st_error_elast  ));
 
 % two-sided test
 p_val = 1 - tcdf(t_stat_elast, size(med_data, 1) - length(F_hat_deriv));
@@ -304,14 +304,14 @@ end
 
 
 
-F_hat_deriv = Grad(cheese_iop_betas, @med_inc_elast, 1, .00001, cheese_iop_data);
+F_hat_deriv = Grad(cheese_iop_betas, @cheese_purchase_price_elast, 1, .00001, cheese_iop_data);
 
 % Grad(x0,func,num_row, dh, x_mat)
 %F_hat_deriv = F_hat_deriv(1:6);
 
 st_error_elast = F_hat_deriv * cheese_iop_cov * F_hat_deriv';
 
-t_stat_elast = cheese_purchase_price_elast_val / sqrt(  st_error_elast  );
+t_stat_elast = abs(cheese_purchase_price_elast_val / sqrt(  st_error_elast  ));
 
 % two-sided test
 p_val = 1 - tcdf(t_stat_elast, size(med_data, 1) - length(F_hat_deriv));
@@ -328,22 +328,68 @@ end
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 %% Q. 2.c
 
-% TODO
+
+cheese_uncon_elast_val = cheese_uncon_elast(cheese_iop_betas, cheese_iop_data)
+
+
+
+F_hat_deriv = Grad(cheese_iop_betas, @cheese_uncon_elast, 1, .00001, cheese_iop_data);
+
+% Grad(x0,func,num_row, dh, x_mat)
+%F_hat_deriv = F_hat_deriv(1:6);
+
+st_error_elast = F_hat_deriv * cheese_iop_cov * F_hat_deriv';
+
+t_stat_elast = abs(cheese_uncon_elast_val  / sqrt(  st_error_elast  ));
+
+% two-sided test
+p_val = 1 - tcdf(t_stat_elast, size(med_data, 1) - length(F_hat_deriv));
+fprintf('\nT-Stat. Inc elast is 0 for demand :   %10.4f \n',t_stat_elast);
+fprintf('Prob T-Stat. Assum. H_0:               %10.4f \n',p_val);
+if p_val < .05/2
+    disp('    There is, therefore, enough evidence to reject H_0');
+else
+    disp('    There is, therefore, not enough evidence to reject H_0');
+end
+
+
+
+cheese_uncon_elast_dif_val = cheese_uncon_elast_dif(cheese_iop_betas, cheese_iop_data)
+
+
+
+F_hat_deriv = Grad(cheese_iop_betas, @cheese_uncon_elast_dif, 1, .00001, cheese_iop_data);
+
+% Grad(x0,func,num_row, dh, x_mat)
+%F_hat_deriv = F_hat_deriv(1:6);
+
+st_error_elast = F_hat_deriv * cheese_iop_cov * F_hat_deriv';
+
+t_stat_elast = abs(cheese_uncon_elast_dif_val  / sqrt(  st_error_elast  ));
+
+% two-sided test
+p_val = 1 - tcdf(t_stat_elast, size(med_data, 1) - length(F_hat_deriv));
+fprintf('\nT-Stat. Inc elast is 0 for demand :   %10.4f \n',t_stat_elast);
+fprintf('Prob T-Stat. Assum. H_0:               %10.4f \n',p_val);
+if p_val < .05/2
+    disp('    There is, therefore, enough evidence to reject H_0');
+else
+    disp('    There is, therefore, not enough evidence to reject H_0');
+end
+
+
+
+
+
+
+
+
+
+
+
+
 
 %% QUESTION 3
 
