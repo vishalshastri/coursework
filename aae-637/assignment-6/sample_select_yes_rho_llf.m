@@ -10,7 +10,7 @@ function [llf_vec] = sample_select_yes_rho_llf(b0, data_mat)
   argue1 =  (rhsvar1 * beta1);
   argue2 =  (rhsvar2 * beta2);
   
-  rho = b0(end);
+  rho = tanh(b0(end));
   
   llf_part1 = abs(1-insur) .* log( (1-normcdf(argue2)) );
   
