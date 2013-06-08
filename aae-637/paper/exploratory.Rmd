@@ -1,0 +1,742 @@
+Exploratory analysis of Bolivian fertilizer use
+========================================================
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring web pages (click the **MD** toolbar button for help on Markdown).
+
+When you click the **Knit HTML** button a web page will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r}
+summary(cars)
+```
+
+You can also embed plots, for example:
+
+```{r fig.width=7, fig.height=6}
+plot(cars)
+```
+
+```{r}
+
+#install.packages("foreign")
+library("foreign")
+#install.packages("VGAM")
+library("VGAM")
+#install.packages("AER")
+library("AER")
+#install.packages("MASS")
+library("MASS")
+#install.packages("censReg")
+library("censReg")
+#install.packages("knitr")
+library("knitr")
+#install.packages("erer")
+library("erer")
+#install.packages("maptools")
+library("maptools")
+#install.packages("splancs")
+library("splancs")
+#install.packages("PBSmapping")
+library("PBSmapping")
+#install.packages("spdep")
+library("spdep")
+#install.packages("spatial")
+library("spatial")
+#install.packages("gstat")
+library("gstat")
+#install.packages("rgdal")
+library("rgdal")
+#install.packages("Hmisc")
+library("Hmisc")
+
+
+The function dnearneigh creates a neighbor list based on a
+distance cut off criterion applied to point data. The conversion of the neighbor lists to
+spatial weights is implemented with the nb2listw function.
+
+test.d<-dnearneigh(as.matrix(crop.wide.df[max(crop.wide.df$fert.exp)!=crop.wide.df$fert.exp, c("X", "Y")]), -1, 200, row.names = NULL, longlat = TRUE)
+
+test.nb <- knn2nb(test.d, row.names = NULL, sym = FALSE)
+
+test.listw<-nb2listw(test.d, zero.policy=TRUE)
+
+test.m<-tobit( formula=fmla, data = crop.wide.df[max(crop.wide.df$fert.exp)!=crop.wide.df$fert.exp,], init=area.expl.tob2$estimate[-length(area.expl.tob2$estimate)])
+
+tobit.predict <- function(formula, model, data) {
+  x.mat <- model.matrix(formula, data=data)  
+  x.mat <- x.mat[, !apply(x.mat, 2, FUN=function(x) all(x==0))]
+  betas <- model$estimate[-length(model$estimate)]
+  sigma <- exp(model$estimate[length(model$estimate)])
+  argue <- x.mat %*% betas
+  pnorm(argue/sigma) * (argue + sigma * dnorm(argue/sigma) / pnorm(argue/sigma))
+}
+
+dimnames(model.matrix(fmla, data=crop.wide.df) )
+names(area.expl.tob2$estimate)
+
+sapply(model.matrix(fmla, data=crop.wide.df), 2, FUN=function(x) all(x==0))
+
+fert.residuals<-
+crop.wide.df[max(crop.wide.df$fert.exp)!=crop.wide.df$fert.exp, "fert.exp"] -
+  tobit.predict(fmla, area.expl.tob2, crop.wide.df[max(crop.wide.df$fert.exp)!=crop.wide.df$fert.exp,])
+
+qqPlot(fert.residuals)
+
+
+dim(model.matrix(fmla, data=crop.wide.df) )
+area.expl.tob2$estimate
+
+area.expl.tob2
+
+test.moran<-lm.morantest(area.expl.tob2, listw=test.listw, zero.policy=TRUE, resfun=residuals)
+
+lm.LMtests(fert.residuals, test.listw, zero.policy=TRUE, test="LMerr", spChk=NULL, naSubset=TRUE)
+
+fert.residuals.df<-data.frame(fert.residuals=fert.residuals)
+
+fert.residuals.spdf<-SpatialPointsDataFrame(crop.wide.df[max(crop.wide.df$fert.exp)!=crop.wide.df$fert.exp, c("X", "Y")], fert.residuals.df)
+
+plot(variogram(fert.residuals ~ 1, locations = coordinates(fert.residuals.spdf), data=fert.residuals.spdf,  cloud = T),  type = "b", main = "Variogram of fert.residuals") 
+
+plot(sp.correlogram(test.d, as.vector(fert.residuals), order=2) )
+
+test.variogram<-variogram(fert.residuals ~ 1, locations = coordinates(fert.residuals.spdf), data=fert.residuals.spdf,  cloud = T)
+
+loess(gamma ~ dist, test.variogram)
+
+# 30 arc seconds is about a half-mile http://www.esri.com/news/arcuser/0400/wdside.html
+# Altitude: http://gcmd.nasa.gov/records/GCMD_GTOPO30.html, but really: http://eros.usgs.gov/#/Find_Data/Products_and_Data_Available/gtopo30_info
+# soil http://webarchive.iiasa.ac.at/Research/LUC/External-World-soil-database/HTML/HWSD_Data.html?sb=4
+
+
+cs1 <- corLin(15, form = ~ Time | Rat)
+cs1 <- Initialize(cs1, BodyWeight)
+Variogram(cs1)[1:10,]
+
+  
+  censReg(fmla, data = crop.wide.df[max(crop.wide.df$fert.exp)!=crop.wide.df$fert.exp,], iterlim = 500, print.level=3 )
+
+soil.shp<-importShapefile(paste0(work.dir, "DSMW/DSMW.shp"))
+
+soil.bil<- readGDAL(paste0(work.dir, "HWSD_RASTER/hwsd.bil"))
+save(file=paste0( work.dir, "HWSD_RASTER/hwsd.Rdata"),soil.bil)
+
+soil.mdb<-mdb.get(paste0("'", work.dir, "HWSD.mdb'"))
+
+villages.spatialpixels<-SpatialPixels(
+  SpatialPoints(crop.wide.df[, c("X", "Y")]),
+  grid=soil.bil@grid)
+
+# max(crop.wide.df$fert.exp)!=crop.wide.df$fert.exp
+
+crop.wide.df$MU.GLOBAL<-soil.bil$band1[villages.spatialpixels@grid.index]
+
+crop.wide.df<-merge(crop.wide.df, soil.mdb$HWSD_DATA[soil.mdb$HWSD_DATA$SEQ==1, ], all.x=TRUE)
+
+
+mcv02full.df<-read.spss(paste0(work.dir, "bd19 (2002).zip Folder/mcv02final1.sav"))
+# http://stackoverflow.com/questions/4993837/r-invalid-multibyte-string
+
+costos02.df<-read.spss(paste0(work.dir, "bd19 (2002).zip Folder/mcv02 - Costos produccion agropecuaria.sav"))
+
+prod02.df<-read.spss(paste0(work.dir, "bd19 (2002).zip Folder/hogar.sav"))
+)	, reencode=)
+prod02.df<-read.spss(paste0(work.dir, "bd19 (2002).zip Folder/Produccion agricola-utf8.sav"))
+
+
+prod01.df<-read.spss(paste0(work.dir, "bd18 (2001).zip Folder/agricola.sav"), to.data.frame = TRUE)
+hogar01.df<-read.spss(paste0(work.dir, "bd18 (2001).zip Folder/hogar.sav"), to.data.frame = TRUE)
+miembros01.df<-read.spss(paste0(work.dir, "bd18 (2001).zip Folder/mcv01.sav"), to.data.frame = TRUE)
+pecuaria01.df<-read.spss(paste0(work.dir, "bd18 (2001).zip Folder/pecuaria.sav"), to.data.frame = TRUE)
+#pob01.df<-read.spss(paste0(work.dir, "bd18 (2001).zip Folder/poblacion.sav"), to.data.frame = TRUE)
+
+#attr(pecuaria01.df, "variable.labels")
+
+#attr(hogar01.df, "variable.labels")
+#attr(miembros01.df, "variable.labels")[grepl("activ", attr(miembros01.df, "variable.labels"), ignore.case=TRUE)]
+
+# "bd" = bienes durados = consumer durables?
+
+#miembros01.df[10:50, c("FOLIO", "REMPAIS", "REMEXT", "S703B1", "S703B2", "S703C1", "S703C2")]
+
+
+
+
+
+hogar01.df$Dept.no<-""
+hogar01.df$Dept.no[hogar01.df$ID01=="Santa cruz"]<-"07"
+hogar01.df$Dept.no[hogar01.df$ID01=="Beni"]<-"08"
+hogar01.df$Dept.no[hogar01.df$ID01=="Chuquisaca"]<-"01"
+hogar01.df$Dept.no[hogar01.df$ID01=="La Paz"]<-"02"
+hogar01.df$Dept.no[hogar01.df$ID01=="Oruro"]<-"04"
+hogar01.df$Dept.no[hogar01.df$ID01=="Tarija"]<-"06"
+hogar01.df$Dept.no[hogar01.df$ID01=="Potosi"]<-"05"
+hogar01.df$Dept.no[hogar01.df$ID01=="Cochabamba"]<-"03"
+hogar01.df$Dept.no[hogar01.df$ID01=="Pando"]<-"09"
+
+hogar01.df.ids<-with(hogar01.df,
+										 paste(
+										 	Dept.no, # 2
+										 	sprintf("%02.f", ID02), # 4
+										 	sprintf("%02.f", ID03), # 6
+										 	sprintf("%02.f", ID04), # 8
+										 	sprintf("%03.f", ID05), # 11
+#										 	sprintf("%03.f", ID07),
+										 	sep="")
+)
+
+
+
+pob.shp<-importShapefile(paste0(work.dir, "centros_poblados.zip Folder/centros_poblados.shp"))
+
+combine.localidades<-function(x) {
+  ret<-x[1, ]
+  ret$num.of.localidades<-nrow(x)
+  ret$X <- sum(x$X * x$VIVIENDA)/sum(x$VIVIENDA)
+  ret$Y <- sum(x$Y * x$VIVIENDA)/sum(x$VIVIENDA)
+  ret$LOCALIDAD<-"combined localidades"
+  ret$N_ZONLOC<-"combined localidades"
+  ret
+}
+
+
+dup.indices<- duplicated(substr(pob.shp$COD_BD_CEN, 1, 11)) |
+  duplicated(substr(pob.shp$COD_BD_CEN, 1, 11), fromLast=TRUE)
+
+combined.localidades.ls<-by(pob.shp[dup.indices, ], INDICES=substr(pob.shp$COD_BD_CEN[dup.indices], 1, 11), FUN=combine.localidades)
+
+combined.localidades.df<-do.call(rbind, combined.localidades.ls)
+
+pob.shp.rev <- rbind(combined.localidades.df,
+  cbind(pob.shp[!dup.indices, ], data.frame(num.of.localidades=rep(1, nrow(pob.shp[!dup.indices, ]))))
+)
+
+pob.shp.rev$comunidad.id<-substr(pob.shp.rev$COD_BD_CEN, 1, 11)
+hogar01.df$comunidad.id <- hogar01.df.ids
+
+hogar01.df<-merge(hogar01.df, pob.shp.rev, by="comunidad.id", all.x=TRUE)
+
+#hist(combined.localidades.df$num.of.localidades)
+
+
+
+
+#attr(prod01.df, "label.table")
+
+# p. 18 of ftp://ftp.fao.org/docrep/fao/010/ah868e/ah868e00.pdf
+# "One Bolivian arroba is equivalent to 11.5 kg"
+# "One Bolivian quintal is equivalent to 46 kg"
+
+colnames(prod01.df)<-c("FOLIO", "CODA", "crop", "crop.code", "area", "area.unit", "harvest", "harvest.unit", "sales.quant", "sales.value", "consumption", "seeds", "animal.or.subproducts", "bartered", "lost")
+
+prod01.df<-within(prod01.df, {
+	# TODO: fix the is.na after we have imputed the values
+  area.r<-0
+	area.r[area.unit==2 & !is.na(area.unit)] <- area[area.unit==2 & !is.na(area.unit)]
+	area.r[area.unit==1 & !is.na(area.unit)] <- area[area.unit==1 & !is.na(area.unit)] / 10000
+} )
+	
+quant.to.conv<-c("harvest", "sales.quant", "consumption", "seeds", "animal.or.subproducts", "bartered", "lost")
+for (i in quant.to.conv) {
+	prod01.df[, paste0(i, ".r")]<-0
+	prod01.df[prod01.df$harvest.unit=="Arroba" & !is.na(prod01.df$harvest.unit), paste0(i, ".r")] <- 
+		prod01.df[prod01.df$harvest.unit=="Arroba" & !is.na(prod01.df$harvest.unit), i]*11.5
+	prod01.df[prod01.df$harvest.unit=="Quintal" & !is.na(prod01.df$harvest.unit), paste0(i, ".r")] <- 
+		prod01.df[prod01.df$harvest.unit=="Quintal" & !is.na(prod01.df$harvest.unit), i]*46
+	prod01.df[prod01.df$harvest.unit=="Libra" & !is.na(prod01.df$harvest.unit), paste0(i, ".r")] <- 
+		prod01.df[prod01.df$harvest.unit=="Libra" & !is.na(prod01.df$harvest.unit), i]*0.453592
+	prod01.df[prod01.df$harvest.unit=="Unidad" & !is.na(prod01.df$harvest.unit), paste0(i, ".r")] <- 
+		prod01.df[prod01.df$harvest.unit=="Unidad" & !is.na(prod01.df$harvest.unit), i]
+		prod01.df[prod01.df$harvest.unit=="Kilogramo" & !is.na(prod01.df$harvest.unit), paste0(i, ".r")] <- 
+		prod01.df[prod01.df$harvest.unit=="Kilogramo" & !is.na(prod01.df$harvest.unit), i]
+}
+
+prod01.df$crop.hh.id<-1:nrow(prod01.df)
+
+top.crops<-names(rev(sort(table(prod01.df$crop))))[1:12]
+
+recs.to.fix.hectare<-by(prod01.df[prod01.df$crop %in% top.crops, ], 
+  INDICES=factor(prod01.df$crop[prod01.df$crop %in% top.crops]),
+	FUN = function(x) {
+		crop.quantiles<-quantile(x$area.r, probs=c(.05, .95), na.rm=TRUE)
+		yield<-x$harvest.r/x$area.r
+		yield.quantiles<-quantile(yield, probs=c(.05, .95), na.rm=TRUE)
+		keep.index<-x$area.r>crop.quantiles[1]*10000 & !is.na(x$area.r) & 
+			(yield*10000>yield.quantiles[1] & yield*10000<yield.quantiles[2])
+		if (all(!keep.index)) return(NULL)
+		
+		x$crop.hh.id[keep.index]
+
+	}
+)
+
+#prod01.df$area.unit[unlist(recs.to.fix.hectare)]
+
+prod01.df$area.unit.cleaned<-prod01.df$crop.hh.id %in% unlist(recs.to.fix.hectare)
+
+prod01.df$area.r[prod01.df$crop.hh.id %in% unlist(recs.to.fix.hectare)]<-
+	prod01.df$area.r[prod01.df$crop.hh.id %in% unlist(recs.to.fix.hectare)]/10000
+
+
+
+
+	
+crop.wide.df<-reshape(prod01.df[ prod01.df$crop %in% names(rev(sort(table(prod01.df$crop))))[1:12], 
+	!names(prod01.df) %in% c("CODA", "area", "crop.code", "harvest", "sales.quant", "consumption", "seeds", "animal.or.subproducts", "bartered", "lost")], timevar="crop", idvar="FOLIO", direction="wide")
+
+livestock.wide.df<-reshape(pecuaria01.df[, c("FOLIO", "CODB", "S806")], 
+	timevar="CODB", idvar="FOLIO", direction="wide")
+
+names(livestock.wide.df) <- c("FOLIO", "Bovinos", "Ovinos", "Porcinos", "Caprinos", "Camelidos", "Aves", "Conejos.cuis")
+
+crop.wide.df<-merge(crop.wide.df, livestock.wide.df, all.x=TRUE)
+
+
+hogar01.df.temp<-hogar01.df[, c("FOLIO", "S815D2", "S815B2", "S1036", "S1037", "PERSAGRO", "ID05", "ID06", "ID01", "X", "Y")]
+names(hogar01.df.temp)<-c("FOLIO", "fert.exp", "seed.exp", "received.credit", "credit.source", "num.pers.agropecuaria", "city", "canton", "department", "X", "Y")
+hogar01.df.temp$city <- as.factor(hogar01.df.temp$city)
+hogar01.df.temp$canton <- as.factor(hogar01.df.temp$canton)
+
+area.agg<-aggregate(prod01.df$area.r, by=list(FOLIO=prod01.df$FOLIO), FUN=sum, na.rm=TRUE)
+names(area.agg)[2]<-"total.area"
+
+area.agg<-aggregate(prod01.df$area.r, by=list(FOLIO=prod01.df$FOLIO), FUN=sum, na.rm=TRUE)
+names(area.agg)[2]<-"total.area"
+
+crop.wide.df<-merge(crop.wide.df, hogar01.df.temp)
+crop.wide.df<-merge(crop.wide.df, area.agg)
+
+indig.ls<-by(miembros01.df$S111A, INDICES=miembros01.df$FOLIO, FUN=function(x) {
+	indig.tab <- table(x)
+	sum(indig.tab[names(indig.tab)!="ninguno"])/sum(indig.tab)
+	}
+)
+
+indig.df <- data.frame(FOLIO=attr(indig.ls, "dimnames")[[1]], indig.prop=unclass(unlist(indig.ls)))
+
+indig.ls<-by(miembros01.df$S111A, INDICES=miembros01.df$FOLIO, FUN=function(x) {
+	indig.tab <- table(x)
+	sum(indig.tab[names(indig.tab)!="ninguno"])/sum(indig.tab)
+	}
+)
+
+hh.head.char.df<-miembros01.df[miembros01.df$S105=="jefe o jefa del hogar", c("FOLIO", "S402A", "S102")]
+names(hh.head.char.df) <- c("FOLIO", "hhh.edu.measure", "hhh.sex")
+#apply(miembros01.df[, c("S401", "S402A", "S402B", "S403A", "S403B")], 2, FUN=table)
+
+indig.df <- data.frame(FOLIO=attr(indig.ls, "dimnames")[[1]], indig.prop=unclass(unlist(indig.ls)))
+
+remesas.df<-aggregate(miembros01.df[, c("REMPAIS", "REMEXT")], by=list(FOLIO=miembros01.df$FOLIO), FUN=sum, na.rm=TRUE )
+
+crop.wide.df<-merge(crop.wide.df, indig.df)
+crop.wide.df<-merge(crop.wide.df, hh.head.char.df, all.x=TRUE)
+crop.wide.df<-merge(crop.wide.df, remesas.df, all.x=TRUE)
+
+levels(crop.wide.df$credit.source)<-c("No Credit", levels(crop.wide.df$credit.source))
+crop.wide.df$credit.source[is.na(crop.wide.df$credit.source)]<-factor("No Credit")
+# This above is a hack and I need to learn how to work with factors better
+	
+crop.wide.df<-data.frame(lapply(crop.wide.df, FUN=function(x) {
+	x[is.na(x)]<-0 
+	x
+	}))
+
+crop.wide.df<-data.frame(lapply(crop.wide.df, FUN=function(x) {
+	levels(x)<-gsub("[^0-9A-Za-z[:punct:][:blank:]]", "", levels(x))
+	x
+}))
+
+fmla <- as.formula(paste("fert.exp ~ ", 
+	paste0(names(crop.wide.df)[grepl("area.r", names(crop.wide.df))], collapse= " + "), 
+	"+", paste0(names(livestock.wide.df)[-1], collapse= " + "),	
+	"+ indig.prop + seed.exp + credit.source + department + hhh.edu.measure + hhh.sex + REMPAIS + REMEXT + num.pers.agropecuaria + AWC.CLASS + T.GRAVEL + T.SILT + T.CLAY + T.BULK.DENSITY + T.OC + T.PH.H2O + T.CEC.CLAY + T.CEC.SOIL + T.TEB + T.CACO3 + T.CASO4 + T.ESP + T.ECE"))
+
+#fmla <- as.formula("fert.exp ~ AWC.CLASS + T.GRAVEL + T.SILT + T.CLAY + T.BULK.DENSITY + T.OC + T.PH.H2O + T.CEC.CLAY + T.CEC.SOIL + T.TEB + T.CACO3 + T.CASO4 + T.ESP + T.ECE" )
+summary(crop.wide.df[, c("AWC.CLASS", "ADD.PROP", "T.GRAVEL", "T.SAND", "T.SILT", "T.CLAY", "T.BULK.DENSITY", "T.OC", "T.PH.H2O", "T.CEC.CLAY", "T.CEC.SOIL", "T.TEB", "T.CACO3", "T.CASO4", "T.ESP", "T.ECE")])
+
+area.expl.tob2 <- censReg(fmla, data = crop.wide.df[max(crop.wide.df$fert.exp)!=crop.wide.df$fert.exp,], iterlim = 500, print.level=3 )
+# BHHH log like: -5200.391 (iteration limit exceeded) method="BHHH"
+# iterlim = 500
+summary( margEff( area.expl.tob2 ) )
+(591-2) 2222333 int. 110
+
+area.expl.tob0 <- update(area.expl.tob2 , . ~ 1, print.level=0)
+1 - as.vector( (logLik(area.expl.tob2) - length(coef(area.expl.tob2)) +2)/logLik(area.expl.tob0))
+# 0.08605832
+
+lm.morantest()
+
+fmla <- as.formula(paste("fert.exp.dummy ~ ", 
+	paste0(names(crop.wide.df)[grepl("area.r", names(crop.wide.df))], collapse= " + "), "+ indig.prop + seed.exp + credit.source + department + hhh.edu.measure + hhh.sex"))
+
+crop.wide.df$fert.exp.dummy<-0
+crop.wide.df$fert.exp.dummy[crop.wide.df$fert.exp>0]<-1
+
+
+ma <- glm(fmla, x = TRUE,
+data = crop.wide.df[max(crop.wide.df$fert.exp)!=crop.wide.df$fert.exp,], family = binomial(link = "probit"))
+ea <- maBina(w = ma, x.mean = TRUE, rev.dum = TRUE)
+ea
+ma0 <- update(ma , . ~ 1)
+1 - as.vector(logLik(ma )/logLik(ma0))
+
+
+test<-tobit(fmla, data = crop.wide.df[max(crop.wide.df$fert.exp)!=crop.wide.df$fert.exp,])
+
+fmla <- as.formula(paste("fert.exp ~ ", 
+	paste0(names(crop.wide.df)[grepl("sales.value", names(crop.wide.df))], collapse= " + ")))
+
+sales.expl.tob <- censReg(fmla, data = crop.wide.df)
+summary( margEff( sales.expl.tob ) )
+
+
+credit.city.tob <- censReg(fert.exp ~ total.area + received.credit + city, data = crop.wide.df)
+summary( margEff( credit.city.tob ) )
+
+credit.city.null.tob <- censReg(fert.exp ~ total.area + received.credit + indig.prop  , data = crop.wide.df)
+summary( margEff( credit.city.null.tob) )
+
+
+
+with(crop.wide.df, plot(fert.exp, total.area))
+
+lrtest(credit.city.tob, credit.city.null.tob)
+BIC(credit.city.tob)
+BIC(credit.city.null.tob)
+BIC(credit.city.tob) -
+BIC(credit.city.null.tob)
+
+top.crops<-names(rev(sort(table(prod01.df$crop))))[1:12]
+
+
+by(prod01.df[prod01.df$crop %in% top.crops, ], 
+	INDICES=factor(prod01.df$crop[prod01.df$crop %in% top.crops]),
+	FUN = function(x) {
+		par(mfrow=c(1,2))
+		plot(x$sales.value, x$sales.quant.r, 
+		main=paste(x$crop[1], "cor=", round(cor(x$sales.value, x$sales.quant.r, use="pairwise.complete.obs"), 2)) )
+		plot(log(x$sales.value), log(x$sales.quant.r), 
+		main=paste(x$crop[1], "(log) cor=", round(cor(log(x$sales.value), log(x$sales.quant.r), use="pairwise.complete.obs"), 2)) )
+		par(mfrow=c(1,1))
+		NULL
+	}
+)
+
+
+price.cor<-by(prod01.df[prod01.df$crop %in% top.crops, ], 
+	INDICES=factor(prod01.df$crop[prod01.df$crop %in% top.crops]),
+	FUN = function(x) {
+		ret<-c(0,0)
+		names(ret)<-c("cor", "log.cor")
+		ret[1]<-cor(x$sales.value, x$sales.quant.r, use="pairwise.complete.obs")
+		ret[2]<-cor(log(x$sales.value), log(x$sales.quant.r), use="pairwise.complete.obs")
+		ret
+	}
+)
+
+price.cor<-as.data.frame(do.call(rbind, price.cor))
+
+round(price.cor[order(price.cor$cor), ], 2)
+round(price.cor[order(price.cor$log.cor), ], 2)
+
+# Yield
+
+yield.ls<-by(prod01.df[prod01.df$crop %in% top.crops, ], 
+	INDICES=factor(prod01.df$crop[prod01.df$crop %in% top.crops]),
+	FUN = function(x) {
+		x$harvest.r/x$area.r
+	}
+)
+
+lapply(yield.ls, FUN=function(x) print(summary(x)))
+
+lapply(yield.ls, FUN=function(x) boxplot(x, main=x$crop[1]))
+
+by(prod01.df[prod01.df$crop %in% top.crops, ], 
+	INDICES=factor(prod01.df$crop[prod01.df$crop %in% top.crops]),
+	FUN = function(x) {
+		boxplot(x$harvest.r/x$area.r, main=x$crop[1])
+	}
+)
+
+by(prod01.df[prod01.df$crop %in% top.crops, ], 
+	INDICES=factor(prod01.df$crop[prod01.df$crop %in% top.crops]),
+	FUN = function(x) {
+		quantile(x$area.r, probs=c(.025, .975), na.rm=TRUE)
+	}
+)
+
+by(prod01.df[prod01.df$crop %in% top.crops, ], 
+	INDICES=factor(prod01.df$crop[prod01.df$crop %in% top.crops]),
+	FUN = function(x) {
+		ret<-quantile(x$area.r, probs=c(.025, .975), na.rm=TRUE)
+		ret[2]/ret[1]
+	}
+)
+
+by(prod01.df[prod01.df$crop %in% top.crops, ], 
+	INDICES=factor(prod01.df$crop[prod01.df$crop %in% top.crops]),
+	FUN = function(x) {
+		crop.quantiles<-quantile(x$area.r, probs=c(.05, .95), na.rm=TRUE)
+		yield.quantiles<-quantile(x$harvest.r/x$area.r, probs=c(.05, .95), na.rm=TRUE)
+		print(yield.quantiles)
+		yield<-x$harvest.r/x$area.r
+		keep.index<-x$area.r>crop.quantiles[1]*10000 & !is.na(x$area.r) & 
+			(yield*10000>yield.quantiles[1] & yield*10000<yield.quantiles[2])
+		if (all(!keep.index)) return(NULL)
+		data.frame(a=x$area.r[keep.index], 
+			b=yield[keep.index]*10000, 
+			c=median(x$harvest.r/x$area.r, na.rm=TRUE))
+	}
+)
+
+
+
+
+false situations:
+High yield, low area: big problem; can deal with
+High yield, high area
+Low yield, low area
+Low yield, high area
+
+We would be off by a factor of 10,000. take like 5% and 95% percentiles and blow up and shrink by 10,000
+
+
+
+
+
+prod01.top.crops.df<-
+
+prod01.df[prod01.df$crop %in% top.crops, ][prod01.df$sales.quant.r[prod01.df$crop %in% top.crops]==0, c("harvest.unit", "sales.quant.r", "sales.value")]
+
+
+
+"fert.exp", "received.credit", "city", "canton"
+
+
+Main exploratory pieces:
+1. Determinants of fertilizer use
+  a. TODO: indigenous, income(?)
+2. Law of one price
+3. 
+
+Data cleaning:
+1. Convert area unit to meters if yield is below 10% of median yield or something
+2. What to do about the obs with really high fert expenditure? [max(crop.wide.df$fert.exp)!=crop.wide.df$fert.exp,]
+
+
+
+
+
+
+
+pob.shp<-importShapefile(paste0(work.dir, "centros_poblados.zip Folder/centros_poblados.shp"))
+
+
+
+attr(hogar.2001, "label.table")[1:13]
+dep prov sec-muni Canton  CIUORG   ZONLOC
+01   01   01      01      001      000
+
+01010101001000
+pob.shp$DEPTO[pob.shp$N_DEPTO=="Potos\xed"][1]
+
+
+hogar01.df$Dept.no<-""
+hogar01.df$Dept.no[hogar01.df$ID01=="Santa cruz"]<-"07"
+hogar01.df$Dept.no[hogar01.df$ID01=="Beni"]<-"08"
+hogar01.df$Dept.no[hogar01.df$ID01=="Chuquisaca"]<-"01"
+hogar01.df$Dept.no[hogar01.df$ID01=="La Paz"]<-"02"
+hogar01.df$Dept.no[hogar01.df$ID01=="Oruro"]<-"04"
+hogar01.df$Dept.no[hogar01.df$ID01=="Tarija"]<-"06"
+hogar01.df$Dept.no[hogar01.df$ID01=="Potosi"]<-"05"
+hogar01.df$Dept.no[hogar01.df$ID01=="Cochabamba"]<-"03"
+hogar01.df$Dept.no[hogar01.df$ID01=="Pando"]<-"09"
+
+hogar.2001.ids<-with(hogar01.df,
+		 paste(
+		 "0",
+		 substr(1,1,FOLIO),
+		 sprintf("%02.f", ID02),
+     sprintf("%02.f", ID03),
+		 sprintf("%02.f", ID04),
+		 sprintf("%03.f", ID05),
+		 sprintf("%03.f", ID06),
+		 sep="")
+)
+
+
+hogar01.df.ids<-with(hogar01.df,
+										 paste(
+										 	Dept.no, # 2
+										 	sprintf("%02.f", ID02), # 4
+										 	sprintf("%02.f", ID03), # 6
+										 	sprintf("%02.f", ID04), # 8
+										 	sprintf("%03.f", ID05), # 11
+#										 	sprintf("%03.f", ID07),
+										 	sep="")
+)
+
+
+pob.shp[grepl("^CHUMA", pob.shp$N_CIUORG),]
+
+attr(hogar01.df, "variable.labels")[1:10]
+attr(pob01.df, "variable.labels")[10:20]
+
+unique(pob.shp[, c("N_DEPTO", "DEPTO")] )
+
+table(substr(hogar.2001.ids, 3, 99 ) %in% substr(pob.shp$COD_BD_CEN, 3, 99))
+
+table(substr(hogar01.df.ids, 1, 11 ) %in% substr(pob.shp$COD_BD_CEN, 1, 11))
+
+View(hogar01.df[!substr(hogar01.df.ids, 1, 11 ) %in% substr(pob.shp$COD_BD_CEN, 1, 11), c(1:10, 43)])
+
+table(hogar01.df.ids %in% pob.shp$COD_BD_CEN)
+
+combine.localidades<-function(x) {
+  ret<-x[1, ]
+  ret$num.of.localidades<-nrow(x)
+  ret$X <- sum(x$X * x$VIVIENDA)/sum(x$VIVIENDA)
+  ret$Y <- sum(x$Y * x$VIVIENDA)/sum(x$VIVIENDA)
+  ret$LOCALIDAD<-"combined localidades"
+  ret$N_ZONLOC<-"combined localidades"
+  ret
+}
+
+pob.shp[duplicted(substr(pob.shp$COD_BD_CEN, 1, 11)) |
+  duplicted(substr(pob.shp$COD_BD_CEN, 1, 11), fromLast=TRUE), ]
+
+pob.shp$COD_BD_CEN[1:20]
+
+dup.indices<- duplicated(substr(pob.shp$COD_BD_CEN, 1, 11)) |
+  duplicated(substr(pob.shp$COD_BD_CEN, 1, 11), fromLast=TRUE)
+
+combined.localidades.ls<-by(pob.shp[dup.indices, ], INDICES=substr(pob.shp$COD_BD_CEN[dup.indices], 1, 11), FUN=combine.localidades)
+
+combined.localidades.df<-do.call(rbind, combined.localidades.ls)
+
+pob.shp.rev <- rbind(combined.localidades.df,
+  cbind(pob.shp[!dup.indices, ], data.frame(num.of.localidades=rep(0, nrow(pob.shp[!dup.indices, ]))))
+)
+
+pob.shp.rev$communidad.id<-substr(pob.shp.rev$COD_BD_CEN, 1, 11)
+hogar01.df$communidad.id <- hogar01.df.ids
+
+hogar01.df<-merge(hogar01.df, pob.shp.rev, by="communidad.id", all.x=TRUE)
+
+intersect(names(pob.shp), names(hogar01.df))
+
+table(substr(hogar01.df.ids, 1, 11 ) %in% substr(pob.shp$COD_BD_CEN, 1, 11))
+
+substr(hogar01.df.ids, 1, 11 )[ !
+substr(hogar01.df.ids, 1, 11 ) %in% substr(pob.shp$COD_BD_CEN, 1, 11)
+		]
+
+pob.shp$POB2001[substr(pob.shp$COD_BD_CEN, 1, 11) %in% substr(hogar01.df.ids, 1, 11 )]
+
+table(hogar01.df$ID05)
+table(substr(geog.ids.df[, 11], 9, 11 ))
+table(geog.ids.df[,1], geog.ids.df[, 7])
+
+geog.ids.df <- cbind(
+	read.csv("ine_names_geog_data.txt", stringsAsFactors=FALSE, header=FALSE),
+	read.csv("ine_numeric_geog_data.txt", stringsAsFactors=FALSE, header=FALSE, colClasses="character")
+)
+
+geog.ids.df<-geog.ids.df[, colnames(geog.ids.df)!="V6" ]
+
+names(geog.ids.df)<-c("dept.c", "prov.c", "sec.c", "canton.c", "ciudad.c", "dept.n", "prov.n", "sec.n", "canton.n", "ciudad.n")
+
+table(substr(hogar01.df.ids, 1, 11 ) %in% substr(geog.ids.df[, 11], 1, 11))
+
+intersect(substr(hogar01.df.ids, 1, 11 ), substr(geog.ids.df[, 11], 1, 11))
+
+hogar00.df<-read.spss(paste0( work.dir, "bd17 (2000).zip Folder/hogar.sav"), to.data.frame=TRUE)
+
+hogar99.df<-read.spss(paste0( work.dir, "bd16 (1999).zip Folder/hogar.sav"), to.data.frame=TRUE)
+
+attr(hogar00.df, "variable.labels")[1:10]
+
+hogar99.df$Dept.no<-""
+hogar99.df$Dept.no[hogar99.df$ID01=="Santa cruz"]<-"07"
+hogar99.df$Dept.no[hogar99.df$ID01=="Beni"]<-"08"
+hogar99.df$Dept.no[hogar99.df$ID01=="Chuquisaca"]<-"01"
+hogar99.df$Dept.no[hogar99.df$ID01=="La Paz"]<-"02"
+hogar99.df$Dept.no[hogar99.df$ID01=="Oruro"]<-"04"
+hogar99.df$Dept.no[hogar99.df$ID01=="Tarija"]<-"06"
+hogar99.df$Dept.no[hogar99.df$ID01=="Potosi"]<-"05"
+hogar99.df$Dept.no[hogar99.df$ID01=="Cochabamba"]<-"03"
+hogar99.df$Dept.no[hogar99.df$ID01=="Pando"]<-"09"
+
+# So choked on POTOSI a bit
+# table(geog.ids.df[,1], geog.ids.df[, 7])
+# geog.ids.df[geog.ids.df[,1]=="SUCRE (CAPITAL)",]
+
+
+hogar99.df.ids<-with(hogar99.df,
+										 paste(
+										 	Dept.no, # 2
+										 	sprintf("%02.f", ID02), # 4
+										 	sprintf("%02.f", ID03), # 6
+										 	sprintf("%02.f", ID04), # 8
+										 	sprintf("%03.f", ID05), # 11
+#										 	sprintf("%03.f", ID07),
+										 	sep="")
+)
+
+intersect(hogar99.df.ids, geog.ids.df[, 11])
+
+table(hogar99.df.ids %in% geog.ids.df[, 11])
+
+unique(hogar99.df$ID09[hogar99.df$ID01=="Chuquisaca"])
+
+geog.ids.df[geog.ids.df[, 10]=="01010321", ]
+
+View(geog.ids.df[geog.ids.df$sec.n=="010703", ])
+
+
+geog.ids.df[geog.ids.df[, 10]=="01010321", ]
+
+table(substr(geog.ids.df[, 10], 7, 8))
+
+table(paste(substr(geog.ids.df[, 10], 1, 6), substr(geog.ids.df[, 10], 9, 11))
+  
+table(duplicated(paste(substr(geog.ids.df[, 11], 1, 6), substr(geog.ids.df[, 11], 9, 11))))
+
+
+
+geog.ids.df[grepl("CAIZA", geog.ids.df$canton.c), ]
+
+attr(hogar99.df, "variable.labels")[1:10]
+
+
+
+hogar99.df.ids[!hogar99.df.ids %in% geog.ids.df[, 11] & hogar99.df$URBRUR_1 %in% "Area Rural"][1:10]
+
+
+table(substr(hogar99.df.ids, 1, 8 ) %in% substr(geog.ids.df[, 11], 1, 8))
+
+hogar00.df$Dept.no<-""
+hogar00.df$Dept.no[hogar00.df$ID01=="Santa cruz"]<-"07"
+hogar00.df$Dept.no[hogar00.df$ID01=="Beni"]<-"08"
+hogar00.df$Dept.no[hogar00.df$ID01=="Chuquisaca"]<-"01"
+hogar00.df$Dept.no[hogar00.df$ID01=="La Paz"]<-"02"
+hogar00.df$Dept.no[hogar00.df$ID01=="Oruro"]<-"04"
+hogar00.df$Dept.no[hogar00.df$ID01=="Tarija"]<-"06"
+hogar00.df$Dept.no[hogar00.df$ID01=="Potosi"]<-"05"
+hogar00.df$Dept.no[hogar00.df$ID01=="Cochabamba"]<-"03"
+hogar00.df$Dept.no[hogar00.df$ID01=="Pando"]<-"09"
+
+
+hogar00.df.ids<-with(hogar00.df,
+  									 paste(
+										 	Dept.no, # 2
+										 	sprintf("%02.f", ID02), # 4
+										 	sprintf("%02.f", ID03), # 6
+										 	sprintf("%02.f", ID04), # 8
+										 	sprintf("%03.f", ID05), # 11
+#										 	sprintf("%03.f", ID07),
+										 	sep="")
+)
+
+table((hogar00.df.ids %in% geog.ids.df[, 11]))
+
