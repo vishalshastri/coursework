@@ -47,17 +47,45 @@ library("gstat")
 library("rgdal")
 #install.packages("Hmisc")
 library("Hmisc")
+#install.packages("pgirmess")
+library("pgirmess")
+#install.packages("rjson")
+library("rjson")
+#install.packages("httr")
+library("httr")
+
+urban.coords<-pob.shp[pob.shp$CAT_LOC %in% c("0-Capital", "1-Urbana"), c("X", "Y")]
+# table(pob.shp$CAT_LOC)
+# plot(pob.shp[pob.shp$CAT_LOC %in% ("2-Amanzanada"), c("X", "Y")])
+
+for ()
+  
+target.knn<-knearneigh(as.matrix(rbind(crop.wide.df[ i, c("X", "Y")], urban.coords ) ), k=50,  longlat = TRUE)
+
+target.coords<-rbind(crop.wide.df[ i, c("X", "Y")], urban.coords )[knn2nb(target.knn)[[1]], ]
+
+
+json.req<-toJSON(list(locations=paste(target.coords$Y, target.coords$X, sep="," ),
+  options=list(allToAll="false"))
+)
+
+#manyToOne gives the direction
+
+test<-POST(paste0("http://www.mapquestapi.com/directions/v1/routematrix?key=", mapquest.api.key), config=accept_json(), body=json.req)
+
+test$times
+content(test)$info$messages
+
+content(test)
+content(test)$time
+
 
 
 The function dnearneigh creates a neighbor list based on a
 distance cut off criterion applied to point data. The conversion of the neighbor lists to
 spatial weights is implemented with the nb2listw function.
 
-test.d<-dnearneigh(as.matrix(crop.wide.df[max(crop.wide.df$fert.exp)!=crop.wide.df$fert.exp, c("X", "Y")]), -1, 200, row.names = NULL, longlat = TRUE)
 
-test.nb <- knn2nb(test.d, row.names = NULL, sym = FALSE)
-
-test.listw<-nb2listw(test.d, zero.policy=TRUE)
 
 test.m<-tobit( formula=fmla, data = crop.wide.df[max(crop.wide.df$fert.exp)!=crop.wide.df$fert.exp,], init=area.expl.tob2$estimate[-length(area.expl.tob2$estimate)])
 
@@ -75,9 +103,28 @@ names(area.expl.tob2$estimate)
 
 sapply(model.matrix(fmla, data=crop.wide.df), 2, FUN=function(x) all(x==0))
 
+fert.predicted<-tobit.predict(fmla, area.expl.tob2, crop.wide.df[max(crop.wide.df$fert.exp)!=crop.wide.df$fert.exp,])
+
+row.names(model.matrix(fmla , data=crop.wide.df)))
+
+keep.folio<-crop.wide.df$FOLIO[as.numeric(row.names(fert.predicted))]
+
 fert.residuals<-
-crop.wide.df[max(crop.wide.df$fert.exp)!=crop.wide.df$fert.exp, "fert.exp"] -
-  tobit.predict(fmla, area.expl.tob2, crop.wide.df[max(crop.wide.df$fert.exp)!=crop.wide.df$fert.exp,])
+crop.wide.df[crop.wide.df$FOLIO %in% keep.folio, "fert.exp"] - fert.predicted
+cor(fert.predicted, crop.wide.df[crop.wide.df$FOLIO %in% keep.folio, "fert.exp"])
+plot(fert.predicted, crop.wide.df[crop.wide.df$FOLIO %in% keep.folio, "fert.exp"])
+
+min(crop.wide.df$fert.exp[crop.wide.df$fert.exp>0])
+
+
+test.d<-dnearneigh(as.matrix(crop.wide.df[crop.wide.df$FOLIO %in% keep.folio, c("X", "Y")]), -1, 200, row.names = NULL, longlat = TRUE)
+
+#test.nb <- knn2nb(test.d, row.names = NULL, sym = FALSE)
+
+test.listw<-nb2listw(test.d, zero.policy=TRUE)
+
+
+
 
 qqPlot(fert.residuals)
 
@@ -89,13 +136,28 @@ area.expl.tob2
 
 test.moran<-lm.morantest(area.expl.tob2, listw=test.listw, zero.policy=TRUE, resfun=residuals)
 
-lm.LMtests(fert.residuals, test.listw, zero.policy=TRUE, test="LMerr", spChk=NULL, naSubset=TRUE)
+test.moran<-moran.attempt(area.expl.tob2, test.listw, zero.policy = TRUE, alternative = "greater", 
+    spChk = NULL, resfun = fert.residuals)
+test.moran<-moran
+
+fert.lm.LMtests<- lm.LMtests(fert.residuals, test.listw, zero.policy=TRUE, test="LMerr", spChk=NULL, naSubset=TRUE)
+
+fert.lm.LMtests<- lm.LMtests(fert.residuals, test.listw, zero.policy=TRUE, test="all", spChk=NULL, naSubset=TRUE)
+
+fert.moran.test<- moran.test(fert.residuals, test.listw, zero.policy=TRUE, randomisation=FALSE)
+
+moran.mc.test<-moran.mc(fert.residuals, test.listw, nsim=99, zero.policy=TRUE)
+
+
+corD <- correlog(as.matrix(crop.wide.df[crop.wide.df$FOLIO %in% keep.folio, c("X", "Y")]), fert.residuals, method = "Moran")
+
+plot(corD )
 
 fert.residuals.df<-data.frame(fert.residuals=fert.residuals)
 
-fert.residuals.spdf<-SpatialPointsDataFrame(crop.wide.df[max(crop.wide.df$fert.exp)!=crop.wide.df$fert.exp, c("X", "Y")], fert.residuals.df)
+fert.residuals.spdf<-SpatialPointsDataFrame(crop.wide.df[crop.wide.df$FOLIO %in% keep.folio, c("X", "Y")], fert.residuals.df)
 
-plot(variogram(fert.residuals ~ 1, locations = coordinates(fert.residuals.spdf), data=fert.residuals.spdf,  cloud = T),  type = "b", main = "Variogram of fert.residuals") 
+plot(variogram(fert.residuals ~ 1, locations = coordinates(fert.residuals.spdf), data=fert.residuals.spdf,  cloud = F),  type = "b", main = "Variogram of fert.residuals") 
 
 plot(sp.correlogram(test.d, as.vector(fert.residuals), order=2) )
 
@@ -122,6 +184,8 @@ save(file=paste0( work.dir, "HWSD_RASTER/hwsd.Rdata"),soil.bil)
 
 soil.mdb<-mdb.get(paste0("'", work.dir, "HWSD.mdb'"))
 
+
+
 villages.spatialpixels<-SpatialPixels(
   SpatialPoints(crop.wide.df[, c("X", "Y")]),
   grid=soil.bil@grid)
@@ -131,6 +195,51 @@ villages.spatialpixels<-SpatialPixels(
 crop.wide.df$MU.GLOBAL<-soil.bil$band1[villages.spatialpixels@grid.index]
 
 crop.wide.df<-merge(crop.wide.df, soil.mdb$HWSD_DATA[soil.mdb$HWSD_DATA$SEQ==1, ], all.x=TRUE)
+
+elev.dem1<-readGDAL(paste0(work.dir, "w060s10/W060S10.DEM"))
+elev.dem2<-readGDAL(paste0(work.dir, "w100s10/W100S10.DEM"))
+
+#hist(elev.dem2$band1)
+#image(elev.dem2["band1"])
+max(crop.wide.df$Y[crop.wide.df$Y!=0])
+# Since this is south of -10 latitude, we don;t have to download additional elevation panels
+
+keep.coords.1<-point.in.polygon(crop.wide.df$X , crop.wide.df$Y, bboxx(bbox(elev.dem1))[, 1], bboxx(bbox(elev.dem1))[, 2])==1
+
+villages.elev.1.spatialpixels<-SpatialPixels(
+  SpatialPoints(crop.wide.df[keep.coords.1, c("X", "Y")]),
+  grid=elev.dem1@grid)
+
+elevation.df<-data.frame(FOLIO=crop.wide.df[keep.coords.1, "FOLIO"],
+  elevation=elev.dem1$band1[villages.elev.1.spatialpixels@grid.index], stringsAsFactors=FALSE)
+
+keep.coords.2<-point.in.polygon(crop.wide.df$X , crop.wide.df$Y, bboxx(bbox(elev.dem2))[, 1], bboxx(bbox(elev.dem2))[, 2])==1
+
+villages.elev.2.spatialpixels<-SpatialPixels(
+  SpatialPoints(crop.wide.df[keep.coords.2, c("X", "Y")]),
+  grid=elev.dem2@grid)
+
+elevation.df<-rbind(elevation.df,
+  data.frame(FOLIO=crop.wide.df[keep.coords.2, "FOLIO"],
+    elevation=elev.dem2$band1[villages.elev.2.spatialpixels@grid.index], stringsAsFactors=FALSE)
+  )
+
+elevation.df$elevation <- elevation.df$elevation/1000
+
+crop.wide.df <- merge(crop.wide.df, elevation.df, all.x=TRUE)
+
+with(crop.wide.df[crop.wide.df$Y!=0, ], plot(X, Y, col=rgb(red=elevation, green=0, blue=0, alpha=max(elevation, na.rm=TRUE), maxColorValue=max(elevation, na.rm=TRUE))))
+
+
+
+bboxx(bbox(elev.dem1))
+
+crop.wide.df$elev.index<-soil.bil$band1[villages.spatialpixels@grid.index]
+
+crop.wide.df<-merge(crop.wide.df, soil.mdb$HWSD_DATA[soil.mdb$HWSD_DATA$SEQ==1, ], all.x=TRUE)
+
+
+
 
 
 mcv02full.df<-read.spss(paste0(work.dir, "bd19 (2002).zip Folder/mcv02final1.sav"))
@@ -198,6 +307,11 @@ combine.localidades<-function(x) {
   ret
 }
 
+# combine.localidades(pob.shp.rev[substr(pob.shp$COD_BD_CEN, 1, 11)=="01070301002", ])
+# pob.shp[substr(pob.shp$COD_BD_CEN, 1, 11)=="01070301002", c("X", "Y")]
+# plot(pob.shp[substr(pob.shp$COD_BD_CEN, 1, 11)=="01070301002", c("X", "Y")])
+# points(pob.shp.rev[substr(pob.shp.rev$COD_BD_CEN, 1, 11)=="01070301002", c("X", "Y")], col="red")
+# points(as.data.frame(lapply(pob.shp[substr(pob.shp$COD_BD_CEN, 1, 11)=="01070301002", c("X", "Y")], 2, FUN=mean)), col="blue")
 
 dup.indices<- duplicated(substr(pob.shp$COD_BD_CEN, 1, 11)) |
   duplicated(substr(pob.shp$COD_BD_CEN, 1, 11), fromLast=TRUE)
@@ -348,18 +462,21 @@ crop.wide.df<-data.frame(lapply(crop.wide.df, FUN=function(x) {
 fmla <- as.formula(paste("fert.exp ~ ", 
 	paste0(names(crop.wide.df)[grepl("area.r", names(crop.wide.df))], collapse= " + "), 
 	"+", paste0(names(livestock.wide.df)[-1], collapse= " + "),	
-	"+ indig.prop + seed.exp + credit.source + department + hhh.edu.measure + hhh.sex + REMPAIS + REMEXT + num.pers.agropecuaria + AWC.CLASS + T.GRAVEL + T.SILT + T.CLAY + T.BULK.DENSITY + T.OC + T.PH.H2O + T.CEC.CLAY + T.CEC.SOIL + T.TEB + T.CACO3 + T.CASO4 + T.ESP + T.ECE"))
+	"+ indig.prop + seed.exp + credit.source + department + hhh.edu.measure + hhh.sex + REMPAIS + REMEXT + num.pers.agropecuaria + AWC.CLASS + T.GRAVEL + T.SILT + T.CLAY + T.BULK.DENSITY + T.OC + T.PH.H2O + T.CEC.CLAY + T.CEC.SOIL + T.TEB + T.CACO3 + T.CASO4 + T.ESP + T.ECE + elevation"))
 
 #fmla <- as.formula("fert.exp ~ AWC.CLASS + T.GRAVEL + T.SILT + T.CLAY + T.BULK.DENSITY + T.OC + T.PH.H2O + T.CEC.CLAY + T.CEC.SOIL + T.TEB + T.CACO3 + T.CASO4 + T.ESP + T.ECE" )
 summary(crop.wide.df[, c("AWC.CLASS", "ADD.PROP", "T.GRAVEL", "T.SAND", "T.SILT", "T.CLAY", "T.BULK.DENSITY", "T.OC", "T.PH.H2O", "T.CEC.CLAY", "T.CEC.SOIL", "T.TEB", "T.CACO3", "T.CASO4", "T.ESP", "T.ECE")])
 
 area.expl.tob2 <- censReg(fmla, data = crop.wide.df[max(crop.wide.df$fert.exp)!=crop.wide.df$fert.exp,], iterlim = 500, print.level=3 )
+# area.expl.tob2 <- censReg(fmla, data = crop.wide.df[max(crop.wide.df$fert.exp)!=crop.wide.df$fert.exp,], iterlim = 500, start=coef(area.expl.tob2), print.level=3 )
 # BHHH log like: -5200.391 (iteration limit exceeded) method="BHHH"
 # iterlim = 500
 summary( margEff( area.expl.tob2 ) )
-(591-2) 2222333 int. 110
 
-area.expl.tob0 <- update(area.expl.tob2 , . ~ 1, print.level=0)
+
+area.expl.tob0 <- censReg(fert.exp ~ 1, data = crop.wide.df[as.numeric(row.names(model.matrix(fmla, data=crop.wide.df[max(crop.wide.df$fert.exp)!=crop.wide.df$fert.exp,]))) , ], print.level=0)
+area.expl.tob2$nObs==area.expl.tob0$nObs
+
 1 - as.vector( (logLik(area.expl.tob2) - length(coef(area.expl.tob2)) +2)/logLik(area.expl.tob0))
 # 0.08605832
 
