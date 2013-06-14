@@ -53,203 +53,142 @@ library("pgirmess")
 library("rjson")
 #install.packages("httr")
 library("httr")
-
-urban.coords<-pob.shp[pob.shp$CAT_LOC %in% c("0-Capital", "1-Urbana"), c("X", "Y")]
-# table(pob.shp$CAT_LOC)
-# plot(pob.shp[pob.shp$CAT_LOC %in% ("2-Amanzanada"), c("X", "Y")])
-
-for ()
-  
-target.knn<-knearneigh(as.matrix(rbind(crop.wide.df[ i, c("X", "Y")], urban.coords ) ), k=50,  longlat = TRUE)
-
-target.coords<-rbind(crop.wide.df[ i, c("X", "Y")], urban.coords )[knn2nb(target.knn)[[1]], ]
+#install.packages("VIM")
+library("VIM")
+#install.packages("osmar")
+library("osmar")
+#install.packages("spatstat")
+library("spatstat")
 
 
-json.req<-toJSON(list(locations=paste(target.coords$Y, target.coords$X, sep="," ),
-  options=list(allToAll="false"))
-)
+roads.shplines <- get_osm(corner_bbox(-180, -180, 180, 180), source = osmsource_file("/Users/travismcarthur/Downloads/bolivia-latest.osm.pbf"))
 
-#manyToOne gives the direction
+http://download.geofabrik.de/south-america/bolivia-latest.osm.pbf
 
-test<-POST(paste0("http://www.mapquestapi.com/directions/v1/routematrix?key=", mapquest.api.key), config=accept_json(), body=json.req)
+roads.shplines <- as_sp(get_osm(complete_file(), source = osmsource_file("http://download.geofabrik.de/south-america/bolivia-latest.osm.pbf")), what = "lines")
 
-test$times
-content(test)$info$messages
+download.file("http://download.geofabrik.de/south-america/bolivia-latest.shp.zip", paste0(work.dir, "bolivia-latest.shp.zip"))
 
-content(test)
-content(test)$time
+unzip(paste0(work.dir, "bolivia-latest.shp.zip") , exdir=work.dir)
+
+roads.shp<-importShapefile(paste0(work.dir, "roads.shp"))
 
 
+villages.df
 
-The function dnearneigh creates a neighbor list based on a
-distance cut off criterion applied to point data. The conversion of the neighbor lists to
-spatial weights is implemented with the nb2listw function.
+i<-1
 
-
-
-test.m<-tobit( formula=fmla, data = crop.wide.df[max(crop.wide.df$fert.exp)!=crop.wide.df$fert.exp,], init=area.expl.tob2$estimate[-length(area.expl.tob2$estimate)])
-
-tobit.predict <- function(formula, model, data) {
-  x.mat <- model.matrix(formula, data=data)  
-  x.mat <- x.mat[, !apply(x.mat, 2, FUN=function(x) all(x==0))]
-  betas <- model$estimate[-length(model$estimate)]
-  sigma <- exp(model$estimate[length(model$estimate)])
-  argue <- x.mat %*% betas
-  pnorm(argue/sigma) * (argue + sigma * dnorm(argue/sigma) / pnorm(argue/sigma))
+for ( i in 1:nrow(villages.df) {
+  x<-knearneigh(as.matrix(rbind(villages.df[i, c("X", "Y")], roads.shp[, c("X", "Y")])), k=1, longlat=TRUE)
+  cat(x, "\n")
 }
 
-dimnames(model.matrix(fmla, data=crop.wide.df) )
-names(area.expl.tob2$estimate)
+roads.shp<-readShapeSpatial(paste0(work.dir, "roads.shp"))
 
-sapply(model.matrix(fmla, data=crop.wide.df), 2, FUN=function(x) all(x==0))
+dist2Line( c(-35, -60), roads.shp)
 
-fert.predicted<-tobit.predict(fmla, area.expl.tob2, crop.wide.df[max(crop.wide.df$fert.exp)!=crop.wide.df$fert.exp,])
+as.ppp(matrix(c(3, 4), ncol=2), W=c(-90, 90, -90, 90))
 
-row.names(model.matrix(fmla , data=crop.wide.df)))
+test<-as.psp.SpatialLinesDataFrame(roads.shp)
 
-keep.folio<-crop.wide.df$FOLIO[as.numeric(row.names(fert.predicted))]
+knearneigh
 
-fert.residuals<-
-crop.wide.df[crop.wide.df$FOLIO %in% keep.folio, "fert.exp"] - fert.predicted
-cor(fert.predicted, crop.wide.df[crop.wide.df$FOLIO %in% keep.folio, "fert.exp"])
-plot(fert.predicted, crop.wide.df[crop.wide.df$FOLIO %in% keep.folio, "fert.exp"])
+to ppp and your  polyline to psp objects in spatstat.
 
-min(crop.wide.df$fert.exp[crop.wide.df$fert.exp>0])
+Then, use nncross.
 
+n <- 1027143
+K <- 10
+d <- 2
+x <- matrix(rnorm(n * d), ncol = n)
+centers <- matrix(rnorm(K * d), ncol = K)
 
-test.d<-dnearneigh(as.matrix(crop.wide.df[crop.wide.df$FOLIO %in% keep.folio, c("X", "Y")]), -1, 200, row.names = NULL, longlat = TRUE)
+as.matrix(rbind(villages.df[i, c("X", "Y")]))
 
-#test.nb <- knn2nb(test.d, row.names = NULL, sym = FALSE)
-
-test.listw<-nb2listw(test.d, zero.policy=TRUE)
-
-
+x<-matrix(c(1,1,2,4, -1, -1, 0, 2), nrow=2)
+centers <-matrix(c(0,0, 0, 4), nrow=2)
 
 
-qqPlot(fert.residuals)
 
 
-dim(model.matrix(fmla, data=crop.wide.df) )
-area.expl.tob2$estimate
+system.time(
+  dists <- apply(t(as.matrix(villages.df[, c("X", "Y")])), 2, function(center) {
+    cat(date())
+    min.index<- which.min(
+      colSums((t(as.matrix(roads.shp[, c("X", "Y")])) - center)^2)^.5
+    )
+    
+    data.frame(dist=colSums((t(as.matrix(roads.shp[min.index, c("X", "Y")])) - center)^2)^.5,
+      X = roads.shp$X[min.index],
+      Y = roads.shp$Y[min.index]
+    )
+})
+)
 
-area.expl.tob2
+dists<-do.call(rbind, dists)
 
-test.moran<-lm.morantest(area.expl.tob2, listw=test.listw, zero.policy=TRUE, resfun=residuals)
+     comunidad.id         X         Y
+2308  08080202003 -62.64415 -13.10216
+2329  08040201009 -66.01633 -12.97221
 
-test.moran<-moran.attempt(area.expl.tob2, test.listw, zero.policy = TRUE, alternative = "greater", 
-    spChk = NULL, resfun = fert.residuals)
-test.moran<-moran
-
-fert.lm.LMtests<- lm.LMtests(fert.residuals, test.listw, zero.policy=TRUE, test="LMerr", spChk=NULL, naSubset=TRUE)
-
-fert.lm.LMtests<- lm.LMtests(fert.residuals, test.listw, zero.policy=TRUE, test="all", spChk=NULL, naSubset=TRUE)
-
-fert.moran.test<- moran.test(fert.residuals, test.listw, zero.policy=TRUE, randomisation=FALSE)
-
-moran.mc.test<-moran.mc(fert.residuals, test.listw, nsim=99, zero.policy=TRUE)
+-13.58094, -61.94645 
+-13.01650, -62.76910 
+-12.97062, -62.83187 
 
 
-corD <- correlog(as.matrix(crop.wide.df[crop.wide.df$FOLIO %in% keep.folio, c("X", "Y")]), fert.residuals, method = "Moran")
+# Thanks to StackOverflow user Jonathan Chang for this http://stackoverflow.com/questions/3029639/calculating-all-distances-between-one-point-and-a-group-of-points-efficiently-in
 
-plot(corD )
 
-fert.residuals.df<-data.frame(fert.residuals=fert.residuals)
+plot(villages.df[, c("X", "Y")],
+xlim=c(min(villages.df$X[1:10]), max(villages.df$X[1:10])),
+ylim=c(min(villages.df$Y[1:10]), max(villages.df$Y[1:10])), col="white")
 
-fert.residuals.spdf<-SpatialPointsDataFrame(crop.wide.df[crop.wide.df$FOLIO %in% keep.folio, c("X", "Y")], fert.residuals.df)
+points(villages.df[1:10, c("X", "Y")], pch = 0:10)
+points(roads.shp[dists[1:10], c("X", "Y")], pch = 0:10, col="red")
 
-plot(variogram(fert.residuals ~ 1, locations = coordinates(fert.residuals.spdf), data=fert.residuals.spdf,  cloud = F),  type = "b", main = "Variogram of fert.residuals") 
+par(new=T)
+plot(roads.shp[dists, c("X", "Y")],
+xlim=c(min(villages.df$X), max(villages.df$X)),
+ylim=c(min(villages.df$Y), max(villages.df$Y)), col="red")
 
-plot(sp.correlogram(test.d, as.vector(fert.residuals), order=2) )
 
-test.variogram<-variogram(fert.residuals ~ 1, locations = coordinates(fert.residuals.spdf), data=fert.residuals.spdf,  cloud = T)
+system.time(
+  dists <- apply(t(as.matrix(villages.df[1, c("X", "Y")])), 2, function(center) {
+    colSums((t(as.matrix(roads.shp[, c("X", "Y")])) - center)^2)^.5
+})
+)
 
-loess(gamma ~ dist, test.variogram)
+dists
+
+
+#The function dnearneigh creates a neighbor list based on a
+#distance cut off criterion applied to point data. The conversion of the neighbor lists to
+#spatial weights is implemented with the nb2listw function.
+
+
 
 # 30 arc seconds is about a half-mile http://www.esri.com/news/arcuser/0400/wdside.html
 # Altitude: http://gcmd.nasa.gov/records/GCMD_GTOPO30.html, but really: http://eros.usgs.gov/#/Find_Data/Products_and_Data_Available/gtopo30_info
 # soil http://webarchive.iiasa.ac.at/Research/LUC/External-World-soil-database/HTML/HWSD_Data.html?sb=4
 
 
-cs1 <- corLin(15, form = ~ Time | Rat)
-cs1 <- Initialize(cs1, BodyWeight)
-Variogram(cs1)[1:10,]
-
-  
-  censReg(fmla, data = crop.wide.df[max(crop.wide.df$fert.exp)!=crop.wide.df$fert.exp,], iterlim = 500, print.level=3 )
-
-soil.shp<-importShapefile(paste0(work.dir, "DSMW/DSMW.shp"))
-
-soil.bil<- readGDAL(paste0(work.dir, "HWSD_RASTER/hwsd.bil"))
-save(file=paste0( work.dir, "HWSD_RASTER/hwsd.Rdata"),soil.bil)
-
-soil.mdb<-mdb.get(paste0("'", work.dir, "HWSD.mdb'"))
-
-
-
-villages.spatialpixels<-SpatialPixels(
-  SpatialPoints(crop.wide.df[, c("X", "Y")]),
-  grid=soil.bil@grid)
-
-# max(crop.wide.df$fert.exp)!=crop.wide.df$fert.exp
-
-crop.wide.df$MU.GLOBAL<-soil.bil$band1[villages.spatialpixels@grid.index]
-
-crop.wide.df<-merge(crop.wide.df, soil.mdb$HWSD_DATA[soil.mdb$HWSD_DATA$SEQ==1, ], all.x=TRUE)
-
-elev.dem1<-readGDAL(paste0(work.dir, "w060s10/W060S10.DEM"))
-elev.dem2<-readGDAL(paste0(work.dir, "w100s10/W100S10.DEM"))
-
-#hist(elev.dem2$band1)
-#image(elev.dem2["band1"])
-max(crop.wide.df$Y[crop.wide.df$Y!=0])
-# Since this is south of -10 latitude, we don;t have to download additional elevation panels
-
-keep.coords.1<-point.in.polygon(crop.wide.df$X , crop.wide.df$Y, bboxx(bbox(elev.dem1))[, 1], bboxx(bbox(elev.dem1))[, 2])==1
-
-villages.elev.1.spatialpixels<-SpatialPixels(
-  SpatialPoints(crop.wide.df[keep.coords.1, c("X", "Y")]),
-  grid=elev.dem1@grid)
-
-elevation.df<-data.frame(FOLIO=crop.wide.df[keep.coords.1, "FOLIO"],
-  elevation=elev.dem1$band1[villages.elev.1.spatialpixels@grid.index], stringsAsFactors=FALSE)
-
-keep.coords.2<-point.in.polygon(crop.wide.df$X , crop.wide.df$Y, bboxx(bbox(elev.dem2))[, 1], bboxx(bbox(elev.dem2))[, 2])==1
-
-villages.elev.2.spatialpixels<-SpatialPixels(
-  SpatialPoints(crop.wide.df[keep.coords.2, c("X", "Y")]),
-  grid=elev.dem2@grid)
-
-elevation.df<-rbind(elevation.df,
-  data.frame(FOLIO=crop.wide.df[keep.coords.2, "FOLIO"],
-    elevation=elev.dem2$band1[villages.elev.2.spatialpixels@grid.index], stringsAsFactors=FALSE)
-  )
-
-elevation.df$elevation <- elevation.df$elevation/1000
-
-crop.wide.df <- merge(crop.wide.df, elevation.df, all.x=TRUE)
-
-with(crop.wide.df[crop.wide.df$Y!=0, ], plot(X, Y, col=rgb(red=elevation, green=0, blue=0, alpha=max(elevation, na.rm=TRUE), maxColorValue=max(elevation, na.rm=TRUE))))
-
-
-
-bboxx(bbox(elev.dem1))
-
-crop.wide.df$elev.index<-soil.bil$band1[villages.spatialpixels@grid.index]
-
-crop.wide.df<-merge(crop.wide.df, soil.mdb$HWSD_DATA[soil.mdb$HWSD_DATA$SEQ==1, ], all.x=TRUE)
 
 
 
 
 
-mcv02full.df<-read.spss(paste0(work.dir, "bd19 (2002).zip Folder/mcv02final1.sav"))
+
+## START
+
+
+#mcv02full.df<-read.spss(paste0(work.dir, "bd19 (2002).zip Folder/mcv02final1.sav"))
 # http://stackoverflow.com/questions/4993837/r-invalid-multibyte-string
 
-costos02.df<-read.spss(paste0(work.dir, "bd19 (2002).zip Folder/mcv02 - Costos produccion agropecuaria.sav"))
+#costos02.df<-read.spss(paste0(work.dir, "bd19 (2002).zip Folder/mcv02 - Costos produccion agropecuaria.sav"))
 
-prod02.df<-read.spss(paste0(work.dir, "bd19 (2002).zip Folder/hogar.sav"))
-)	, reencode=)
-prod02.df<-read.spss(paste0(work.dir, "bd19 (2002).zip Folder/Produccion agricola-utf8.sav"))
+#prod02.df<-read.spss(paste0(work.dir, "bd19 (2002).zip Folder/hogar.sav"))
+#)	, reencode=)
+#prod02.df<-read.spss(paste0(work.dir, "bd19 (2002).zip Folder/Produccion agricola-utf8.sav"))
 
 
 prod01.df<-read.spss(paste0(work.dir, "bd18 (2001).zip Folder/agricola.sav"), to.data.frame = TRUE)
@@ -269,7 +208,7 @@ pecuaria01.df<-read.spss(paste0(work.dir, "bd18 (2001).zip Folder/pecuaria.sav")
 
 
 
-
+# START GEOG WORK
 
 hogar01.df$Dept.no<-""
 hogar01.df$Dept.no[hogar01.df$ID01=="Santa cruz"]<-"07"
@@ -289,10 +228,12 @@ hogar01.df.ids<-with(hogar01.df,
 										 	sprintf("%02.f", ID03), # 6
 										 	sprintf("%02.f", ID04), # 8
 										 	sprintf("%03.f", ID05), # 11
-#										 	sprintf("%03.f", ID07),
+										 	sprintf("%03.f", ID06),
 										 	sep="")
 )
 
+
+table(hogar01.df.ids %in% substr(pob.shp$COD_BD_CEN, 1, 14))
 
 
 pob.shp<-importShapefile(paste0(work.dir, "centros_poblados.zip Folder/centros_poblados.shp"))
@@ -392,8 +333,6 @@ prod01.df$area.r[prod01.df$crop.hh.id %in% unlist(recs.to.fix.hectare)]<-
 
 
 
-
-	
 crop.wide.df<-reshape(prod01.df[ prod01.df$crop %in% names(rev(sort(table(prod01.df$crop))))[1:12], 
 	!names(prod01.df) %in% c("CODA", "area", "crop.code", "harvest", "sales.quant", "consumption", "seeds", "animal.or.subproducts", "bartered", "lost")], timevar="crop", idvar="FOLIO", direction="wide")
 
@@ -405,8 +344,8 @@ names(livestock.wide.df) <- c("FOLIO", "Bovinos", "Ovinos", "Porcinos", "Caprino
 crop.wide.df<-merge(crop.wide.df, livestock.wide.df, all.x=TRUE)
 
 
-hogar01.df.temp<-hogar01.df[, c("FOLIO", "S815D2", "S815B2", "S1036", "S1037", "PERSAGRO", "ID05", "ID06", "ID01", "X", "Y")]
-names(hogar01.df.temp)<-c("FOLIO", "fert.exp", "seed.exp", "received.credit", "credit.source", "num.pers.agropecuaria", "city", "canton", "department", "X", "Y")
+hogar01.df.temp<-hogar01.df[, c("FOLIO", "S815D2", "S815B2", "S1036", "S1037", "PERSAGRO", "ID05", "ID06", "ID01", "X", "Y", "CAT_LOC", "num.of.localidades", "comunidad.id")]
+names(hogar01.df.temp)<-c("FOLIO", "fert.exp", "seed.exp", "received.credit", "credit.source", "num.pers.agropecuaria", "city", "canton", "department", "X", "Y", "CAT_LOC", "num.of.localidades", "comunidad.id")
 hogar01.df.temp$city <- as.factor(hogar01.df.temp$city)
 hogar01.df.temp$canton <- as.factor(hogar01.df.temp$canton)
 
@@ -459,26 +398,360 @@ crop.wide.df<-data.frame(lapply(crop.wide.df, FUN=function(x) {
 	x
 }))
 
+
+
+
+
+#soil.shp<-importShapefile(paste0(work.dir, "DSMW/DSMW.shp"))
+
+#soil.bil<- readGDAL(paste0(work.dir, "HWSD_RASTER/hwsd.bil"))
+#save(file=paste0( work.dir, "HWSD_RASTER/hwsd.Rdata"),soil.bil)
+load(file=paste0( work.dir, "HWSD_RASTER/hwsd.Rdata"))
+
+soil.mdb<-mdb.get(paste0("'", work.dir, "HWSD.mdb'"))
+
+
+
+villages.spatialpixels<-SpatialPixels(
+  SpatialPoints(crop.wide.df[, c("X", "Y")]),
+  grid=soil.bil@grid)
+
+# max(crop.wide.df$fert.exp)!=crop.wide.df$fert.exp
+
+crop.wide.df$MU.GLOBAL<-soil.bil$band1[villages.spatialpixels@grid.index]
+
+crop.wide.df<-merge(crop.wide.df, soil.mdb$HWSD_DATA[soil.mdb$HWSD_DATA$SEQ==1, ], all.x=TRUE)
+
+rm(soil.bil)
+rm(soil.mdb)
+gc()
+
+elev.dem1<-readGDAL(paste0(work.dir, "w060s10/W060S10.DEM"))
+elev.dem2<-readGDAL(paste0(work.dir, "w100s10/W100S10.DEM"))
+
+#hist(elev.dem2$band1)
+#image(elev.dem2["band1"])
+max(crop.wide.df$Y[crop.wide.df$Y!=0])
+# Since this is south of -10 latitude, we don;t have to download additional elevation panels
+
+keep.coords.1<-point.in.polygon(crop.wide.df$X , crop.wide.df$Y, bboxx(bbox(elev.dem1))[, 1], bboxx(bbox(elev.dem1))[, 2])==1
+
+villages.elev.1.spatialpixels<-SpatialPixels(
+  SpatialPoints(crop.wide.df[keep.coords.1, c("X", "Y")]),
+  grid=elev.dem1@grid)
+
+elevation.df<-data.frame(FOLIO=crop.wide.df[keep.coords.1, "FOLIO"],
+  elevation=elev.dem1$band1[villages.elev.1.spatialpixels@grid.index], stringsAsFactors=FALSE)
+
+keep.coords.2<-point.in.polygon(crop.wide.df$X , crop.wide.df$Y, bboxx(bbox(elev.dem2))[, 1], bboxx(bbox(elev.dem2))[, 2])==1
+
+villages.elev.2.spatialpixels<-SpatialPixels(
+  SpatialPoints(crop.wide.df[keep.coords.2, c("X", "Y")]),
+  grid=elev.dem2@grid)
+
+elevation.df<-rbind(elevation.df,
+  data.frame(FOLIO=crop.wide.df[keep.coords.2, "FOLIO"],
+    elevation=elev.dem2$band1[villages.elev.2.spatialpixels@grid.index], stringsAsFactors=FALSE)
+  )
+
+
+crop.wide.df <- merge(crop.wide.df, elevation.df, all.x=TRUE)
+
+with(crop.wide.df[crop.wide.df$Y!=0, ], plot(X, Y, col=rgb(red=elevation, green=0, blue=0, alpha=max(elevation, na.rm=TRUE), maxColorValue=max(elevation, na.rm=TRUE))))
+
+
+
+
+
+
+
+# table(pob.shp$CAT_LOC)
+# plot(pob.shp[pob.shp$CAT_LOC %in% ("2-Amanzanada"), c("X", "Y")])
+
+villages.df<-crop.wide.df[ !duplicated(crop.wide.df$comunidad.id) & crop.wide.df$X!=0, c("comunidad.id", "X", "Y")]
+
+drive.time.data.ls<-vector(mode="list", length = nrow(villages.df))
+names(drive.time.data.ls)<-villages.df$comunidad.id
+
+gather.mapquest<-TRUE
+
+for (village in villages.df$comunidad.id) {
+
+  if(!gather.mapquest) {break}
+
+  target.village<-villages.df[villages.df$comunidad.id==village, c("X", "Y")]
+  time.calcs.final.cols <- c()
+
+  for (settlement.type in list(c("0-Capital", "1-Urbana"), "2-Amanzanada")) {
+  
+    if ( pob.shp.rev$CAT_LOC[pob.shp.rev$comunidad.id==village] %in% settlement.type ) {
+      time.calcs.final.cols <- c(time.calcs.final.cols, 0)
+      next
+    }
+    
+  
+    urban.coords<-pob.shp[pob.shp$CAT_LOC %in% settlement.type, c("X", "Y")]
+    
+    target.knn<-knearneigh(as.matrix(rbind(target.village, urban.coords ) ), k=96,  longlat = TRUE)
+    target.knn<-knn2nb(target.knn)[[1]] - 1
+    
+    time.calcs<-c()
+    time.calcs.final.v<-c()
+    
+#    for (coord.chunk in list(1:24, 25:48, 49:72, 73:96)) {
+    for (coord.chunk in list(1:24)) {
+    
+      target.coords<-rbind(target.village, urban.coords[target.knn[coord.chunk], ] )
+      
+      for (direction.option in c("false", "true")) {
+      
+        json.req<-toJSON(list(locations=paste(target.coords$Y, target.coords$X, sep="," ),
+          options=list(allToAll="false", manyToOne=direction.option)))
+          
+        post.receipt<-POST(paste0("http://www.mapquestapi.com/directions/v1/routematrix?key=", 
+          mapquest.api.key), config=accept_json(), body=json.req)
+          
+        time.calcs<-c(time.calcs, content(post.receipt)$time[-1])
+        
+       }
+       
+       time.calcs[ time.calcs==0] <- 99999999999
+       
+       time.calcs.final.v<- c(time.calcs.final.v, unlist(time.calcs[1:24] + time.calcs[25:48]))
+       
+    }
+    
+    time.calcs.final.cols <- c(time.calcs.final.cols, min(time.calcs.final.v))
+    
+  }
+  
+  drive.time.data.ls[[village]]<-data.frame(comunidad.id=village, 
+    drive.time.urban=time.calcs.final.cols[1], drive.time.amanzanada=time.calcs.final.cols[2],
+    stringsAsFactors=FALSE)
+    
+  cat(which(villages.df$comunidad.id==village), date(), content(post.receipt)$info$messages, sep="\n")
+    
+
+}
+
+#"Unable to use location #1 :Must have a valid GEFID." means too far away from a road
+#"100 Unable to use location #15 :Must have a valid GEFID."
+#"100 Unable to use location #0 :Must have a valid GEFID."
+#manyToOne gives the direction that we are going in, i.e. to city or to village
+
+
+drive.time.df<-do.call(rbind, drive.time.data.ls)
+drive.time.df$drive.time.urban[drive.time.df$drive.time.urban>99999999998]<-NA
+drive.time.df$drive.time.amanzanada[drive.time.df$drive.time.amanzanada>99999999998]<-NA
+
+crop.wide.df<-merge(crop.wide.df, drive.time.df, all.x=TRUE)
+
+
+save(crop.wide.df, file=paste0(work.dir, "crop wide df.Rdata"))
+
+crop.wide.df$credit.source<-factor(crop.wide.df$credit.source)
+crop.wide.df$hhh.edu.measure<-factor(crop.wide.df$hhh.edu.measure)
+
+crop.wide.df[] <- lapply(crop.wide.df,function(x) if(is.factor(x)) factor(x) else x)
+
+# write.dta(crop.wide.df, file=paste0(work.dir, "crop wide.dta"))
+# write.dta(crop.wide.df.for.model, file=paste0(work.dir, "crop wide rescaled.dta"))
+
+
+#crop.wide.df$fert.exp<-crop.wide.df$fert.exp/1000
+#crop.wide.df$drive.time.amanzanada<-crop.wide.df$drive.time.amanzanada/(60*60)
+#crop.wide.df$drive.time.urban<-crop.wide.df$drive.time.urban/(60*60)
+#crop.wide.df$elevation<-crop.wide.df$elevation/1000
+#crop.wide.df$REMPAIS<-crop.wide.df$REMPAIS/1000
+#crop.wide.df$REMEXT<-crop.wide.df$REMEXT/1000
+#crop.wide.df$seed.exp<-crop.wide.df$seed.exp/1000
+crop.wide.df$T.GRAVEL<- crop.wide.df$T.GRAVEL/100
+crop.wide.df$T.SILT<- crop.wide.df$T.SILT/100
+crop.wide.df$T.CLAY<- crop.wide.df$T.CLAY/100
+crop.wide.df$T.CEC.CLAY<-crop.wide.df$T.CEC.CLAY/100
+crop.wide.df$T.CASO4<-crop.wide.df$T.CASO4 * 10
+
+
+#crop.wide.df$drive.time.amanzanada[is.na(crop.wide.df$drive.time.amanzanada)] <-
+  mean(crop.wide.df$drive.time.amanzanada, na.rm=TRUE)
+  
+#crop.wide.df$drive.time.urban[is.na(crop.wide.df$drive.time.urban)] <-
+  mean(crop.wide.df$drive.time.urban, na.rm=TRUE)
+
+
+
 fmla <- as.formula(paste("fert.exp ~ ", 
 	paste0(names(crop.wide.df)[grepl("area.r", names(crop.wide.df))], collapse= " + "), 
 	"+", paste0(names(livestock.wide.df)[-1], collapse= " + "),	
-	"+ indig.prop + seed.exp + credit.source + department + hhh.edu.measure + hhh.sex + REMPAIS + REMEXT + num.pers.agropecuaria + AWC.CLASS + T.GRAVEL + T.SILT + T.CLAY + T.BULK.DENSITY + T.OC + T.PH.H2O + T.CEC.CLAY + T.CEC.SOIL + T.TEB + T.CACO3 + T.CASO4 + T.ESP + T.ECE + elevation"))
+	"+ indig.prop + seed.exp + credit.source + department + hhh.edu.measure + hhh.sex + REMPAIS + REMEXT + num.pers.agropecuaria + AWC.CLASS + T.GRAVEL + T.SILT + T.CLAY + T.BULK.DENSITY + T.OC + T.PH.H2O + T.CEC.CLAY + T.CEC.SOIL + T.TEB + T.CACO3 + T.CASO4 + T.ESP + T.ECE + elevation + drive.time.amanzanada + drive.time.urban"))
+
+	
+t(apply(model.matrix(fmla, data=crop.wide.df[max(crop.wide.df$fert.exp)!=crop.wide.df$fert.exp,]),
+  2, FUN=max, na.rm=TRUE))
+  
+t(apply(model.matrix(fmla, data=crop.wide.df[max(crop.wide.df$fert.exp)!=crop.wide.df$fert.exp,]),
+  2, FUN=mean, na.rm=TRUE))
+  
+mean(crop.wide.df$fert.exp[max(crop.wide.df$fert.exp)!=crop.wide.df$fert.exp])
+max(crop.wide.df$fert.exp[max(crop.wide.df$fert.exp)!=crop.wide.df$fert.exp])
+  
+fml.test<-as.formula("fert.exp ~  department + drive.time.amanzanada + drive.time.urban ")
+test<-solve(t(model.matrix(fmla, data=crop.wide.df.for.model)) %*% model.matrix(fmla, data=crop.wide.df.for.model))
+
+crop.wide.df.for.model<-crop.wide.df[max(crop.wide.df$fert.exp)!=crop.wide.df$fert.exp, ]
+
+crop.wide.df.for.model<-crop.wide.df.for.model[as.numeric(row.names(model.matrix(fmla, data=crop.wide.df))), ]
+
+crop.wide.df.for.model[] <- lapply(crop.wide.df.for.model,function(x) if(is.factor(x)) factor(x) else x)
+
+vars.to.scale<-colnames(model.matrix(fmla, data=crop.wide.df.for.model))
+vars.to.scale<-vars.to.scale[vars.to.scale %in% names(crop.wide.df.for.model)]
+vars.to.scale<-c("fert.exp", vars.to.scale)
+
+for ( i in vars.to.scale) {
+  while (max(crop.wide.df.for.model[, i], na.rm=TRUE)>10) {
+    crop.wide.df.for.model[, i]<-crop.wide.df.for.model[, i]/10
+  }
+}
+
+row.names(crop.wide.df.for.model)<-1:nrow(crop.wide.df.for.model)
+
+ 
 
 #fmla <- as.formula("fert.exp ~ AWC.CLASS + T.GRAVEL + T.SILT + T.CLAY + T.BULK.DENSITY + T.OC + T.PH.H2O + T.CEC.CLAY + T.CEC.SOIL + T.TEB + T.CACO3 + T.CASO4 + T.ESP + T.ECE" )
 summary(crop.wide.df[, c("AWC.CLASS", "ADD.PROP", "T.GRAVEL", "T.SAND", "T.SILT", "T.CLAY", "T.BULK.DENSITY", "T.OC", "T.PH.H2O", "T.CEC.CLAY", "T.CEC.SOIL", "T.TEB", "T.CACO3", "T.CASO4", "T.ESP", "T.ECE")])
 
-area.expl.tob2 <- censReg(fmla, data = crop.wide.df[max(crop.wide.df$fert.exp)!=crop.wide.df$fert.exp,], iterlim = 500, print.level=3 )
+area.expl.tob2 <- censReg(fmla, data = crop.wide.df.for.model, iterlim = 1500, print.level=3))
+area.expl.tob3 <- censReg(fmla, data = crop.wide.df, iterlim = 5000, print.level=3, method="BFGS")
+
+# method="BFGS" is "more robust" http://cran.r-project.org/web/packages/mlogit/vignettes/mlogit.pdf
 # area.expl.tob2 <- censReg(fmla, data = crop.wide.df[max(crop.wide.df$fert.exp)!=crop.wide.df$fert.exp,], iterlim = 500, start=coef(area.expl.tob2), print.level=3 )
 # BHHH log like: -5200.391 (iteration limit exceeded) method="BHHH"
 # iterlim = 500
+# eigentol=1e-12
+
 summary( margEff( area.expl.tob2 ) )
+# summary(area.expl.tob2 , eigentol=1e-20)
 
 
-area.expl.tob0 <- censReg(fert.exp ~ 1, data = crop.wide.df[as.numeric(row.names(model.matrix(fmla, data=crop.wide.df[max(crop.wide.df$fert.exp)!=crop.wide.df$fert.exp,]))) , ], print.level=0)
+
+area.expl.tob0 <- censReg(fert.exp ~ 1, data = crop.wide.df.for.model, print.level=0)
 area.expl.tob2$nObs==area.expl.tob0$nObs
+# BGBHKJBHJ function value: -944.256 , LR: 0.1563822
+# BFGS value:-937.841159 , LR: 0.1617443
+#Last step could not find a value above the current.
+#Boundary of parameter space?  
+#Consider switching to a more robust optimisation method temporarily. 
+# infinite standard errors: http://faculty.washington.edu/ezivot/econ424/maxLik.pdf
 
 1 - as.vector( (logLik(area.expl.tob2) - length(coef(area.expl.tob2)) +2)/logLik(area.expl.tob0))
 # 0.08605832
+# .16
+
+heatmap(cor(model.matrix(fmla, data=crop.wide.df.for.model)[,-1], use="complete.obs"))
+
+tobit.test<-tobit(fmla, data = crop.wide.df[max(crop.wide.df$fert.exp)!=crop.wide.df$fert.exp,])
+
+
+tobit.predict <- function(formula, model, data) {
+  x.mat <- model.matrix(formula, data=data)  
+  x.mat <- x.mat[, !apply(x.mat, 2, FUN=function(x) all(x==0))]
+  betas <- model$estimate[-length(model$estimate)]
+  sigma <- exp(model$estimate[length(model$estimate)])
+  argue <- x.mat %*% betas
+  pnorm(argue/sigma) * (argue + sigma * dnorm(argue/sigma) / pnorm(argue/sigma))
+}
+
+dimnames(model.matrix(fmla, data=crop.wide.df) )
+names(area.expl.tob2$estimate)
+
+sapply(model.matrix(fmla, data=crop.wide.df), 2, FUN=function(x) all(x==0))
+
+fert.predicted<-tobit.predict(fmla, area.expl.tob2, crop.wide.df.for.model)
+
+#row.names(model.matrix(fmla , data=crop.wide.df)))
+
+#keep.folio<-crop.wide.df.for.model$FOLIO[as.numeric(row.names(fert.predicted))]
+
+fert.residuals<-
+crop.wide.df.for.model[as.numeric(row.names(fert.predicted)), "fert.exp"] - fert.predicted
+
+#cor(fert.predicted, crop.wide.df.for.model[crop.wide.df$FOLIO %in% keep.folio, "fert.exp"])
+cor(fert.predicted, crop.wide.df.for.model[as.numeric(row.names(fert.predicted)), "fert.exp"])
+
+
+plot(fert.predicted, crop.wide.df[crop.wide.df$FOLIO %in% keep.folio, "fert.exp"])
+
+min(crop.wide.df$fert.exp[crop.wide.df$fert.exp>0])
+
+
+test.d<-dnearneigh(as.matrix(crop.wide.df[crop.wide.df$FOLIO %in% keep.folio, c("X", "Y")]), -1, 200, row.names = NULL, longlat = TRUE)
+
+#test.nb <- knn2nb(test.d, row.names = NULL, sym = FALSE)
+
+test.listw<-nb2listw(test.d, zero.policy=TRUE)
+
+
+
+
+qqPlot(fert.residuals)
+
+
+dim(model.matrix(fmla, data=crop.wide.df) )
+area.expl.tob2$estimate
+
+area.expl.tob2
+
+test.moran<-lm.morantest(area.expl.tob2, listw=test.listw, zero.policy=TRUE, resfun=residuals)
+
+test.moran<-moran.attempt(area.expl.tob2, test.listw, zero.policy = TRUE, alternative = "greater", 
+    spChk = NULL, resfun = fert.residuals)
+test.moran<-moran
+
+fert.lm.LMtests<- lm.LMtests(fert.residuals, test.listw, zero.policy=TRUE, test="LMerr", spChk=NULL, naSubset=TRUE)
+
+fert.lm.LMtests<- lm.LMtests(fert.residuals, test.listw, zero.policy=TRUE, test="all", spChk=NULL, naSubset=TRUE)
+
+fert.moran.test<- moran.test(fert.residuals, test.listw, zero.policy=TRUE, randomisation=FALSE)
+
+moran.mc.test<-moran.mc(fert.residuals, test.listw, nsim=99, zero.policy=TRUE)
+
+
+corD <- correlog(as.matrix(crop.wide.df[crop.wide.df$FOLIO %in% keep.folio, c("X", "Y")]), fert.residuals, method = "Moran")
+
+plot(corD )
+
+fert.residuals.df<-data.frame(fert.residuals=fert.residuals)
+
+fert.residuals.spdf<-SpatialPointsDataFrame(crop.wide.df[crop.wide.df$FOLIO %in% keep.folio, c("X", "Y")], fert.residuals.df)
+
+plot(variogram(fert.residuals ~ 1, locations = coordinates(fert.residuals.spdf), data=fert.residuals.spdf,  cloud = F),  type = "b", main = "Variogram of fert.residuals") 
+
+plot(sp.correlogram(test.d, as.vector(fert.residuals), order=2) )
+
+test.variogram<-variogram(fert.residuals ~ 1, locations = coordinates(fert.residuals.spdf), data=fert.residuals.spdf,  cloud = T)
+
+loess(gamma ~ dist, test.variogram)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 lm.morantest()
 
