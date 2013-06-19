@@ -191,6 +191,8 @@ dists
 #prod02.df<-read.spss(paste0(work.dir, "bd19 (2002).zip Folder/Produccion agricola-utf8.sav"))
 
 
+
+
 prod01.df<-read.spss(paste0(work.dir, "bd18 (2001).zip Folder/agricola.sav"), to.data.frame = TRUE)
 hogar01.df<-read.spss(paste0(work.dir, "bd18 (2001).zip Folder/hogar.sav"), to.data.frame = TRUE)
 miembros01.df<-read.spss(paste0(work.dir, "bd18 (2001).zip Folder/mcv01.sav"), to.data.frame = TRUE)
@@ -228,15 +230,17 @@ hogar01.df.ids<-with(hogar01.df,
 										 	sprintf("%02.f", ID03), # 6
 										 	sprintf("%02.f", ID04), # 8
 										 	sprintf("%03.f", ID05), # 11
-										 	sprintf("%03.f", ID06),
+#										 	sprintf("%03.f", ID06),
 										 	sep="")
 )
 
 
-table(hogar01.df.ids %in% substr(pob.shp$COD_BD_CEN, 1, 14))
+#table(hogar01.df.ids %in% substr(pob.shp$COD_BD_CEN, 1, 14))
 
 
 pob.shp<-importShapefile(paste0(work.dir, "centros_poblados.zip Folder/centros_poblados.shp"))
+
+
 
 combine.localidades<-function(x) {
   ret<-x[1, ]
@@ -400,6 +404,10 @@ crop.wide.df<-data.frame(lapply(crop.wide.df, FUN=function(x) {
 
 
 
+pob.shp$comunidad.id<-substr(pob.shp$COD_BD_CEN, 1, 11)
+
+village.geog.df<-pob.shp[pob.shp$comunidad.id %in% hogar01.df.ids, c("EID", "comunidad.id", "X", "Y", "VIVIENDA")]
+
 
 
 #soil.shp<-importShapefile(paste0(work.dir, "DSMW/DSMW.shp"))
@@ -413,14 +421,14 @@ soil.mdb<-mdb.get(paste0("'", work.dir, "HWSD.mdb'"))
 
 
 villages.spatialpixels<-SpatialPixels(
-  SpatialPoints(crop.wide.df[, c("X", "Y")]),
+  SpatialPoints(as.data.frame(village.geog.df[, c("X", "Y")])),
   grid=soil.bil@grid)
 
 # max(crop.wide.df$fert.exp)!=crop.wide.df$fert.exp
 
-crop.wide.df$MU.GLOBAL<-soil.bil$band1[villages.spatialpixels@grid.index]
+village.geog.df$MU.GLOBAL<-soil.bil$band1[villages.spatialpixels@grid.index]
 
-crop.wide.df<-merge(crop.wide.df, soil.mdb$HWSD_DATA[soil.mdb$HWSD_DATA$SEQ==1, ], all.x=TRUE)
+village.geog.df<-merge(village.geog.df, soil.mdb$HWSD_DATA[soil.mdb$HWSD_DATA$SEQ==1, ], all.x=TRUE)
 
 rm(soil.bil)
 rm(soil.mdb)
@@ -431,35 +439,82 @@ elev.dem2<-readGDAL(paste0(work.dir, "w100s10/W100S10.DEM"))
 
 #hist(elev.dem2$band1)
 #image(elev.dem2["band1"])
-max(crop.wide.df$Y[crop.wide.df$Y!=0])
+max(village.geog.df$Y[village.geog.df$Y!=0])
 # Since this is south of -10 latitude, we don;t have to download additional elevation panels
+# TODO: Ok, now the max is actually -9.704484 and we are missing two villages, so we need to fix this
 
-keep.coords.1<-point.in.polygon(crop.wide.df$X , crop.wide.df$Y, bboxx(bbox(elev.dem1))[, 1], bboxx(bbox(elev.dem1))[, 2])==1
+keep.coords.1<-point.in.polygon(village.geog.df$X , village.geog.df$Y, bboxx(bbox(elev.dem1))[, 1], bboxx(bbox(elev.dem1))[, 2])==1
 
 villages.elev.1.spatialpixels<-SpatialPixels(
-  SpatialPoints(crop.wide.df[keep.coords.1, c("X", "Y")]),
+  SpatialPoints(as.data.frame(village.geog.df[keep.coords.1, c("X", "Y")])),
   grid=elev.dem1@grid)
 
-elevation.df<-data.frame(FOLIO=crop.wide.df[keep.coords.1, "FOLIO"],
+elevation.df<-data.frame(EID=village.geog.df[keep.coords.1, "EID"],
   elevation=elev.dem1$band1[villages.elev.1.spatialpixels@grid.index], stringsAsFactors=FALSE)
 
-keep.coords.2<-point.in.polygon(crop.wide.df$X , crop.wide.df$Y, bboxx(bbox(elev.dem2))[, 1], bboxx(bbox(elev.dem2))[, 2])==1
+keep.coords.2<-point.in.polygon(village.geog.df$X , village.geog.df$Y, bboxx(bbox(elev.dem2))[, 1], bboxx(bbox(elev.dem2))[, 2])==1
 
 villages.elev.2.spatialpixels<-SpatialPixels(
-  SpatialPoints(crop.wide.df[keep.coords.2, c("X", "Y")]),
+  SpatialPoints(as.data.frame(village.geog.df[keep.coords.2, c("X", "Y")])),
   grid=elev.dem2@grid)
 
 elevation.df<-rbind(elevation.df,
-  data.frame(FOLIO=crop.wide.df[keep.coords.2, "FOLIO"],
+  data.frame(EID=village.geog.df[keep.coords.2, "EID"],
     elevation=elev.dem2$band1[villages.elev.2.spatialpixels@grid.index], stringsAsFactors=FALSE)
   )
 
 
-crop.wide.df <- merge(crop.wide.df, elevation.df, all.x=TRUE)
+village.geog.df <- merge(village.geog.df, elevation.df, all.x=TRUE)
 
-with(crop.wide.df[crop.wide.df$Y!=0, ], plot(X, Y, col=rgb(red=elevation, green=0, blue=0, alpha=max(elevation, na.rm=TRUE), maxColorValue=max(elevation, na.rm=TRUE))))
+with(village.geog.df[village.geog.df$Y!=0, ], plot(X, Y, col=rgb(red=elevation, green=0, blue=0, alpha=max(elevation, na.rm=TRUE), maxColorValue=max(elevation, na.rm=TRUE))))
 
 
+
+system.time(
+  villages.to.roads.ls <- apply(t(as.matrix(village.geog.df[, c("comunidad.id", "X", "Y")])), 2, function(center) {
+#    cat(date(), "\n")
+#    print(center)
+    min.index<- which.min(
+      colSums((t(as.matrix(roads.shp[, c("X", "Y")])) - as.numeric(center[ c("X", "Y")]))^2)^.5
+    )
+    
+    data.frame(
+      dist.to.road=colSums((t(as.matrix(roads.shp[min.index, c("X", "Y")])) - as.numeric(center[ c("X", "Y")]))^2)^.5,
+      X.on.road = roads.shp$X[min.index],
+      Y.on.road = roads.shp$Y[min.index]
+    )
+})
+)
+
+gc()
+
+villages.to.roads.df<-do.call(rbind, villages.to.roads.ls)
+village.geog.df<-cbind(village.geog.df, villages.to.roads.df)
+
+system.time(
+  cities.to.roads.ls <- apply(t(as.matrix(
+    pob.shp[pob.shp$CAT_LOC %in% c("0-Capital", "1-Urbana", "2-Amanzanada"),
+      c( "EID", "X", "Y")])), 2, function(center) {
+#    cat(date(), "\n")
+#    print(center)
+    min.index<- which.min(
+      colSums((t(as.matrix(roads.shp[, c("X", "Y")])) - center[c("X", "Y")])^2)^.5
+    )
+    
+    data.frame(
+      EID=center["EID"],
+      dist.to.road=colSums((t(as.matrix(roads.shp[min.index, c("X", "Y")])) - center[c("X", "Y")])^2)^.5,
+      X.on.road = roads.shp$X[min.index],
+      Y.on.road = roads.shp$Y[min.index]
+    )
+})
+)
+
+cities.to.roads.df<-do.call(rbind, cities.to.roads.ls)
+
+pob.shp.on.roads<-pob.shp
+
+pob.shp.on.roads<-merge(pob.shp.on.roads, cities.to.roads.df)
 
 
 
@@ -468,29 +523,28 @@ with(crop.wide.df[crop.wide.df$Y!=0, ], plot(X, Y, col=rgb(red=elevation, green=
 # table(pob.shp$CAT_LOC)
 # plot(pob.shp[pob.shp$CAT_LOC %in% ("2-Amanzanada"), c("X", "Y")])
 
-villages.df<-crop.wide.df[ !duplicated(crop.wide.df$comunidad.id) & crop.wide.df$X!=0, c("comunidad.id", "X", "Y")]
+#villages.df<-crop.wide.df[ !duplicated(crop.wide.df$comunidad.id) & crop.wide.df$X!=0, c("comunidad.id", "X", "Y")]
 
 drive.time.data.ls<-vector(mode="list", length = nrow(villages.df))
-names(drive.time.data.ls)<-villages.df$comunidad.id
 
 gather.mapquest<-TRUE
 
-for (village in villages.df$comunidad.id) {
+for (village in 1:nrow(village.geog.df)) {
 
   if(!gather.mapquest) {break}
 
-  target.village<-villages.df[villages.df$comunidad.id==village, c("X", "Y")]
+  target.village<-village.geog.df[village, c("X.on.road", "Y.on.road")]
   time.calcs.final.cols <- c()
 
   for (settlement.type in list(c("0-Capital", "1-Urbana"), "2-Amanzanada")) {
   
-    if ( pob.shp.rev$CAT_LOC[pob.shp.rev$comunidad.id==village] %in% settlement.type ) {
+    if ( pob.shp$CAT_LOC[pob.shp$EID==village.geog.df$EID[village]] %in% settlement.type ) {
       time.calcs.final.cols <- c(time.calcs.final.cols, 0)
       next
     }
     
   
-    urban.coords<-pob.shp[pob.shp$CAT_LOC %in% settlement.type, c("X", "Y")]
+    urban.coords<-pob.shp.on.roads[pob.shp.on.roads$CAT_LOC %in% settlement.type, c("X.on.road", "Y.on.road")]
     
     target.knn<-knearneigh(as.matrix(rbind(target.village, urban.coords ) ), k=96,  longlat = TRUE)
     target.knn<-knn2nb(target.knn)[[1]] - 1
@@ -505,7 +559,7 @@ for (village in villages.df$comunidad.id) {
       
       for (direction.option in c("false", "true")) {
       
-        json.req<-toJSON(list(locations=paste(target.coords$Y, target.coords$X, sep="," ),
+        json.req<-toJSON(list(locations=paste(target.coords$Y.on.road, target.coords$X.on.road, sep="," ),
           options=list(allToAll="false", manyToOne=direction.option)))
           
         post.receipt<-POST(paste0("http://www.mapquestapi.com/directions/v1/routematrix?key=", 
@@ -525,29 +579,130 @@ for (village in villages.df$comunidad.id) {
     
   }
   
-  drive.time.data.ls[[village]]<-data.frame(comunidad.id=village, 
+  drive.time.data.ls[[village]]<-data.frame(comunidad.id=village.geog.df$comunidad.id[village], 
     drive.time.urban=time.calcs.final.cols[1], drive.time.amanzanada=time.calcs.final.cols[2],
     stringsAsFactors=FALSE)
     
-  cat(which(villages.df$comunidad.id==village), date(), content(post.receipt)$info$messages, sep="\n")
+  cat(village.geog.df$comunidad.id[village], date(), content(post.receipt)$info$messages, sep="\n")
     
 
 }
 
+
+# Unable to calculate route matrix. - what does this mean?
 #"Unable to use location #1 :Must have a valid GEFID." means too far away from a road
 #"100 Unable to use location #15 :Must have a valid GEFID."
 #"100 Unable to use location #0 :Must have a valid GEFID."
 #manyToOne gives the direction that we are going in, i.e. to city or to village
+
+#names(rev(sort(table(test))))[1]
+
 
 
 drive.time.df<-do.call(rbind, drive.time.data.ls)
 drive.time.df$drive.time.urban[drive.time.df$drive.time.urban>99999999998]<-NA
 drive.time.df$drive.time.amanzanada[drive.time.df$drive.time.amanzanada>99999999998]<-NA
 
-crop.wide.df<-merge(crop.wide.df, drive.time.df, all.x=TRUE)
 
 
-save(crop.wide.df, file=paste0(work.dir, "crop wide df.Rdata"))
+village.geog.df.f<-cbind(village.geog.df, drive.time.df[, c("drive.time.urban", "drive.time.amanzanada")] )
+
+
+
+
+precip.coords<-read.fortran(paste0(work.dir, "Global2011P/precip.2000"), 
+  format=c("F8.3", "F8.3", "12F8.1"))[, c(1,2)]
+  
+precip.coords[,1]<-precip.coords[,1]*1000
+precip.coords[,2]<-precip.coords[,2]*1000
+
+precip.ls<-list()
+
+for ( i in as.character(1996:2000)) {
+  precip.ls[[i]]<-read.fortran(paste0(work.dir, "Global2011P/precip.", i), 
+    format=c("F8.3", "F8.3", "12F8.1"))[, -c(1,2)]
+}
+
+#TODO: REALLY UNCLEAR ABOUT THE SCALE of rainfall values. MAY HAVE TO MULTIPLY THesE VALUES TO GET RIGHT SCALE. http://climate.geog.udel.edu/~climate/html_pages/Global2011/Precip_revised_3.02/README.GlobalTsP2011.html
+
+precip.df<-do.call(cbind, precip.ls)
+
+precip.df<-rowSums(precip.df)/5
+
+#all(precip.ls[[1]][,1]==precip.ls[[2]][,1] &
+#  precip.ls[[1]][,1]==precip.ls[[3]][,1] &
+#  precip.ls[[1]][,1]==precip.ls[[4]][,1] &
+#  precip.ls[[1]][,1]==precip.ls[[5]][,1] 
+#)
+
+#all(precip.ls[[1]][,2]==precip.ls[[2]][,2] &
+#  precip.ls[[1]][,2]==precip.ls[[3]][,2] &
+#  precip.ls[[1]][,2]==precip.ls[[4]][,2] &
+#  precip.ls[[1]][,2]==precip.ls[[5]][,2] 
+#)
+# This test is passed
+
+
+rain.grid<-GridTopology(cellcentre.offset=c(-179.75, -89.75), cellsize=c(.5, .5), cells.dim=c(4*2*180, 4*2*90))
+
+rain.pixels <- SpatialPixels(SpatialPoints(precip.coords) , grid=rain.grid )
+
+villages.spatialpixels.rain<-SpatialPixels(
+  SpatialPoints(as.data.frame(village.geog.df.f[, c("X", "Y")])),
+  grid=rain.grid)
+
+village.geog.df.f$rain.grid.index<-villages.spatialpixels.rain@grid.index
+
+precip.df<-data.frame(rain.grid.index=rain.pixels@grid.index, mean.ann.rain.5yr=precip.df)
+
+
+village.geog.df.f<-merge(village.geog.df.f, precip.df, all.x=TRUE)
+
+village.geog.df.f$rain.grid.index<-NULL
+
+
+
+
+village.geog.ls <- by(village.geog.df.f[, !names(village.geog.df.f) %in% c("EID", "MU.GLOBAL", "comunidad.id", "X", "Y", "ID")],
+  INDICES=village.geog.df.f$comunidad.id, FUN=function(x) {
+  vivienda.weights <- x$VIVIENDA
+  data.frame(
+    lapply(x, FUN = function(x) {
+     if (all(is.na(x))) return(NA)
+     if (!is.numeric(x)) return( names(rev(sort(table(x))))[1] )
+     else return( sum(x[!is.na(x)] * vivienda.weights[!is.na(x)])/sum(vivienda.weights[!is.na(x)]) )
+    } )
+  )
+} )
+
+
+
+village.geog.df.f<-do.call(rbind, village.geog.ls)
+
+village.geog.df.f$comunidad.id<-names(village.geog.ls)
+
+intersect(names(village.geog.df.f), names(crop.wide.df))
+
+
+crop.wide.df<-merge(crop.wide.df, village.geog.df.f, all.x=TRUE)
+
+# TODO
+length(village.geog.ls )
+[1] 348
+why?, when
+length(unique(crop.wide.df$comunidad.id))
+[1] 320
+
+
+
+
+
+# TODO: wut:
+
+
+
+
+save(crop.wide.df, file=paste0(work.dir, "crop wide df2.Rdata"))
 
 crop.wide.df$credit.source<-factor(crop.wide.df$credit.source)
 crop.wide.df$hhh.edu.measure<-factor(crop.wide.df$hhh.edu.measure)
@@ -572,10 +727,10 @@ crop.wide.df$T.CEC.CLAY<-crop.wide.df$T.CEC.CLAY/100
 crop.wide.df$T.CASO4<-crop.wide.df$T.CASO4 * 10
 
 
-#crop.wide.df$drive.time.amanzanada[is.na(crop.wide.df$drive.time.amanzanada)] <-
+crop.wide.df$drive.time.amanzanada[is.na(crop.wide.df$drive.time.amanzanada)] <-
   mean(crop.wide.df$drive.time.amanzanada, na.rm=TRUE)
   
-#crop.wide.df$drive.time.urban[is.na(crop.wide.df$drive.time.urban)] <-
+crop.wide.df$drive.time.urban[is.na(crop.wide.df$drive.time.urban)] <-
   mean(crop.wide.df$drive.time.urban, na.rm=TRUE)
 
 
@@ -583,7 +738,7 @@ crop.wide.df$T.CASO4<-crop.wide.df$T.CASO4 * 10
 fmla <- as.formula(paste("fert.exp ~ ", 
 	paste0(names(crop.wide.df)[grepl("area.r", names(crop.wide.df))], collapse= " + "), 
 	"+", paste0(names(livestock.wide.df)[-1], collapse= " + "),	
-	"+ indig.prop + seed.exp + credit.source + department + hhh.edu.measure + hhh.sex + REMPAIS + REMEXT + num.pers.agropecuaria + AWC.CLASS + T.GRAVEL + T.SILT + T.CLAY + T.BULK.DENSITY + T.OC + T.PH.H2O + T.CEC.CLAY + T.CEC.SOIL + T.TEB + T.CACO3 + T.CASO4 + T.ESP + T.ECE + elevation + drive.time.amanzanada + drive.time.urban"))
+	"+ indig.prop + seed.exp + credit.source + department + hhh.edu.measure + hhh.sex + REMPAIS + REMEXT + num.pers.agropecuaria + AWC.CLASS + T.GRAVEL + T.SILT + T.CLAY + T.BULK.DENSITY + T.OC + T.PH.H2O + T.CEC.CLAY + T.CEC.SOIL + T.TEB + T.CACO3 + T.CASO4 + T.ESP + T.ECE + elevation + drive.time.amanzanada + drive.time.urban + mean.ann.rain.5yr"))
 
 	
 t(apply(model.matrix(fmla, data=crop.wide.df[max(crop.wide.df$fert.exp)!=crop.wide.df$fert.exp,]),
@@ -621,7 +776,7 @@ row.names(crop.wide.df.for.model)<-1:nrow(crop.wide.df.for.model)
 #fmla <- as.formula("fert.exp ~ AWC.CLASS + T.GRAVEL + T.SILT + T.CLAY + T.BULK.DENSITY + T.OC + T.PH.H2O + T.CEC.CLAY + T.CEC.SOIL + T.TEB + T.CACO3 + T.CASO4 + T.ESP + T.ECE" )
 summary(crop.wide.df[, c("AWC.CLASS", "ADD.PROP", "T.GRAVEL", "T.SAND", "T.SILT", "T.CLAY", "T.BULK.DENSITY", "T.OC", "T.PH.H2O", "T.CEC.CLAY", "T.CEC.SOIL", "T.TEB", "T.CACO3", "T.CASO4", "T.ESP", "T.ECE")])
 
-area.expl.tob2 <- censReg(fmla, data = crop.wide.df.for.model, iterlim = 1500, print.level=3))
+area.expl.tob2 <- censReg(fmla, data = crop.wide.df.for.model, iterlim = 1500, print.level=3, method="BFGS")
 area.expl.tob3 <- censReg(fmla, data = crop.wide.df, iterlim = 5000, print.level=3, method="BFGS")
 
 # method="BFGS" is "more robust" http://cran.r-project.org/web/packages/mlogit/vignettes/mlogit.pdf
@@ -889,6 +1044,261 @@ Low yield, low area
 Low yield, high area
 
 We would be off by a factor of 10,000. take like 5% and 95% percentiles and blow up and shrink by 10,000
+
+
+
+
+## PREPARATION FOR PRODUCTION FUNCTION ESTIMATION BELOW
+
+
+
+
+
+
+
+#reencode
+
+
+# useful: iconvlist()
+# Also must set RStudio to that encoding
+options(encoding = "CP850")
+prod01.df.test<-read.spss(paste0(work.dir, "bd18 (2001).zip Folder/agricola.sav"), to.data.frame = TRUE, reencode="CP850")
+prod01.df.test[, 3]<-gsub("(^[[:space:]]+)|([[:space:]]+$)", "", prod01.df.test[, 3])
+write.csv(rev(sort(table(prod01.df.test[, 3]))), file=paste0(work.dir, "unclean cropnames.csv"), fileEncoding="CP850")
+# CP850 aka "Code Page 850" aka "Western (DOS Latin 1)"
+
+
+Windows-1252
+
+options(encoding = "ISO-8859-15")
+iconvlist()
+
+#prod01.df.test<-spss.get(paste0(work.dir, "bd18 (2001).zip Folder/agricola.sav"))
+
+Windows-1252
+options(encoding = "Windows-1252")
+
+
+
+
+prod01.df
+
+str(prod01.df)
+
+table(is.na(prod01.df$sales.value))
+# "DEPTO"              "PROVIN"             "SECCION"            "CANTON" 
+
+
+# Need to attach village indicators to hogar01
+
+# Do this excercise, and then see if it would be better to use the prices of what people bought
+
+# Have to fix crop texts to make them standardized
+
+options(encoding = "UTF-8")
+
+prod01.df$crop.r<-prod01.df$crop
+prod01.df$crop.r<-gsub("(^[[:space:]]+)|([[:space:]]+$)", prod01.df$crop.r)
+
+View(unique(prod01.df$crop))
+
+View(rev(sort(table(prod01.df$crop))))
+View(rev(sort(table(prod01.df.test$crop))))
+
+prod01.df.test[grepl("AHUI", prod01.df.test[, 3]), 3]
+
+prod01.df[grepl("QUIL", prod01.df[, "crop"]), "crop"]
+
+write.csv(rev(sort(table(prod01.df$crop))), file=paste0(work.dir, "unclean cropnames.csv"), row.names=FALSE, fileEncoding="UTF-8")
+
+write.csv(rev(sort(table(prod01.df.test[, 3]))), file=paste0(work.dir, "unclean cropnames01.csv"))
+#fileEncoding = "Latin1"
+
+prod01.df.test[grepl("QUIL", prod01.df.test[, 3]), 3]
+
+test<-levels(prod01.df.test[, 3])
+
+Encoding(test)<-"Latin1"
+test
+write.csv(test, file=paste0(work.dir, "unclean cropnames.csv"))
+prod01.df.test[grepl("QUIL", prod01.df.test[, 3]), 3]
+
+
+
+
+
+options(encoding = "CP850")
+prod01.df<-read.spss(paste0(work.dir, "bd18 (2001).zip Folder/agricola.sav"), to.data.frame = TRUE, reencode="CP850")
+prod01.df[, 3]<-gsub("(^[[:space:]]+)|([[:space:]]+$)", "", prod01.df[, 3])
+write.csv(rev(sort(table(prod01.df[, 3]))), file=paste0(work.dir, "unclean cropnames.csv"), fileEncoding="CP850")
+
+
+
+colnames(prod01.df)<-c("FOLIO", "CODA", "crop", "crop.code", "area", "area.unit", "harvest", "harvest.unit", "sales.quant", "sales.value", "consumption", "seeds", "animal.or.subproducts", "bartered", "lost")
+
+prod01.df<-within(prod01.df, {
+	# TODO: fix the is.na after we have imputed the values
+  area.r<-0
+	area.r[area.unit==2 & !is.na(area.unit)] <- area[area.unit==2 & !is.na(area.unit)]
+	area.r[area.unit==1 & !is.na(area.unit)] <- area[area.unit==1 & !is.na(area.unit)] / 10000
+} )
+	
+quant.to.conv<-c("harvest", "sales.quant", "consumption", "seeds", "animal.or.subproducts", "bartered", "lost")
+for (i in quant.to.conv) {
+	prod01.df[, paste0(i, ".r")]<-0
+	prod01.df[prod01.df$harvest.unit=="Arroba" & !is.na(prod01.df$harvest.unit), paste0(i, ".r")] <- 
+		prod01.df[prod01.df$harvest.unit=="Arroba" & !is.na(prod01.df$harvest.unit), i]*11.5
+	prod01.df[prod01.df$harvest.unit=="Quintal" & !is.na(prod01.df$harvest.unit), paste0(i, ".r")] <- 
+		prod01.df[prod01.df$harvest.unit=="Quintal" & !is.na(prod01.df$harvest.unit), i]*46
+	prod01.df[prod01.df$harvest.unit=="Libra" & !is.na(prod01.df$harvest.unit), paste0(i, ".r")] <- 
+		prod01.df[prod01.df$harvest.unit=="Libra" & !is.na(prod01.df$harvest.unit), i]*0.453592
+	prod01.df[prod01.df$harvest.unit=="Unidad" & !is.na(prod01.df$harvest.unit), paste0(i, ".r")] <- 
+		prod01.df[prod01.df$harvest.unit=="Unidad" & !is.na(prod01.df$harvest.unit), i]
+		prod01.df[prod01.df$harvest.unit=="Kilogramo" & !is.na(prod01.df$harvest.unit), paste0(i, ".r")] <- 
+		prod01.df[prod01.df$harvest.unit=="Kilogramo" & !is.na(prod01.df$harvest.unit), i]
+}
+
+prod01.df$crop.hh.id<-1:nrow(prod01.df)
+
+top.crops<-names(rev(sort(table(prod01.df$crop))))[1:12]
+
+recs.to.fix.hectare<-by(prod01.df[prod01.df$crop %in% top.crops, ], 
+  INDICES=factor(prod01.df$crop[prod01.df$crop %in% top.crops]),
+	FUN = function(x) {
+		crop.quantiles<-quantile(x$area.r, probs=c(.05, .95), na.rm=TRUE)
+		yield<-x$harvest.r/x$area.r
+		yield.quantiles<-quantile(yield, probs=c(.05, .95), na.rm=TRUE)
+		keep.index<-x$area.r>crop.quantiles[1]*10000 & !is.na(x$area.r) & 
+			(yield*10000>yield.quantiles[1] & yield*10000<yield.quantiles[2])
+		if (all(!keep.index)) return(NULL)
+		
+		x$crop.hh.id[keep.index]
+
+	}
+)
+
+#prod01.df$area.unit[unlist(recs.to.fix.hectare)]
+
+prod01.df$area.unit.cleaned<-prod01.df$crop.hh.id %in% unlist(recs.to.fix.hectare)
+
+prod01.df$area.r[prod01.df$crop.hh.id %in% unlist(recs.to.fix.hectare)]<-
+	prod01.df$area.r[prod01.df$crop.hh.id %in% unlist(recs.to.fix.hectare)]/10000
+
+
+
+prod01.df$crop.r<-prod01.df$crop
+
+
+
+cropname.corrections<-as.matrix( read.csv(paste0(work.dir, "unclean cropnames01 corrections.csv"), header=FALSE, stringsAsFactors=FALSE, encoding = "UTF-8") )
+
+# MAKE SURE TO ENCODE THE csv in EXCEL AS csv (MS-DOS)
+
+prod01.df$crop.name.cleaned<-FALSE
+
+for (i in 1:nrow(cropname.corrections)) {
+  if ( (sum(cropname.corrections[i, ]=="")+1)==ncol(cropname.corrections)) { next }
+  clean.index<-prod01.df$crop.r %in% cropname.corrections[i, -1]
+  prod01.df$crop.r[clean.index] <- cropname.corrections[i, 1]
+  prod01.df$crop.name.cleaned[clean.index] <- TRUE
+}
+  
+
+
+
+
+
+
+prod.geog.df<-hogar01.df[, c("FOLIO", "ID01", "ID02", "ID03", "ID04", "ID05")]
+names(prod.geog.df)<-c("FOLIO", "department", "province", "seccion", "canton", "village")
+prod.geog.df$village<-do.call(paste0, prod.geog.df[, c("department", "province", "seccion", "canton", "village")])
+prod.geog.df$canton<-do.call(paste0, prod.geog.df[, c("department", "province", "seccion", "canton")])
+prod.geog.df$seccion<-do.call(paste0, prod.geog.df[, c("department", "province", "seccion")])
+prod.geog.df$province<-do.call(paste0, prod.geog.df[, c("department",  "province")])
+prod.geog.df$nation<-1
+
+
+prod01.df<-merge(prod01.df, prod.geog.df, all.x=TRUE)
+
+
+
+# TODO: Make sure that prices are matched by units or weight
+
+
+prod01.df$total.value<-0
+prod01.df$impute.level<-""
+
+impute.levels<-c("household", "village", "canton", "seccion", "province", "department", "nation")
+
+for (i in 1:nrow(prod01.df)) {
+
+for (impute.level in impute.levels) {
+  
+  if (impute.level=="household" & !is.na(prod01.df$sales.value[i]) & prod01.df$sales.quant.r[i]!=0) {
+    prod01.df$total.value[i] <- 
+      (prod01.df$harvest.r[i]-prod01.df$lost.r[i]) * prod01.df$sales.value[i]/prod01.df$sales.quant.r[i]
+    prod01.df$impute.level[i]<-impute.level
+    prod01.df$impute.sample.size<-0
+    break
+  }
+  if (impute.level=="household") {next}
+  
+  #target.crop<-prod01.df$crop[i]
+  match.index<-prod01.df[, impute.level] == prod01.df[i, impute.level] & 
+    prod01.df$crop == prod01.df$crop[i] & !is.na(prod01.df$sales.value) & prod01.df$sales.quant.r!=0
+  
+  impute.sample.size <- sum(match.index)
+  
+  if (impute.sample.size>=3) {
+    prod01.df$total.value[i] <- 
+      (prod01.df$harvest.r[i]-prod01.df$lost.r[i]) * 
+        median(prod01.df$sales.value[match.index]/prod01.df$sales.quant.r[match.index])
+    prod01.df$impute.level[i]<-impute.level
+    prod01.df$impute.sample.size[i] <- impute.sample.size
+    break
+  }
+  
+}
+  
+}
+
+# 228 records could not be imputed
+  
+# TODO: 4 NA's in prod01.df$total.value - what to do?
+# damn, this thing is so log-normal: hist(log(prod01.df$total.value))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
