@@ -44,10 +44,12 @@ fmla.prod<-as.formula("I(log(total.value+1)) ~   I(log(area.r+1)) + I(log(fert.e
 summary(prod.lm <- lm(fmla.prod,  data=crop.df[crop.df$total.value<1000000 & crop.df$area.r<1000, ]))
 
 
+median((prod01.df$consumption.r/(prod01.df$harvest.r-prod01.df$lost.r))[prod01.df$crop.r=="PAPA"], na.rm=TRUE)
+crop.r
 
 
 
-
+hist(((prod01.df$sales.quant.r+prod01.df$bartered.r)/(prod01.df$harvest.r-prod01.df$lost.r))[prod01.df$crop.r=="MAIZ"], freq=F)
 
 
 prod01.by.crop.agg<-aggregate(prod01.df[, c("total.value", "area.r", "harvest.r"), drop=FALSE], by=list(FOLIO=prod01.df$FOLIO, crop=prod01.df$crop.r), FUN=sum, na.rm=TRUE)
@@ -163,6 +165,14 @@ x<-model.matrix(fmla.prod.test, data=maiz.prod.df.for.model)
 # http://stats.stackexchange.com/questions/56645/what-is-the-fastest-method-for-determining-collinearity-degree
 
 
+
+# Variance Inflation Factor:
+sqrt(vif(prod.lm)) > 2 # problem?
+# This seems only to be a problem with the soil variables, which makes sense
+# http://www.statmethods.net/stats/rdiagnostics.html
+
+
+
 n<-100
 p<-20
 #non-ill conditioned part of the dataset.
@@ -195,3 +205,252 @@ all.equal(x[, -ncol(x)] %*% A$v[1:(nrow(A$v)-1),ncol(A$v)] / A$v[nrow(A$v),ncol(
 )
 
 cor(x[, -ncol(x)] %*% A$v[1:(nrow(A$v)-1),ncol(A$v)] / A$v[nrow(A$v),ncol(A$v)], x[, ncol(x), drop=F])
+
+
+
+semillas: S815B2
+abono: S815C2
+Fert: S815D2
+transp: S815E2
+Pest: S815F2
+tech assistance: S815G2
+rent mach: S815H2
+animal traction: S815I2
+Other costs: S815N2
+
+
+
+c("S815B2", "S815C2", "S815D2", "S815E2", "S815F2", "S815G2", "S815H2", "S815I2", "S815N2")
+
+
+apply(hogar01.df[, c("S815B2", "S815C2", "S815D2", "S815E2", "S815F2", "S815G2", "S815H2", "S815I2", "S815N2")], MARGIN=2, FUN=mean, na.rm=TRUE)
+
+
+    S815B2     S815C2     S815D2     S815E2     S815F2     S815G2     S815H2     S815I2     S815N2 
+ 346.87354  587.67200  404.21550  610.82857 1484.41940  581.28571  847.40214   93.25312  957.22277 
+
+S815B2 S815C2 S815D2 S815E2 S815F2 S815G2 S815H2 S815I2 S815N2 
+  80.0  100.0  125.0  100.0   85.0  100.0  200.0   50.0   27.5 
+
+
+test.data<-data.frame(treatment=sample(1:2, 10000, replace=TRUE), value=runif(1000))
+
+summary(lm(test.data$value ~ test.data$treatment))
+mean(test.data$value[test.data$treatment==1])
+sd(test.data$value[test.data$treatment==1])
+
+
+
+make.add.to =
+function(x) {
+add.x.to = function(u) x + u
+add.x.to
+}
+
+
+
+
+f<-function(x,y) eval(parse(text="x+y"))
+
+create.fun <-function(x,y) {
+
+ function(
+ eval(parse(text="x+y"))
+ 
+ optim(starting values, log-likelihood, data)
+ 
+ 
+ mle(minuslogl, start = formals(minuslogl), method = "BFGS",
+    fixed = list(), nobs, ...)
+    
+    nobs = NROW(y))
+    
+ x=rbinom(n=100, size=1, prob=.25)
+    
+ like.test <- function(param, n)  { -sum(log(param^x*(1-param)^(n-x))) }
+
+ mle(like.test, start=list(param=.3, n=1))
+
+
+like.test(param=.3, n=1)
+
+
+function(m, j)
+
+betas = 
+combn(1:m, 2, FUN=paste, collapse="")
+paste(1:m, 1:m, sep="")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+M <- 3
+J <- 2
+
+betas.mat<-matrix(paste0("beta", apply(X=expand.grid(1:M, 1:M), MARGIN=1, FUN=paste, collapse="")), nrow=M, ncol=M)
+betas.mat[upper.tri(betas.mat, diag = FALSE)] <- t(betas.mat)[upper.tri(betas.mat, diag = FALSE)]
+
+gammas.mat<-matrix(paste0("gamma", apply(X=expand.grid(1:max(J,M), 1:max(J,M)), MARGIN=1, FUN=paste, collapse="")), nrow=max(J,M), ncol=max(J,M))
+gammas.mat[upper.tri(gammas.mat, diag = FALSE)] <- t(gammas.mat)[upper.tri(gammas.mat, diag = FALSE)]
+gammas.mat<-gammas.mat[1:J, 1:M]
+
+alphas.mat<-matrix(paste0("alpha", apply(X=expand.grid(1:J, 1:J), MARGIN=1, FUN=paste, collapse="")), nrow=J, ncol=J)
+alphas.mat[upper.tri(alphas.mat, diag = FALSE)] <- t(alphas.mat)[upper.tri(alphas.mat, diag = FALSE)]
+
+
+
+
+kappas = paste0("kappa", 1:M)
+thetas = paste0("theta", 1:J)
+data.p = paste0("p", 1:M)
+data.y = paste0("y", 1:M)
+data.w = paste0("w", 1:J)
+data.x = paste0("x", 1:J)
+
+
+R0m.v<-c()
+
+for (m in 1:M) {
+
+  R0m.v <- c(R0m.v, 
+    paste0( 
+    paste0("beta", m), " + ",
+    "sum(c(", paste0( betas.mat[m, ], " * ", paste0("log(", kappas, " * ", data.p, "/", data.p[1], ")"), collapse=", "), "))", " + ",
+# TODO: Not sure that the betas and kappas line up
+    "sum(c(", paste0( gammas.mat[, m], " * ", paste0("log(", thetas, " * ", data.w, "/", data.w[1], ")"), collapse=", " ), "))",
+    collapse=""
+  )
+  )
+  
+}
+
+Q0j.v<-c()
+
+for (j in 1:J) {
+
+  Q0j.v <- c(Q0j.v, 
+    paste0( 
+    paste0("beta", m), " + ",
+    "sum(c(", paste0( alphas.mat[j, ], " * ", paste0("log(", thetas, " * ", data.w, "/", data.p[1], ")"), collapse=", "), "))", " + ",
+# TODO: Not sure that the betas and kappas line up
+    "sum(c(", paste0( gammas.mat[j, ], " * ", paste0("log(", kappas, " * ", data.p, "/", data.p[1], ")"), collapse=", " ), "))",
+    collapse=""
+  )
+  )
+  
+}
+# TODO: Double check the thetas and Kappas here and data.p, etc.
+
+H0 <- paste0( "(",
+  "sum(c(", paste0( "(1/kappa", 1:M, " - 1) * (", R0m.v, ")", collapse=", "), ")) + ",
+  "sum(c(", paste0( "(1/theta", 1:J, " - 1) * (", Q0j.v, ")", collapse=", "), 
+  ")) )")
+# TODO: Fix kappa 1:m to kappas
+  
+psi <- paste0( "(",
+  "sum(c(", paste0( "(1/kappa", 1:M, " - 1) * sum(c(", apply(gammas.mat, 2, FUN=paste0, collapse=", "), "))", collapse=", "), ")) + ",
+  "sum(c(", paste0( "(1/theta", 1:J, " - 1) * sum(c(", apply(alphas.mat, 1, FUN=paste0, collapse=", "), "))", collapse=", "), 
+  ")) )")
+  
+Ram <- paste0("(", data.p, " * ", data.y, "/profit)")
+
+u.R <- paste0("(", Ram, " * kappa", 1:M, " * ", H0, " - ", R0m.v, ")/(",
+  "sum(c(",apply(alphas.mat, 1, FUN=paste0, collapse=", "), ")) - kappa", 1:M, " * ", psi, " * ", Ram, ")")
+  
+Qaj <- paste0("(", data.w, " * ", data.x, "/profit)")
+
+u.Q <- paste0("- (", Qaj, " * theta", 1:J, " * ", H0, " + ", Q0j.v, ")/(",
+  "sum(c(", apply(alphas.mat, 1, FUN=paste0, collapse=", "), ")) + theta", 1:M, " * ", psi, " * ", Qaj, ")")
+
+
+
+u.R[1]
+
+R0m.v is syntatically valid
+Q0j.v is syntatically valid
+psi   is syntatically valid
+H0    is syntatically valid
+u.R   is syntatically valid
+u.Q   is syntatically valid
+
+TODO: need to discard first element of u.R since it is m = 2,...,M
+
+
+
+big.sigma0.mat <-matrix(paste0("sigma.mat", apply(X=expand.grid(1:(M+J-1), 1:(M+J-1)), MARGIN=1, FUN=paste, collapse="")), nrow=(M+J-1), ncol=(M+J-1))
+big.sigma0.mat[upper.tri(big.sigma0.mat, diag = FALSE)] <- t(big.sigma0.mat)[upper.tri(big.sigma0.mat, diag = FALSE)]
+
+mat.counter <- paste0(rep(1, M+J), collapse=",")
+
+big.sigma0.mat.char <- paste("as.matrix(c(", paste0(big.sigma0.mat, collapse=","), "),", "ncol=length(c(", mat.counter,  "))")
+
+sigma0.sq <- paste0( "(1/sigma.u.sq + rep(1, M+J) %*% ", big.sigma0.mat.char, " %*% rep(1, M+J))^-1)")
+
+Ok, so this must be first line of function or something:
+first.line <- paste0("xi <- c(", paste( u.R, u.Q, sep=",", collapse=","), ")")
+
+a0 <- paste0("(xi %*% (", big.sigma0.mat.char, ")^-1 %*% xi - ", sigma0.sq, " * (xi %*% (", big.sigma0.mat.char, ")^-1 %*% rep(1, M+J))^2 )")
+
+
+
+
+
+
+TODO: Not sure if it is M+J-1 or M+J
+
+  
+  
+paste(matrix(1:9, nrow=3))
+
+apply(matrix(1:9, nrow=3), 1, paste, collapse="")
+
+
+  
+  paste0( "(p", m, " * ", "y", m, ")/profit", " * ", "kappa", m, " * ", H0
+  
+
+data.p
+
+
+diag(x) <- paste(1:m, 1:m, sep="")
+
+x[upper.tri(x, diag = FALSE)] <- combn(1:m, 2, FUN=paste, collapse="")
+t(x)
+
+
+
+for 
+
+paste(1:m, 1:m, sep="")
+
+
+
+Q0j
+
+
+H0= R0m * sum(1/kappa.m - 1) + Q0j * sum(1/theta.j - 1)
+psi=
+
+
+
+

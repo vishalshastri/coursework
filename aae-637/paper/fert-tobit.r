@@ -15,10 +15,13 @@ fmla <- as.formula(paste("fert.exp ~ ",
 	"+", paste0(names(livestock.wide.df)[-1], collapse= " + "),	
 	"+ indig.prop + seed.exp + credit.source + department + hhh.edu.measure + hhh.sex + REMPAIS + REMEXT + num.pers.agropecuaria + AWC.CLASS + T.GRAVEL + T.SILT + T.CLAY + T.BULK.DENSITY + T.OC + T.PH.H2O + T.CEC.CLAY + T.CEC.SOIL + T.TEB + T.CACO3 + T.CASO4 + T.ESP + T.ECE + elevation + drive.time.amanzanada + drive.time.urban + mean.ann.rain.5yr"))
 	
+	department + 
+	
 fmla <- as.formula(paste("I(log(fert.exp+1)) ~ ", 
 	paste0(names(crop.wide.df)[grepl("area.r", names(crop.wide.df))], collapse= " + "), 
 	"+", paste0(names(livestock.wide.df)[-1], collapse= " + "),	
-	"+ indig.prop + seed.exp + credit.source + department + hhh.edu.measure + hhh.sex + REMPAIS + REMEXT + num.pers.agropecuaria + AWC.CLASS + T.GRAVEL + T.SILT + T.CLAY + T.BULK.DENSITY + T.OC + T.PH.H2O + T.CEC.CLAY + T.CEC.SOIL + T.TEB + T.CACO3 + T.CASO4 + T.ESP + T.ECE + elevation + drive.time.amanzanada + drive.time.urban + mean.ann.rain.5yr"))
+	"+ indig.prop + indig.practices + seed.exp + credit.source + hhh.edu.measure + hhh.sex + REMPAIS + REMEXT + num.pers.agropecuaria + elevation + drive.time.amanzanada + drive.time.urban + mean.ann.rain.5yr + + AWC.CLASS + T.GRAVEL + T.SILT + T.CLAY + T.OC + T.CEC.CLAY + T.CEC.SOIL "))
+# AWC.CLASS + T.GRAVEL + T.SILT + T.CLAY + T.BULK.DENSITY + T.OC + T.PH.H2O + T.CEC.CLAY + T.CEC.SOIL + T.TEB + T.CACO3 + T.CASO4 + T.ESP + T.ECE
 	
 #TODO: May also want to apply log tranfortmation to other log-normal variables like crop area and seed.exp
 
@@ -94,6 +97,10 @@ area.expl.tob0$nObs
 # 0.08605832
 # .16
 
+lr_test_output <- 2 * ( logLik(area.expl.tob3) - logLik(area.expl.tob2))
+
+lr_test_p_val <- 1 - pchisq(lr_test_output, attr(logLik(area.expl.tob3), "df") - attr(logLik(area.expl.tob2), "df"))
+
 heatmap(cor(model.matrix(fmla, data=crop.wide.df.for.model)[,-1], use="complete.obs"))
 
 tobit.test<-tobit(fmla, data = crop.wide.df[max(crop.wide.df$fert.exp)!=crop.wide.df$fert.exp,])
@@ -123,6 +130,8 @@ fert.observed <- log(
   +1 )
 
 fert.residuals<- fert.observed  - fert.predicted
+
+
 
 qqPlot(fert.residuals)
 
@@ -196,6 +205,79 @@ test.variogram<-variogram(fert.residuals ~ 1, locations = coordinates(fert.resid
 
 loess(gamma ~ dist, test.variogram)
 
+test<- by(crop.wide.df$fert.exp, crop.wide.df$comunidad.id, FUN= function(x) { sum(x>0, na.rm=TRUE)/length(x[!is.na(x)]) } )
 
 
+
+
+f<- function(n, X, M) { N<- sum(n) ; r<- ceiling(rank(X))
+P<- (1:N-.5)/N ; W<- N*(P*log(P)+(1-P)*log(1-P))
+g<- function(n,r,N,W) { u<- rep(0,N); k<- length(n); m<- 0:k
+for (i in 1:k) { m[i+1]<- sum(n[1:i]); d<- (m[i]+1):m[i+1]
+      d<- sort(r[d]) ; D<- c(1, d, N+1)
+ p<- rep(0:n[i], D[2:(n[i]+2)]-D[1:(n[i]+1)])
+ p[d]<- p[d]-.5 ; p<- p/n[i]
+ u<- u+n[i]*(p*log(p+.000000001)+(1-p)*log(1-p+.000000001)) }
+ return( max(u-W) )}
+Zk<- g(n,r,N,W); z<- 0
+ for (m in 1:M) z<- z + (g(n,rank(sample(N)),N,W) > Zk)
+      p.value<- z/M ; return(list(Zk, p.value))}
+
+
+n is number, so it should just be the output of by() with length
+
+n <- by(crop.wide.df$fert.exp, crop.wide.df$comunidad.id, FUN= function(x) {length(x[!is.na(x)]) } )
+
+X <- crop.wide.df$fert.exp[!is.na(crop.wide.df$fert.exp)]
+
+
+try.k.sample <- f( n, X, 1000)
+
+
+
+
+
+f<- function(n, X, M) { N<- sum(n) ; r<- ceiling(rank(X))
+P<- (1:N-.5)/N ; W<- N*(P*log(P)+(1-P)*log(1-P))
+g<- function(n,r,N,W) { u<- rep(0,N); k<- length(n); m<- 0:k
+for (i in 1:k) { m[i+1]<- sum(n[1:i]); d<- (m[i]+1):m[i+1]
+      d<- sort(r[d]) ; D<- c(1, d, N+1)
+ p<- rep(0:n[i], D[2:(n[i]+2)]-D[1:(n[i]+1)])
+ p[d]<- p[d]-.5 ; p<- p/n[i]
+ u<- u-n[i]*(p*log(p+.000000001)+(1-p)*log(1-p+.000000001))}
+ return( sum(u/(1:N-.5)/(N:1-.5)) )}
+Za<- g(n,r,N,W) ; z<- 0
+ for (m in 1:M) z<- z + (g(n,rank(sample(N)),N,W)<Za)
+      p.value<- z/M ; return(list(Za, p.value)) }
+    
+      
+      f<- function(n, X, M) { N<- sum(n); r<- ceiling(rank(X))
+ P<- (1:N-.5)/N ; W<- N*(P*log(P)+(1-P)*log(1-P))
+ g<- function(n,r,N,W) { u<- 0 ; k<- length(n); m<- 0:k
+ for (i in 1:k) { m[i+1]<- sum(n[1:i]); d<- (m[i]+1):m[i+1]
+ u<- u+sum(log(n[i]/(1:n[i]-.5)-1)*log(N/(sort(r[d])-.5)-1)) }
+ return(u/N)}
+Zc<- g(n,r,N,W); z<-0
+ for (m in 1:M) z<-z + (g(n,rank(sample(N)),N,W)<Zc)
+  p.value<-z/M ; return(list(Zc, p.value)) }
+
+
+
+comunidad.id.free <-factor(crop.wide.df[row.names(model.matrix(fmla,   data=crop.wide.df[max(crop.wide.df$fert.exp)!=crop.wide.df$fert.exp,])),  "comunidad.id"])
+
+n <- by(fert.residuals, comunidad.id.free, FUN= function(x) {length(x[!is.na(x)]) } )
+
+X <- fert.residuals[!is.na(fert.residuals) & comunidad.id.free %in% dimnames(n)$INDICES[n>4]]
+# X <- as.numeric(fert.residuals[!is.na(fert.residuals)]>0)
+
+
+try.k.sample <- f( n[n>4], X, 1000)
+try.k.sample
+
+
+oneway.test(X ~ comunidad.id.free[!is.na(fert.residuals) & comunidad.id.free %in% dimnames(n)$INDICES[n>4]])
+
+boxplot(X ~ comunidad.id.free[!is.na(fert.residuals) & comunidad.id.free %in% dimnames(n)$INDICES[n>4]])
+
+plot(sort(by(X, comunidad.id.free[!is.na(fert.residuals) & comunidad.id.free %in% dimnames(n)$INDICES[n>4]], FUN=mean)))
 

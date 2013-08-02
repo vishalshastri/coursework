@@ -214,15 +214,35 @@ labor.df <- aggregate(miembros01.df[, c("crop.labor", "crop.and.livestick.labor"
 crop.wide.df<-merge(crop.wide.df, labor.df)
 
 
+# table(miembros01.df$S115, miembros01.df$S111A, useNA="always")
 
 
-indig.ls<-by(miembros01.df$S111A, INDICES=miembros01.df$FOLIO, FUN=function(x) {
+
+
+indig.1.ls<-by(miembros01.df$S115, INDICES=miembros01.df$FOLIO, FUN=function(x) {
 	indig.tab <- table(x)
 	sum(indig.tab[names(indig.tab)!="ninguno"])/sum(indig.tab)
 	}
 )
 
-indig.df <- data.frame(FOLIO=attr(indig.ls, "dimnames")[[1]], indig.prop=unclass(unlist(indig.ls)))
+
+indig.2.ls<-by(miembros01.df$S111A, INDICES=miembros01.df$FOLIO, FUN=function(x) {
+	indig.tab <- table(x)
+	ret<-
+	if (sum(indig.tab )==0 | sum(indig.tab )==indig.tab[names(indig.tab)!="ninguno"]) { 
+	  return(0)
+	} else {
+	  
+	if () { 
+	return(0)}
+	
+	ret[]<-1
+	sum(indig.tab[names(indig.tab)!="ninguno"])/sum(indig.tab)
+	}
+)
+
+
+indig.df <- data.frame(FOLIO=attr(indig.1.ls, "dimnames")[[1]], indig.prop=unclass(unlist(indig.1.ls)))
 
 indig.ls<-by(miembros01.df$S111A, INDICES=miembros01.df$FOLIO, FUN=function(x) {
 	indig.tab <- table(x)
