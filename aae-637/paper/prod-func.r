@@ -375,12 +375,13 @@ psi <- paste0( "(",
 Ram <- paste0("(", data.p, " * ", data.y, "/profit)")
 
 u.R <- paste0("(", Ram, " * kappa", 1:M, " * ", H0, " - ", R0m.v, ")/(",
-  "sum(c(",apply(alphas.mat, 1, FUN=paste0, collapse=", "), ")) - kappa", 1:M, " * ", psi, " * ", Ram, ")")
+  "sum(c(",apply(gammas.mat, 1, FUN=paste0, collapse=", "), ")) - kappa", 1:M, " * ", psi, " * ", Ram, ")")
   
 Qaj <- paste0("(", data.w, " * ", data.x, "/profit)")
 
 u.Q <- paste0("- (", Qaj, " * theta", 1:J, " * ", H0, " + ", Q0j.v, ")/(",
   "sum(c(", apply(alphas.mat, 1, FUN=paste0, collapse=", "), ")) + theta", 1:M, " * ", psi, " * ", Qaj, ")")
+
 
 
 
@@ -407,16 +408,99 @@ big.sigma0.mat.char <- paste("as.matrix(c(", paste0(big.sigma0.mat, collapse=","
 sigma0.sq <- paste0( "(1/sigma.u.sq + rep(1, M+J) %*% ", big.sigma0.mat.char, " %*% rep(1, M+J))^-1)")
 
 Ok, so this must be first line of function or something:
-first.line <- paste0("xi <- c(", paste( u.R, u.Q, sep=",", collapse=","), ")")
+
 
 a0 <- paste0("(xi %*% (", big.sigma0.mat.char, ")^-1 %*% xi - ", sigma0.sq, " * (xi %*% (", big.sigma0.mat.char, ")^-1 %*% rep(1, M+J))^2 )")
 
+Di
+
+
+# TODO: Must define N, J, M
+
+
+# TODO: Di not defined yet
 
 
 
 
 
-TODO: Not sure if it is M+J-1 or M+J
+
+gamma0 <- paste0( "sum(c(",apply(gammas.mat, 1, FUN=paste0, collapse=", "), "))")
+alpha0 <- paste0( "sum(c(",apply(alphas.mat, 1, FUN=paste0, collapse=", "), "))")
+
+#(x*k*h-r)/(g-k*p*x)
+#deriv:
+#(k(g*h-p*r))/(g-k*p*x)^2
+
+#-(x*t*h+q)/(a+t*p*x)
+#deriv:
+#(t(p*q-a*h))/(a+p*t*x)^2
+
+u.R.deriv <- paste0(
+  "(,", kappas, " * (", gamma0, " * ", H0, " - ", psi, " * ", R0m.v, "))/(", gamma0, " - ", kappas, " * ", psi, " * ", Ram, ")^2"
+)
+
+u.Q.deriv <- paste0(
+  "(", thetas, " * (", psi, " * ", Q0j.v, " - ", alpha0, " * ", H0, "))/(", alpha0, " + ", psi, " * ", thetas, " * ", Qaj, ")^2"
+)
+
+Di <- paste(u.R.deriv, u.Q.deriv, sep=" * ", collapse=" * ")
+
+
+# Maybe I dont need at those extra c( in sum()
+
+
+# START FUNCTION
+arguments <- paste(unique(c(betas.mat)), unique(c(gammas.mat)), 
+  unique(c(alphas.mat)), kappas, thetas, "sigma.u.sq", unique(c(big.sigma0.mat)), 
+  data.p, data.y, data.w, data.x, sep=", ", collapse=", ")
+
+first.line <- paste0( "function(", arguments, ") {")
+second.line <- paste0("  xi <- c(", paste( u.R, u.Q, sep=",", collapse=","), ")")
+third.line <- "  N <- length(y1)"
+fourth.line <-paste0(
+  "  N * log(2) - (N(", J, " + ", M, " - 1)/2) * log(2*pi) - (N/2) * log(det(", big.sigma0.mat.char,
+  ")) + N * log(", sigma0.sq, "^.5) + sum(log(pnorm(xi %*% (", big.sigma0.mat.char, 
+  ")^-1 %*% rep(1, ", M+J, ") * ",
+  sigma0.sq, "^.5))) - N * log(sigma.u.sq^.5) - .5 * sum(", a0, ") + sum(log(prod(", Di, ")))"
+)
+fifth.line <- "}"
+
+# May want to change the DI to sum of logs for numerical accuracy
+
+ret <-paste(first.line, second.line, third.line, fourth.line, fifth.line, sep="\n\n")
+
+#TODO: Not sure if it is M+J-1 or M+J
+
+
+# END
+
+
+
+
+
+
+> ML1 <- function(prob1,prob2,prob3,theta,x) {
+prob <- c(prob1,prob2,prob3)[as.numeric(x$dilution)]
+size <- x$n
+-sum(dbetabinom(x$y,prob,size,theta,log=TRUE))
+}
+
+(m1 <- mle2(ML1,start=list(prob1=0.5,prob2=0.5,prob3=0.5,theta=1),
+data=list(x=orob1)))
+
+
+
+# not needed: xi <- paste0("c(", u.R, "," u.Q, ")", collapse=",") 
+pnorm
+
+
+
+
+
+
+
+
 
   
   
