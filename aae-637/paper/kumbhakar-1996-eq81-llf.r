@@ -1,7 +1,5 @@
+llf.creator.fn <- function(M, J) {
 
-
-M <- 3
-J <- 2
 
 betas.mat<-matrix(paste0("beta", apply(X=expand.grid(1:M, 1:M), MARGIN=1, FUN=paste, collapse="")), nrow=M, ncol=M)
 betas.mat[upper.tri(betas.mat, diag = FALSE)] <- t(betas.mat)[upper.tri(betas.mat, diag = FALSE)]
@@ -12,8 +10,6 @@ gammas.mat<-gammas.mat[1:J, 1:M]
 
 alphas.mat<-matrix(paste0("alpha", apply(X=expand.grid(1:J, 1:J), MARGIN=1, FUN=paste, collapse="")), nrow=J, ncol=J)
 alphas.mat[upper.tri(alphas.mat, diag = FALSE)] <- t(alphas.mat)[upper.tri(alphas.mat, diag = FALSE)]
-
-
 
 
 kappas = paste0("kappa", 1:M)
@@ -73,52 +69,36 @@ Ram <- paste0("(", data.p, " * ", data.y, "/profit)")
 u.R <- paste0("(", Ram, " * kappa", 1:M, " * ", H0, " - ", R0m.v, ")/(",
   "sum(c(",apply(gammas.mat, 1, FUN=paste0, collapse=", "), ")) - kappa", 1:M, " * ", psi, " * ", Ram, ")")
   
+u.R <- u.R[-1]
+# TODO: not 100% sure about cutting of first one
+  
 Qaj <- paste0("(", data.w, " * ", data.x, "/profit)")
 
 u.Q <- paste0("- (", Qaj, " * theta", 1:J, " * ", H0, " + ", Q0j.v, ")/(",
   "sum(c(", apply(alphas.mat, 1, FUN=paste0, collapse=", "), ")) + theta", 1:M, " * ", psi, " * ", Qaj, ")")
 
 
+#R0m.v is syntatically valid
+#Q0j.v is syntatically valid
+#psi   is syntatically valid
+#H0    is syntatically valid
+#u.R   is syntatically valid
+#u.Q   is syntatically valid
 
-
-u.R[1]
-
-R0m.v is syntatically valid
-Q0j.v is syntatically valid
-psi   is syntatically valid
-H0    is syntatically valid
-u.R   is syntatically valid
-u.Q   is syntatically valid
-
-TODO: need to discard first element of u.R since it is m = 2,...,M
+#TODO: need to discard first element of u.R since it is m = 2,...,M
 
 
 
 big.sigma0.mat <-matrix(paste0("sigma.mat", apply(X=expand.grid(1:(M+J-1), 1:(M+J-1)), MARGIN=1, FUN=paste, collapse="")), nrow=(M+J-1), ncol=(M+J-1))
 big.sigma0.mat[upper.tri(big.sigma0.mat, diag = FALSE)] <- t(big.sigma0.mat)[upper.tri(big.sigma0.mat, diag = FALSE)]
 
-mat.counter <- paste0(rep(1, M+J), collapse=",")
+mat.counter <- paste0(rep(1, M+J-1), collapse=",")
 
-big.sigma0.mat.char <- paste("as.matrix(c(", paste0(big.sigma0.mat, collapse=","), "),", "ncol=length(c(", mat.counter,  "))")
+big.sigma0.mat.char <- paste("matrix(c(", paste0(big.sigma0.mat, collapse=","), "),", "ncol=length(c(", mat.counter,  ")))")
 
-sigma0.sq <- paste0( "(1/sigma.u.sq + rep(1, M+J) %*% ", big.sigma0.mat.char, " %*% rep(1, M+J))^-1)")
+sigma0.sq <- paste0( "((1/sigma.u.sq + rep(1, ", M+J-1, ") %*% ", big.sigma0.mat.char, " %*% rep(1, ", M+J-1, "))^-1)")
 
-Ok, so this must be first line of function or something:
-
-
-a0 <- paste0("(xi %*% (", big.sigma0.mat.char, ")^-1 %*% xi - ", sigma0.sq, " * (xi %*% (", big.sigma0.mat.char, ")^-1 %*% rep(1, M+J))^2 )")
-
-Di
-
-
-# TODO: Must define N, J, M
-
-
-# TODO: Di not defined yet
-
-
-
-
+a0 <- paste0("(xi %*% (", big.sigma0.mat.char, ")^-1 %*% xi - ", sigma0.sq, " * (xi %*% (", big.sigma0.mat.char, ")^-1 %*% rep(1, ", M+J-1, "))^2 )")
 
 
 gamma0 <- paste0( "sum(c(",apply(gammas.mat, 1, FUN=paste0, collapse=", "), "))")
@@ -133,44 +113,125 @@ alpha0 <- paste0( "sum(c(",apply(alphas.mat, 1, FUN=paste0, collapse=", "), "))"
 #(t(p*q-a*h))/(a+p*t*x)^2
 
 u.R.deriv <- paste0(
-  "(,", kappas, " * (", gamma0, " * ", H0, " - ", psi, " * ", R0m.v, "))/(", gamma0, " - ", kappas, " * ", psi, " * ", Ram, ")^2"
+  "(", kappas, " * (", gamma0, " * ", H0, " - ", psi, " * ", R0m.v, "))/(", gamma0, " - ", kappas, " * ", psi, " * ", Ram, ")^2"
 )
 
 u.Q.deriv <- paste0(
   "(", thetas, " * (", psi, " * ", Q0j.v, " - ", alpha0, " * ", H0, "))/(", alpha0, " + ", psi, " * ", thetas, " * ", Qaj, ")^2"
 )
 
-Di <- paste(u.R.deriv, u.Q.deriv, sep=" * ", collapse=" * ")
+Di <- paste(u.R.deriv, u.Q.deriv, sep=" *\n\n ", collapse=" *\n\n ")
 
 
 # Maybe I dont need at those extra c( in sum()
 
 
 # START FUNCTION
-arguments <- paste(unique(c(betas.mat)), unique(c(gammas.mat)), 
+arguments <- paste(c(paste0("beta", 1:M), paste0("alpha", 1:J), unique(c(betas.mat)), unique(c(gammas.mat)), 
   unique(c(alphas.mat)), kappas, thetas, "sigma.u.sq", unique(c(big.sigma0.mat)), 
-  data.p, data.y, data.w, data.x, sep=", ", collapse=", ")
+  data.p, data.y, data.w, data.x, "profit"), sep=", ", collapse=", ")
 
-first.line <- paste0( "function(", arguments, ") {")
-second.line <- paste0("  xi <- c(", paste( u.R, u.Q, sep=",", collapse=","), ")")
-third.line <- "  N <- length(y1)"
+first.line <- paste0( "eff.llf <- function(", arguments, ") {")
+second.line <- paste0("  xi <- c(\n", paste0(u.R, collapse="\n,\n"), "\n,\n", paste0(u.Q, collapse="\n,\n"), "\n)")
+third.line <- "  N <- length(y1); ; cat(length(xi)) #cat(xi)"
 fourth.line <-paste0(
-  "  N * log(2) - (N(", J, " + ", M, " - 1)/2) * log(2*pi) - (N/2) * log(det(", big.sigma0.mat.char,
+  " -  N * log(2) - (N * (", J, " + ", M, " - 1)/2) * log(2*pi) - (N/2) * log(det(", big.sigma0.mat.char,
   ")) + N * log(", sigma0.sq, "^.5) + sum(log(pnorm(xi %*% (", big.sigma0.mat.char, 
-  ")^-1 %*% rep(1, ", M+J, ") * ",
-  sigma0.sq, "^.5))) - N * log(sigma.u.sq^.5) - .5 * sum(", a0, ") + sum(log(prod(", Di, ")))"
+  ")^-1 %*% rep(1, ", M+J-1, ") * ",
+  sigma0.sq, "^.5))) - N * log(sigma.u.sq^.5) - .5 * sum(", a0, ") + \nsum(log(", Di, "))"
 )
 fifth.line <- "}"
 
+# M+J is bare?
+
 # May want to change the DI to sum of logs for numerical accuracy
 
-ret <-paste(first.line, second.line, third.line, fourth.line, fifth.line, sep="\n\n")
+ret <- paste(first.line, second.line, third.line, fourth.line, fifth.line, sep="\n\n")
 
 #TODO: Not sure if it is M+J-1 or M+J
 
+return(ret)
 
 # END
 
+}
+
+
+function.text <- llf.creator.fn(2,2)
+eval(parse(text=function.text))
+
+
+
+
+(m0 <- mle2(eff.llf,
+  start=list(beta1=1, beta2=1, alpha1=1, alpha2=1,
+  beta11=1, beta21=1, beta22=1, gamma11=1, gamma21=1, gamma22=1, alpha11=1, alpha21=1, alpha22=1, kappa1=1, kappa2=1, theta1=1, theta2=1, sigma.u.sq=1, sigma.mat11=1, sigma.mat21=.1, sigma.mat31=.1, sigma.mat22=1, sigma.mat32=.1, sigma.mat33=1), 
+  data=list(p1=eff.prod.df$price.MAIZ, p2=eff.prod.df$price.PAPA, y1=eff.prod.df$total.value.MAIZ/eff.prod.df$price.MAIZ, y2=eff.prod.df$total.value.PAPA/eff.prod.df$price.PAPA, w1=eff.prod.df$labor.price, w2=eff.prod.df$fertilizer.price, x1=eff.prod.df$labor.input, x2=eff.prod.df$fertilizer.input,
+  profit=eff.prod.df$total.value.MAIZ+eff.prod.df$total.value.PAPA - 
+  (eff.prod.df$labor.price*eff.prod.df$labor.input + eff.prod.df$fertilizer.price*eff.prod.df$fertilizer.input)), trace=TRUE))
+
+
+
+t(t(names(formals(eff.llf))))
+      [,1]         
+ [1,] "beta11"     
+ [2,] "beta21"     
+ [3,] "beta22"     
+ [4,] "gamma11"    
+ [5,] "gamma21"    
+ [6,] "gamma31"    
+ [7,] "gamma22"    
+ [8,] "gamma32"    
+ [9,] "alpha11"    
+[10,] "alpha21"    
+[11,] "alpha31"    
+[12,] "alpha22"    
+[13,] "alpha32"    
+[14,] "alpha33"    
+[15,] "kappa1"     
+[16,] "kappa2"     
+[17,] "theta1"     
+[18,] "theta2"     
+[19,] "theta3"     
+[20,] "sigma.u.sq" 
+[21,] "sigma.mat11"
+[22,] "sigma.mat21"
+[23,] "sigma.mat31"
+[24,] "sigma.mat41"
+[25,] "sigma.mat22"
+[26,] "sigma.mat32"
+[27,] "sigma.mat42"
+[28,] "sigma.mat33"
+[29,] "sigma.mat43"
+[30,] "sigma.mat44"
+
+[31,] "p1"         
+[32,] "p2"         
+[33,] "y1"         
+[34,] "y2"         
+[35,] "w1"         
+[36,] "w2"         
+[37,] "w3"         
+[38,] "x1"         
+[39,] "x2"         
+[40,] "x3"  
+
+
+
+
+
+
+
+
+(m0 <- mle2(mtmp,start=list(prob=0.2,theta=9),data=list(size=50)))
+
+
+
+det(
+matrix(c("sigma.mat11", "sigma.mat21", "sigma.mat31", "sigma.mat21", 
+       "sigma.mat22", "sigma.mat32", "sigma.mat31", "sigma.mat32", "sigma.mat33"), 
+       ncol = length(c(1, 1, 1)))
+       ) 
 
 
 
@@ -193,6 +254,10 @@ pnorm
 
 
 
+
+det(as.matrix(c(sigma.mat11, sigma.mat21, sigma.mat31, sigma.mat21, 
+       sigma.mat22, sigma.mat32, sigma.mat31, sigma.mat32, sigma.mat33), 
+       ncol = length(c(1, 1, 1, 1)))) at <text>#15
 
 
 
