@@ -15,12 +15,12 @@ fmla <- as.formula(paste("fert.exp ~ ",
 	"+", paste0(names(livestock.wide.df)[-1], collapse= " + "),	
 	"+ indig.prop + seed.exp + credit.source + department + hhh.edu.measure + hhh.sex + REMPAIS + REMEXT + num.pers.agropecuaria + AWC.CLASS + T.GRAVEL + T.SILT + T.CLAY + T.BULK.DENSITY + T.OC + T.PH.H2O + T.CEC.CLAY + T.CEC.SOIL + T.TEB + T.CACO3 + T.CASO4 + T.ESP + T.ECE + elevation + drive.time.amanzanada + drive.time.urban + mean.ann.rain.5yr"))
 	
-	department + 
+	department +  + hhh.edu.measure
 	
 fmla <- as.formula(paste("I(log(fert.exp+1)) ~ ", 
 	paste0(names(crop.wide.df)[grepl("area.r", names(crop.wide.df))], collapse= " + "), 
 	"+", paste0(names(livestock.wide.df)[-1], collapse= " + "),	
-	"+ indig.prop + indig.practices + seed.exp + credit.source + hhh.edu.measure + hhh.sex + REMPAIS + REMEXT + num.pers.agropecuaria + elevation + drive.time.amanzanada + drive.time.urban + mean.ann.rain.5yr + + AWC.CLASS + T.GRAVEL + T.SILT + T.CLAY + T.OC + T.CEC.CLAY + T.CEC.SOIL "))
+	"+ indig.prop + indig.practices + seed.exp + credit.source + hhh.sex + REMPAIS + REMEXT + num.pers.agropecuaria + elevation + drive.time.amanzanada + drive.time.urban + mean.ann.rain.5yr + + AWC.CLASS + T.GRAVEL + T.SILT + T.CLAY + T.OC + T.CEC.CLAY + T.CEC.SOIL "))
 # AWC.CLASS + T.GRAVEL + T.SILT + T.CLAY + T.BULK.DENSITY + T.OC + T.PH.H2O + T.CEC.CLAY + T.CEC.SOIL + T.TEB + T.CACO3 + T.CASO4 + T.ESP + T.ECE
 	
 #TODO: May also want to apply log tranfortmation to other log-normal variables like crop area and seed.exp

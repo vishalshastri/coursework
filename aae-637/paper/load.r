@@ -1,9 +1,11 @@
 
 # PACKAGE LOADING
 
+# Must also put in livestock.wide.df due to way formula in logit is
+
 if (load.files) {
   load(file=paste0(work.dir, "crop wide df2.Rdata"))
-  load(file=paste0(work.dir, "prod01.df imputed prices.Rdata")
+  load(file=paste0(work.dir, "prod01.df imputed prices.Rdata"))
 }
 
 
@@ -51,6 +53,11 @@ library("osmar")
 library("spatstat")
 #install.packages("relaimpo")
 library("relaimpo")
+#install.packages("car")
+library("car")
+#install.packages("bbmle")
+library("bbmle")
+
 
 
 

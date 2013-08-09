@@ -219,42 +219,43 @@ crop.wide.df<-merge(crop.wide.df, labor.df)
 
 
 
-indig.1.ls<-by(miembros01.df$S115, INDICES=miembros01.df$FOLIO, FUN=function(x) {
+indig.1.ls<-by(miembros01.df$S111A, INDICES=miembros01.df$FOLIO, FUN=function(x) {
 	indig.tab <- table(x)
 	sum(indig.tab[names(indig.tab)!="ninguno"])/sum(indig.tab)
 	}
 )
 
 
-indig.2.ls<-by(miembros01.df$S111A, INDICES=miembros01.df$FOLIO, FUN=function(x) {
+
+
+indig.2.ls<-by(miembros01.df$S115, INDICES=miembros01.df$FOLIO, FUN=function(x) {
 	indig.tab <- table(x)
-	ret<-
-	if (sum(indig.tab )==0 | sum(indig.tab )==indig.tab[names(indig.tab)!="ninguno"]) { 
-	  return(0)
+	if (sum(indig.tab)==0 | sum(indig.tab)==indig.tab[names(indig.tab)=="nunca o casi nunca"]) { 
+	  ret <- 0
 	} else {
-	  
-	if () { 
-	return(0)}
-	
-	ret[]<-1
-	sum(indig.tab[names(indig.tab)!="ninguno"])/sum(indig.tab)
+	  ret <- indig.tab[names(indig.tab)=="si, algunas veces"] + 
+	    2 * indig.tab[names(indig.tab)=="si habitualmente"]
+	  ret <- ret/sum(indig.tab)
+	}
+	ret
 	}
 )
 
-
-indig.df <- data.frame(FOLIO=attr(indig.1.ls, "dimnames")[[1]], indig.prop=unclass(unlist(indig.1.ls)))
-
-indig.ls<-by(miembros01.df$S111A, INDICES=miembros01.df$FOLIO, FUN=function(x) {
+indig.3.ls<-by(miembros01.df$S107A, INDICES=miembros01.df$FOLIO, FUN=function(x) {
 	indig.tab <- table(x)
-	sum(indig.tab[names(indig.tab)!="ninguno"])/sum(indig.tab)
+	indig.tab[names(indig.tab) == "no puede hablar" ] <- 0
+	sum(indig.tab[! names(indig.tab) %in% c("extranjero", "castellano")])/sum(indig.tab)
 	}
 )
 
-hh.head.char.df<-miembros01.df[miembros01.df$S105=="jefe o jefa del hogar", c("FOLIO", "S402A", "S102")]
-names(hh.head.char.df) <- c("FOLIO", "hhh.edu.measure", "hhh.sex")
+
+indig.df <- data.frame(FOLIO=attr(indig.1.ls, "dimnames")[[1]], indig.prop=unclass(unlist(indig.1.ls)), indig.practices=unclass(unlist(indig.2.ls)), indig.lang=unclass(unlist(indig.3.ls)))
+
+
+hh.head.char.df<-miembros01.df[miembros01.df$S105=="jefe o jefa del hogar", c("FOLIO", "S402A", "S102", "S401", "S103")]
+names(hh.head.char.df) <- c("FOLIO", "hhh.edu.measure", "hhh.sex", "hhh.literacy", "hhh.age")
 #apply(miembros01.df[, c("S401", "S402A", "S402B", "S403A", "S403B")], 2, FUN=table)
 
-indig.df <- data.frame(FOLIO=attr(indig.ls, "dimnames")[[1]], indig.prop=unclass(unlist(indig.ls)))
 
 remesas.df<-aggregate(miembros01.df[, c("REMPAIS", "REMEXT")], by=list(FOLIO=miembros01.df$FOLIO), FUN=sum, na.rm=TRUE )
 
@@ -755,6 +756,7 @@ prod01.df<-merge(prod01.df, prod.geog.df, all.x=TRUE)
 
 prod01.df$total.value<-0
 prod01.df$impute.level<-""
+prod01.df$price<-0
 
 impute.levels<-c("household", "village", "canton", "seccion", "province", "department", "nation")
 
@@ -765,8 +767,9 @@ for (impute.level in impute.levels) {
   if (impute.level=="household" & !is.na(prod01.df$sales.value[i]) & prod01.df$sales.quant.r[i]!=0) {
     prod01.df$total.value[i] <- 
       (prod01.df$harvest.r[i]-prod01.df$lost.r[i]) * prod01.df$sales.value[i]/prod01.df$sales.quant.r[i]
+    prod01.df$price[i] <- prod01.df$sales.value[i]/prod01.df$sales.quant.r[i]
     prod01.df$impute.level[i]<-impute.level
-    prod01.df$impute.sample.size<-0
+    prod01.df$impute.sample.size[i]<-0
     break
   }
   if (impute.level=="household") {next}
@@ -781,6 +784,7 @@ for (impute.level in impute.levels) {
     prod01.df$total.value[i] <- 
       (prod01.df$harvest.r[i]-prod01.df$lost.r[i]) * 
         median(prod01.df$sales.value[match.index]/prod01.df$sales.quant.r[match.index])
+    prod01.df$price[i] <- median(prod01.df$sales.value[match.index]/prod01.df$sales.quant.r[match.index])
     prod01.df$impute.level[i]<-impute.level
     prod01.df$impute.sample.size[i] <- impute.sample.size
     break
@@ -795,8 +799,58 @@ for (impute.level in impute.levels) {
 # TODO: 4 NA's in prod01.df$total.value - what to do?
 # damn, this thing is so log-normal: hist(log(prod01.df$total.value))
 
-save(prod01.df,  file=paste0(work.dir, "prod01.df imputed prices.Rdata")
+save(prod01.df,  file=paste0(work.dir, "prod01.df imputed prices.Rdata"))
 
-#load(file=paste0(work.dir, "prod01.df imputed prices.Rdata")
+#load(file=paste0(work.dir, "prod01.df imputed prices.Rdata"))
+
+
+crop.value.wide.df<-reshape(prod01.df[ prod01.df$crop %in% names(rev(sort(table(prod01.df$crop))))[1:12], 
+	names(prod01.df) %in% c("total.value", "price", "crop", "FOLIO" )], timevar="crop", idvar="FOLIO", direction="wide")
+
+crop.value.wide.df<-data.frame(lapply(crop.value.wide.df, FUN=function(x) {
+	x[is.na(x)]<-0 
+	x
+	}))
+
+
+
+#May be able to get land prices from ENA 2008 from renting out land
+
+#how about the labor is just family labor that is "dedicated" to farming
+
+
+
+
+eff.prod.df<-merge( crop.wide.df, crop.value.wide.df)
+
+eff.prod.df<-eff.prod.df[eff.prod.df$total.value.MAIZ!=0 & eff.prod.df$total.value.PAPA!=0, ]
+
+eff.prod.df$labor.input <- eff.prod.df$num.pers.agropecuaria
+eff.prod.df$labor.price <- 90 * 7 
+# 1 dollars per day times 90 days times 7 bolivinos per USD
+
+eff.prod.df$fertilizer.input <-  eff.prod.df$fert.exp / 334
+eff.prod.df$fertilizer.price <- 334
+# from page 70 of ENA 2008, maize fert price
+
+
+
+[270] "total.value.MAIZ"                       
+[271] "price.MAIZ"                             
+[272] "total.value.PAPA"                       
+[273] "price.PAPA"    
+
+[31,] "p1"         
+[32,] "p2"         
+[33,] "y1"         
+[34,] "y2"         
+[35,] "w1"         
+[36,] "w2"         
+[37,] "w3"         
+[38,] "x1"         
+[39,] "x2"         
+[40,] "x3"  
+
+p1=eff.prod.df$price.MAIZ, p2=price.PAPA, y1=total.value.MAIZ, y2=total.value.PAPA, w1=labor.price, w2=fertilizer.price, x1=labor.input, x2=fertilizer.input
 
 
