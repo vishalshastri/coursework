@@ -572,5 +572,10 @@ outer.mat <- matrix(10:15, ncol=2)
 outer.mat[1, ] %*% inner.mat
 
 
+TODO:
+1. Group crops into X number of crops, and maybe livestock. Maybe by agronomic characteristics or production function similarity. Must create prices by weighted average.
+2. Group inputs into labor, land, and other expenses and get their prices
+3. Maybe soil type dummies?
+
 
 

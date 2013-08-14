@@ -202,6 +202,55 @@ miembros01.df<-within(miembros01.df, {
   }
 )
 
+
+# START FIDDLING
+
+table(miembros01.df$S617)
+"usted trabaja como" 
+
+                                                 obrero(a) 
+                                                      1192 
+                                                  empleado 
+                                                      1851 
+                           trabajador(a) por cuenta propia 
+                                                      4438 
+patr\xf3n, socio o empleador que si recibe remuneraci\xf3n 
+                                                        40 
+patr\xf3n, socio o empleador que no recibe remuneraci\xf3n 
+                                                       195 
+                           cooperativista de producci\xf3n 
+                                                        64 
+     trabajador(a) familiar o aprendiz sin remuneraci\xf3n 
+                                                      4428 
+                                     empleada(o) del hogar 
+                                                       276 
+                                                    
+
+HH labor hours:
+hogar labor plus empresa labor
+
+test.df<-as.data.frame.table(table(miembros01.df$S503A,miembros01.df$S503B,miembros01.df$S503C,miembros01.df$S503D,miembros01.df$S503E,miembros01.df$S503F,miembros01.df$S503G))
+
+test.df[order(test.df$Freq),]
+
+empresa labor:
+
+
+self.emp.prim <- miembros01.df$S617 %in% levels(miembros01.df$S617)[c(3:5,7,8)]
+self.emp.sec <- miembros01.df$S617 %in% levels(miembros01.df$S635)[c(3:5,7,8)]
+
+
+
+miembros01.df<-within(miembros01.df, {
+  crop.labor <- rowSums( matrix(c(S624A * S624HRS * (S624MIN/60) * self.emp.prim * (Z613ACTI %in% c("111", "113", "0111", "0112",  "0113")),
+                     S638A * S638HRS * S638MIN * self.emp.sec * (Z634ACTI %in% c("111", "113", "0111",  "0112",  "0113"))), ncol=2), na.rm=TRUE)
+  crop.and.livestick.labor<- rowSums( matrix(c(S624A * S624HRS * (S624MIN/60) * self.emp.prim * (Z613ACTI %in% c("130", "0130")),
+                        S638A * S638HRS * S638MIN * self.emp.sec * (Z634ACTI %in% c("130", "0130"))), ncol=2), na.rm=TRUE)
+  }
+)
+
+
+
 # most likely http://unstats.un.org/unsd/cr/registry/regcs.asp?Cl=2&Lg=1&Co=01 due to http://books.google.com/books?id=8JmsM599rEQC&pg=PA240&lpg=PA240&dq=bolivia+industrial+classification+system&source=bl&ots=zCQedY0QKq&sig=zqzEg7yFFoCBoAWIRzCWYv_VoEA&hl=en&sa=X&ei=ahTGUaUGhuvSAdHNgJgC&ved=0CCsQ6AEwAA#v=onepage&q=bolivia%20industrial%20classification%20system&f=false
 
 labor.df <- miembros01.df[, c("FOLIO", "crop.labor", "crop.and.livestick.labor")]
