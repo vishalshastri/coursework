@@ -12,14 +12,14 @@ pecuaria01.df<-read.spss(paste0(work.dir, "bd18 (2001).zip Folder/pecuaria.sav")
 #attr(hogar01.df, "variable.labels")
 
 #attr(hogar01.df, "variable.labels")
-#attr(miembros01.df, "variable.labels")[grepl("activ", attr(miembros01.df, "variable.labels"), ignore.case=TRUE)]
+#attr(miembros01.df, "variable.labels")[grepl("ocup", attr(miembros01.df, "variable.labels"), ignore.case=TRUE)]
 
 # "bd" = bienes durados = consumer durables?
 
 #miembros01.df[10:50, c("FOLIO", "REMPAIS", "REMEXT", "S703B1", "S703B2", "S703C1", "S703C2")]
 
 
-
+table(miembros01.df$S632)
 
 
 
@@ -163,8 +163,13 @@ crop.wide.df<-merge(crop.wide.df, livestock.wide.df, all.x=TRUE)
 
 hogar01.df.temp<-hogar01.df[, c("FOLIO", "S815D2", "S815B2", "S1036", "S1037", "PERSAGRO", "ID05", "ID06", "ID01", "X", "Y", "CAT_LOC", "num.of.localidades", "comunidad.id", "S815A2", "S815C2", "S815E2", "S815F2", "S815G2", "S815H2", "S815I2", "S815N2", "S1032A", "S1033", "S1034A")]
 
+#hogar01.df.temp<-hogar01.df[, c("FOLIO", "S815D2", "S815B2", "S1036", "S1037", "PERSAGRO", "ID05", "ID06", "ID01", "S815A2", "S815C2", "S815E2", "S815F2", "S815G2", "S815H2", "S815I2", "S815N2", "S1032A", "S1033", "S1034A")]
+
+
 
 names(hogar01.df.temp)<-c("FOLIO", "fert.exp", "seed.exp", "received.credit", "credit.source", "num.pers.agropecuaria", "city", "canton", "department", "X", "Y", "CAT_LOC", "num.of.localidades", "comunidad.id", "hired.labor.exp", "manure.exp", "transport.exp", "pesticide.exp", "extension.exp", "machine.exp", "draft.anmial.exp", "other.exp", "hh.member.incident",  "hh.member.incident.income", "hogar.incident")
+# names(hogar01.df.temp)<-c("FOLIO", "fert.exp", "seed.exp", "received.credit", "credit.source", "num.pers.agropecuaria", "city", "canton", "department", "hired.labor.exp", "manure.exp", "transport.exp", "pesticide.exp", "extension.exp", "machine.exp", "draft.anmial.exp", "other.exp", "hh.member.incident",  "hh.member.incident.income", "hogar.incident")
+
 hogar01.df.temp$city <- as.factor(hogar01.df.temp$city)
 hogar01.df.temp$canton <- as.factor(hogar01.df.temp$canton)
 hogar01.df.temp$hh.member.incident <- relevel(hogar01.df.temp$hh.member.incident, ref="Ninguna")
@@ -205,35 +210,8 @@ miembros01.df<-within(miembros01.df, {
 
 # START FIDDLING
 
-table(miembros01.df$S617)
-"usted trabaja como" 
 
-                                                 obrero(a) 
-                                                      1192 
-                                                  empleado 
-                                                      1851 
-                           trabajador(a) por cuenta propia 
-                                                      4438 
-patr\xf3n, socio o empleador que si recibe remuneraci\xf3n 
-                                                        40 
-patr\xf3n, socio o empleador que no recibe remuneraci\xf3n 
-                                                       195 
-                           cooperativista de producci\xf3n 
-                                                        64 
-     trabajador(a) familiar o aprendiz sin remuneraci\xf3n 
-                                                      4428 
-                                     empleada(o) del hogar 
-                                                       276 
-                                                    
-
-HH labor hours:
-hogar labor plus empresa labor
-
-test.df<-as.data.frame.table(table(miembros01.df$S503A,miembros01.df$S503B,miembros01.df$S503C,miembros01.df$S503D,miembros01.df$S503E,miembros01.df$S503F,miembros01.df$S503G))
-
-test.df[order(test.df$Freq),]
-
-empresa labor:
+#empresa labor:
 
 
 self.emp.prim <- miembros01.df$S617 %in% levels(miembros01.df$S617)[c(3:5,7,8)]
@@ -242,13 +220,14 @@ self.emp.sec <- miembros01.df$S617 %in% levels(miembros01.df$S635)[c(3:5,7,8)]
 
 
 miembros01.df<-within(miembros01.df, {
-  crop.labor <- rowSums( matrix(c(S624A * S624HRS * (S624MIN/60) * self.emp.prim * (Z613ACTI %in% c("111", "113", "0111", "0112",  "0113")),
-                     S638A * S638HRS * S638MIN * self.emp.sec * (Z634ACTI %in% c("111", "113", "0111",  "0112",  "0113"))), ncol=2), na.rm=TRUE)
-  crop.and.livestick.labor<- rowSums( matrix(c(S624A * S624HRS * (S624MIN/60) * self.emp.prim * (Z613ACTI %in% c("130", "0130")),
-                        S638A * S638HRS * S638MIN * self.emp.sec * (Z634ACTI %in% c("130", "0130"))), ncol=2), na.rm=TRUE)
+  crop.labor <- rowSums( matrix(c(S624A * (S624HRS + S624MIN/60) * self.emp.prim * (Z613ACTI %in% c("111", "113", "0111", "0112",  "0113")),
+                     S638A * (S638HRS + S638MIN/60) * self.emp.sec * (Z634ACTI %in% c("111", "113", "0111",  "0112",  "0113"))), ncol=2), na.rm=TRUE)
+  crop.and.livestick.labor<- rowSums( matrix(c(S624A * (S624HRS + S624MIN/60) * self.emp.prim * (Z613ACTI %in% c("130", "0130")),
+                        S638A * (S638HRS + S638MIN/60) * self.emp.sec * (Z634ACTI %in% c("130", "0130"))), ncol=2), na.rm=TRUE)
   }
 )
 
+# STOP FIDDLING
 
 
 # most likely http://unstats.un.org/unsd/cr/registry/regcs.asp?Cl=2&Lg=1&Co=01 due to http://books.google.com/books?id=8JmsM599rEQC&pg=PA240&lpg=PA240&dq=bolivia+industrial+classification+system&source=bl&ots=zCQedY0QKq&sig=zqzEg7yFFoCBoAWIRzCWYv_VoEA&hl=en&sa=X&ei=ahTGUaUGhuvSAdHNgJgC&ved=0CCsQ6AEwAA#v=onepage&q=bolivia%20industrial%20classification%20system&f=false
@@ -782,6 +761,7 @@ for (i in 1:nrow(cropname.corrections)) {
 }
   
 
+cumsum(rev(sort(table(prod01.df$crop.r))))/length(prod01.df$crop.r)
 
 
 
@@ -801,6 +781,7 @@ prod01.df<-merge(prod01.df, prod.geog.df, all.x=TRUE)
 
 
 # TODO: Make sure that prices are matched by units or weight
+# TODO: Make sure the three-HH rule is not overcome by imputation as we're going along
 
 
 prod01.df$total.value<-0
@@ -849,6 +830,265 @@ for (impute.level in impute.levels) {
 # damn, this thing is so log-normal: hist(log(prod01.df$total.value))
 
 save(prod01.df,  file=paste0(work.dir, "prod01.df imputed prices.Rdata"))
+
+
+
+
+
+
+
+input.prices.df<-read.delim(paste0(work.dir, "2008 input prices.txt"), stringsAsFactors=FALSE, na.strings="-", dec=",")
+lapply(test, FUN=summary)
+
+input.prices.df$crop<-gsub(" +$", "", input.prices.df$crop)
+
+#   PAPA    MAIZ    HABA   TRIGO  CEBADA   ARROZ    YUCA     OCA PLATANO CEBOLLA 
+#   1533    1174     500     480     448     410     300     290     266     219 
+# QUINUA  ARVEJA 
+#    185     174 
+
+#"PAPA", "MAIZ", "HABA", "TRIGO", "CEBADA", "ARROZ", "YUCA", "OCA", "PLATANO", "CEBOLLA", "QUINUA", "ARVEJA"
+
+input.prices.df$crop[input.prices.df$crop=="Papa"] <- "PAPA"
+input.prices.df$crop[input.prices.df$crop=="Mai_z"] <- "MAIZ"
+input.prices.df$crop[input.prices.df$crop=="Haba"] <- "HABA"
+input.prices.df$crop[input.prices.df$crop=="Trigo"] <- "TRIGO"
+input.prices.df$crop[input.prices.df$crop=="Cebada grano"] <- "CEBADA"
+input.prices.df$crop[input.prices.df$crop=="Arroz"] <- "ARROZ"
+input.prices.df$crop[input.prices.df$crop=="Yuca"] <- "YUCA"
+input.prices.df$crop[input.prices.df$crop=="Oca"] <- "OCA"
+input.prices.df$crop[input.prices.df$crop=="Pla_tano"] <- "PLATANO"
+input.prices.df$crop[input.prices.df$crop=="Cebolla"] <- "CEBOLLA"
+input.prices.df$crop[input.prices.df$crop=="Quinua"] <- "QUINUA"
+input.prices.df$crop[input.prices.df$crop=="Arveja"] <- "ARVEJA"
+
+prod01.df$department.caps<-toupper(prod01.df$department)
+
+prod01.df<-merge(prod01.df, input.prices.df, by.x=c("department.caps", "crop.r"), by.y=c("department", "crop"), all.x=TRUE)
+
+misc.input.prices.ls<-by(input.prices.df, INDICES=list(input.prices.df$department), FUN=function(x) {
+  x<-x[ x$crop %in% c("PAPA", "MAIZ", "HABA", "TRIGO", "CEBADA", "ARROZ", 
+    "YUCA", "OCA", "PLATANO", "CEBOLLA", "QUINUA", "ARVEJA"), !colnames(x) %in% c("department", "crop")]
+  
+    as.data.frame(lapply(x, FUN=median, na.rm=TRUE))
+  }
+)
+
+misc.input.prices.df<-do.call(rbind, misc.input.prices.ls)
+misc.input.prices.df$department<-names(misc.input.prices.ls)
+
+for ( i in 1:ncol(misc.input.prices.df)) {
+  misc.input.prices.df[is.na(misc.input.prices.df[, i]), i] <- mean(misc.input.prices.df[, i], na.rm=TRUE)
+}
+
+#i<-unique(prod01.df$department)[1]
+#j<-"seed.price"
+
+for (i in unique(prod01.df$department.caps)) {
+
+  for ( j in c("seed.price", "abono.price", "fert.price.quintal", 
+  "fert.price.liter", "plaguicida.price.quintal", "plaguicida.price.liter") ) {
+  
+    prod01.df[prod01.df$department.caps==i, colnames(prod01.df)==j][
+      is.na(prod01.df[prod01.df$department.caps==i, colnames(prod01.df)==j]) ] <-
+    misc.input.prices.df[misc.input.prices.df$department==i, colnames(misc.input.prices.df)==j]
+
+  }
+  
+}
+
+
+
+hh.input.prices.ls<-by(prod01.df, INDICES=list(prod01.df$FOLIO), FUN=function(x) {
+
+  as.data.frame(lapply(x[, colnames(x) %in% c("seed.price", "abono.price", "fert.price.quintal", 
+    "fert.price.liter", "plaguicida.price.quintal", "plaguicida.price.liter")]  , 
+     FUN=function(y) {sum(y*x$area.r)/sum(x$area.r)} ))
+  }
+)
+
+hh.input.prices.df<-do.call(rbind, hh.input.prices.ls)
+hh.input.prices.df$FOLIO<-rownames(hh.input.prices.df)
+
+# Deflate prices to 2000 
+
+hh.input.prices.df$seed.price <- hh.input.prices.df$seed.price * (192.73/265.32)
+hh.input.prices.df$abono.price <- hh.input.prices.df$abono.price * (192.73/265.32)
+hh.input.prices.df$plaguicida.price.quintal <- hh.input.prices.df$plaguicida.price.quintal * (192.73/265.32)
+hh.input.prices.df$plaguicida.price.liter <- hh.input.prices.df$plaguicida.price.liter * (192.73/265.32)
+hh.input.prices.df$fert.price.quintal <- hh.input.prices.df$fert.price.quintal * (0.335527868 * 6.193302093) / (0.416741871 * 7.794167074)
+hh.input.prices.df$fert.price.liter <- hh.input.prices.df$fert.price.liter * (0.335527868 * 6.193302093) / (0.416741871 * 7.794167074)
+
+
+# 2007 agroindutry PPI: 265.32
+# 2000 agroindutry PPI: 192.73
+# http://www.ine.gob.bo/indice/visualizador.aspx?ah=PC4070402.HTM
+
+# 2007 Bolivianos to USD: 7.794167074
+# 2000 Bolivianos to USD: 6.193302093
+# IMF WEO
+
+# 2007 price of fertilizer per kg in dollars: 0.416741871
+# 2000 price of fertilizer per kg in dollars: 0.335527868
+
+
+
+
+
+self.emp.prim <- miembros01.df$S617 %in% levels(miembros01.df$S617)[c(3:5,7,8)]
+self.emp.sec <- miembros01.df$S617 %in% levels(miembros01.df$S635)[c(3:5,7,8)]
+
+
+
+miembros01.df<-within(miembros01.df, {
+  crop.labor <- rowSums( matrix(c(S624A * (S624HRS + S624MIN/60) * self.emp.prim * (Z613ACTI %in% c("111", "113", "0111", "0112",  "0113")),
+                     S638A * (S638HRS + S638MIN/60) * self.emp.sec * (Z634ACTI %in% c("111", "113", "0111",  "0112",  "0113"))), ncol=2), na.rm=TRUE)
+  crop.and.livestick.labor<- rowSums( matrix(c(S624A * (S624HRS + S624MIN/60) * self.emp.prim * (Z613ACTI %in% c("130", "0130")),
+                        S638A * (S638HRS + S638MIN/60) * self.emp.sec * (Z634ACTI %in% c("130", "0130"))), ncol=2), na.rm=TRUE)
+  }
+)
+
+
+miembros01.df<-within(miembros01.df, {
+  crop.labor <- rowSums( matrix(c(S624A * (S624HRS + S624MIN/60) * !self.emp.prim * (Z613ACTI %in% c("111", "113", "0111", "0112",  "0113")),
+                     S638A * (S638HRS + S638MIN/60) * self.emp.sec * (Z634ACTI %in% c("111", "113", "0111",  "0112",  "0113"))), ncol=2), na.rm=TRUE)
+  crop.and.livestick.labor<- rowSums( matrix(c(S624A * (S624HRS + S624MIN/60) * self.emp.prim * (Z613ACTI %in% c("130", "0130")),
+                        S638A * (S638HRS + S638MIN/60) * !self.emp.sec * (Z634ACTI %in% c("130", "0130"))), ncol=2), na.rm=TRUE)
+  }
+)
+
+
+
+
+
+
+self.emp.prim <- miembros01.df$S617 %in% levels(miembros01.df$S617)[c(3:5,7,8)]
+self.emp.sec <- miembros01.df$S617 %in% levels(miembros01.df$S635)[c(3:5,7,8)]
+
+
+miembros01.df<-within(miembros01.df, {
+  actual.ag.wage<- apply(matrix(c( YAPTF / (S624A * (S624HRS + S624MIN/60) * (!self.emp.prim) * (Z613ACTI %in% c("111", "113", "0111", "0112",  "0113", "130", "0130")) * 4.345),
+  YASTF / (S638A * (S638HRS + S638MIN/60) * (!self.emp.sec) * (Z634ACTI %in% c("111", "113", "0111", "0112",  "0113", "130", "0130")) * 4.345)), ncol=2 ) ,  MARGIN=1, FUN=mean, na.rm=TRUE)
+  }
+)
+
+# 4.345 weeks in a month according to http://www.convertunits.com/from/weeks/to/months
+# And the consolidated earnings are per month
+
+miembros01.df$actual.ag.wage[ !(is.finite(miembros01.df$actual.ag.wage) & miembros01.df$actual.ag.wage>0) ] <- NA
+
+miembros01.df<-merge(miembros01.df, hogar01.df[, c("FOLIO", "ID01", "ID02", "ID03", "ID04", "ID05")])
+
+prod.geog.df<-miembros01.df[, c("FOLIO", "ID01", "ID02", "ID03", "ID04", "ID05")]
+names(prod.geog.df)<-c("FOLIO", "department.1", "province.1", "seccion.1", "canton.1", "village.1")
+prod.geog.df$village.1<-do.call(paste0, prod.geog.df[, c("department.1", "province.1", "seccion.1", "canton.1", "village.1")])
+prod.geog.df$canton.1<-do.call(paste0, prod.geog.df[, c("department.1", "province.1", "seccion.1", "canton.1")])
+prod.geog.df$seccion.1<-do.call(paste0, prod.geog.df[, c("department.1", "province.1", "seccion.1")])
+prod.geog.df$province.1<-do.call(paste0, prod.geog.df[, c("department.1",  "province.1")])
+prod.geog.df$nation.1<-1
+prod.geog.df<-unique(prod.geog.df)
+
+intersect(names(prod.geog.df), names(miembros01.df))
+
+miembros01.df<-merge(miembros01.df, prod.geog.df, all.x=TRUE)
+crop.wide.df<-merge(crop.wide.df, prod.geog.df, all.x=TRUE)
+
+
+# TODO: Make sure that prices are matched by units or weight
+
+crop.wide.df$imputed.ag.wage<-0
+crop.wide.df$ag.wages.impute.level<-""
+crop.wide.df$ag.wages.impute.sample.size<-0
+
+impute.levels<-c("FOLIO", "village.1", "canton.1", "seccion.1", "province.1", "department.1", "nation.1")
+
+for (i in 1:nrow(crop.wide.df)) {
+
+for (impute.level in impute.levels) {
+  
+  impute.aux<-miembros01.df$actual.ag.wage[miembros01.df[, impute.level] == crop.wide.df[i, impute.level] ]
+  match.index<-!is.na(impute.aux)
+  
+  impute.sample.size <- sum(match.index)
+  
+  if (impute.sample.size>=3 | (impute.sample.size>=1 & impute.level=="FOLIO")) {
+    crop.wide.df$imputed.ag.wage[i] <- median(impute.aux[match.index])
+    crop.wide.df$ag.wages.impute.level[i]<-impute.level
+    crop.wide.df$ag.wages.impute.sample.size[i] <- impute.sample.size
+    break
+  }
+  
+}
+  
+}
+
+
+
+
+land.agg<-aggregate(prod01.df$area.r, by=list(FOLIO=prod01.df$FOLIO), FUN=sum, na.rm=TRUE)
+colnames(land.agg)[2] <- "land.area"
+
+firm.df <- crop.wide.df[, c("FOLIO", "fert.exp", "seed.exp", "manure.exp", "pesticide.exp", 
+  "hired.labor.exp", "imputed.ag.wage", "crop.labor", "crop.and.livestick.labor")]
+  
+firm.df<-data.frame(lapply(firm.df, FUN=function(x) {
+	x[!is.finite(x)]<-0 
+	x
+	}))
+
+
+firm.df <- merge(firm.df, land.agg)
+firm.df <- merge(firm.df, hh.input.prices.df)
+
+firm.df<-data.frame(lapply(firm.df, FUN=function(x) {
+	x[!is.finite(x)]<-0 
+	x
+	}))
+
+firm.df$labor.hours <- firm.df$hired.labor.exp / firm.df$imputed.ag.wage +
+  (firm.df$crop.labor + firm.df$crop.and.livestick.labor) * (4.345 * 6)
+# 6 month growing season,and 4.3 weeks in a month
+  
+firm.df$fert.quintals <- firm.df$fert.exp / firm.df$fert.price.quintal
+firm.df$plaguicida.liters <- firm.df$pesticide.exp / firm.df$plaguicida.price.liter
+firm.df$seed.quintals <- firm.df$seed.exp / firm.df$seed.price
+firm.df$abono.quintals <- firm.df$manure.exp / firm.df$abono.price
+
+
+crop.price.wide.df<-reshape(prod01.df[ prod01.df$crop %in% names(rev(sort(table(prod01.df$crop))))[1:12], 
+	names(prod01.df) %in% c("harvest.r", "price", "crop", "FOLIO" )], timevar="crop", idvar="FOLIO", direction="wide")
+
+crop.price.wide.df<-data.frame(lapply(crop.price.wide.df, FUN=function(x) {
+	x[!is.finite(x)]<-0 
+	x
+	}))
+
+
+firm.df <- merge(firm.df, crop.price.wide.df)
+
+firm.df<-data.frame(lapply(firm.df, FUN=function(x) {
+	x[!is.finite(x)]<-0 
+	x
+	}))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #load(file=paste0(work.dir, "prod01.df imputed prices.Rdata"))
 

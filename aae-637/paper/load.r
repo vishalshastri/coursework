@@ -57,6 +57,9 @@ library("relaimpo")
 library("car")
 #install.packages("bbmle")
 library("bbmle")
+#install.packages("DEoptim")
+library("DEoptim")
+
 
 
 
