@@ -59,6 +59,11 @@ library("car")
 library("bbmle")
 #install.packages("DEoptim")
 library("DEoptim")
+#install.packages("compiler")
+library("compiler")
+#install.packages("rgenoud")
+library("rgenoud")
+
 
 
 
