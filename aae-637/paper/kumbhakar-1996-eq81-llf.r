@@ -227,6 +227,35 @@ p1=p1, p2=p2, p3=p3, p4=p4, p5=p5, p6=p6, p7=p7, p8=p8, p9=p9, p10=p10,
 p11=p11, p12=p12, y1=y1, y2=y2, y3=y3, y4=y4, y5=y5, y6=y6, y7=y7, y8=y8,
 y9=y9, y10=y10, y11=y11, y12=y12, profit=profit),
   method= "BFGS", skip.hessian=F, control=list(trace=5, REPORT=1, maxit=10000))
+
+
+
+
+to.replace<-50
+result.storage<-c()
+point.seq<-seq(-200, 200, 1)
+
+for ( i in point.seq) {
+  eval.points <- very.best # bingo #coef(m0.2)
+  eval.points[to.replace] <- i
+  result.storage<-c(result.storage, eff.llf.vec.arg(eval.points))
+}
+# [187]
+
+plot(y=result.storage[result.storage<10e+40], x=point.seq[result.storage<10e+40], type="l")
+point.seq[which.min(result.storage)]
+coef(m0.2)[to.replace]
+min(result.storage)
+m0.2@min
+
+
+
+# http://geoservices.tamu.edu/Services/Geocode/WebService/GeocoderWebServiceHttpNonParsedAdvanced_V04_01.aspx?streetAddress=PO%20Box%20123&city=Beverly%20Hills&state=ca&zip=90210&apikey=demo&format=XML&census=true&censusYear=2010&notStore=false&verbose=true&geom=true&version=4.01
+
+
+
+
+eff.llf.vec.arg(coef(m0.2))
   
   
 do.call(eff.llf, as.list(test))
@@ -618,12 +647,14 @@ fourth.line <-paste0(
   ") %*% rep(1, ", M+J-1, ") %*% ",
   "sigma0.sq^.5))) - N * log(sigma.u.sq^.5) - .5 * sum(", a0, ") + \nsum(log(", Di, ")))"
 )
-fifth.line <- paste0("if (is.finite(ret)) {bingo <<-x; cat(ret, \"got it!  \n\"); return(ret)} else {return(10e+50)}\n}")
+fifth.line <- paste0("if (is.finite(ret)) { cat(ret, \"got it!  \n\"); bingo.counter<<-bingo.counter+1; bingo[[bingo.counter]] <<- x; return(ret)} else {
+  cat(\"Di: \", sum(", Di, " >0)/N, \" pnorm: \", sum(pnorm(xi %*% solve(big.sig.mat) %*% rep(1, ", M+J-1, ") >0))/N, \"\n\"); return(10e+50)}\n}")
 #fifth.line <- paste0(" if (is.finite(ret)) {return(ret)} else {return(1e+308)}\n}")
 # cat((", a0, "));
 # cov(xi)
-
+# bingo <<-x;
 # M+J is bare?
+
 
 # May want to change the DI to sum of logs for numerical accuracy
 
@@ -650,15 +681,41 @@ eval(parse(text=function.text))
 
 
 
-args<-eff.llf.vec.arg(bingo)
-
+bingo.counter<-0
+bingo<-vector(mode="list", length=10e+4)
 
 
 
 eff.llf.vec.arg.comp <- cmpfun(eff.llf.vec.arg)
 
 
+
+
+args<-eff.llf.vec.arg(bingo)
+
+
+
+
+
 eff.llf.vec.arg(genoud.5$par)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -711,15 +768,21 @@ best: domains<-matrix(c(rep(-10, 158), rep(0, 16), 0, sigma.lower, rep(10, 158),
 -2e+34
 
 
-sigma.lower<-rep(-2e+02, 136)
+sigma.lower<-rep(-2e+03, 136)
 sigma.lower[c(1, 17, 32, 46, 59, 71, 82, 92, 101, 109, 116, 122, 127, 131, 134, 136)] <-0
 
-sigma.upper<-rep(2e+02, 136)
-sigma.upper[c(1, 17, 32, 46, 59, 71, 82, 92, 101, 109, 116, 122, 127, 131, 134, 136)] <-2e+3
+sigma.upper<-rep(2e+03, 136)
+sigma.upper[c(1, 17, 32, 46, 59, 71, 82, 92, 101, 109, 116, 122, 127, 131, 134, 136)] <-2e+4
 
 
-domains<-matrix(c(rep(-10, 16), rep(-3, 159), rep(0, 16), 0, sigma.lower, rep(10, 16), rep(3, 159), rep(20, 16), 2e+04, sigma.upper), ncol=2)
-genoud.5<-genoud(eff.llf.vec.arg.comp, nvars = nrow(domains), Domains = domains, BFGSburnin=0, pop.size=5000, unif.seed=8138, print.level=2)
+domains<-matrix(c(rep(-10, 16), rep(-5, 159), rep(0, 16), 0, sigma.lower, rep(10, 16), rep(5, 159), rep(20, 16), 6e+05, sigma.upper), ncol=2)
+genoud.6<-genoud(eff.llf.vec.arg.comp, nvars = nrow(domains), Domains = domains, BFGSburnin=0, pop.size=5000, unif.seed=8138, print.level=2)
+
+
+bingo.mat<-do.call(rbind, bingo)
+
+matplot(log(bingo.mat[, 1:2]+1-min(bingo.mat[, 1:2])), type = c("l"),pch=1,col = 1:ncol(bingo.mat)) #plot
+matplot(bingo.mat[, 176:186, drop=F], type = c("p"),pch=20,col = rainbow(ncol(bingo.mat[, 176:186, drop=F]), alpha=.1), ylim=c(0,30)) #plot
 
 
 genoud.5$par
@@ -730,8 +793,6 @@ genoud.5$par
 
 domains<-matrix(c(rep(-10, 16), rep(-2, 142), rep(0, 16), 0, rep(10, 16), rep(2, 142), rep(50, 16), 2e+09), ncol=2)
 genoud.3<-genoud(eff.llf.vec.arg.comp, nvars = nrow(domains), Domains = domains, BFGSburnin=0, pop.size=10, unif.seed=8128)
-
-
 
 
 starting.values=very.best, 
@@ -800,10 +861,10 @@ firm.df<-firm.df[-which.max(profit),]
 
 firm.df<-firm.df[!is.na(profit) & profit!=0 & firm.df$land.area>0,]
 
-w1=w1, w2=w2, w3=w3, w4=w4, w5=w5, x1=x1, x2=x2, x3=x3, x4=x4, x5=x5, 
-p1=p1, p2=p2, p3=p3, p4=p4, p5=p5, p6=p6, p7=p7, p8=p8, p9=p9, p10=p10, 
-p11=p11, p12=p12, y1=y1, y2=y2, y3=y3, y4=y4, y5=y5, y6=y6, y7=y7, y8=y8,
-y9=y9, y10=y10, y11=y11, y12=y12, profit=profit
+#w1=w1, w2=w2, w3=w3, w4=w4, w5=w5, x1=x1, x2=x2, x3=x3, x4=x4, x5=x5, 
+#p1=p1, p2=p2, p3=p3, p4=p4, p5=p5, p6=p6, p7=p7, p8=p8, p9=p9, p10=p10, 
+#p11=p11, p12=p12, y1=y1, y2=y2, y3=y3, y4=y4, y5=y5, y6=y6, y7=y7, y8=y8,
+#y9=y9, y10=y10, y11=y11, y12=y12, profit=profit
 
 w1 = firm.df$fert.price.quintal
 w2 = firm.df$seed.price
