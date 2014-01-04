@@ -15,6 +15,8 @@ condition.test <- function(x) {
   x["sigma"]/(1-x["alpha"]) - 1 < x["L"]/(x["rho"]*x["a"]) & 
     x["L"]/(x["rho"]*x["a"]) < (x["sigma"] - x["alpha"])/(1-x["alpha"])
 }
+# no amount of positive expectations will get us over the hurdle. Must have govt intervention
+
 
 condition.test <- function(x) {
   x["sigma"]/(1-x["alpha"]) - 1 < x["L"]/(x["rho"]*x["a"]) & 
@@ -78,9 +80,12 @@ grid.plot<-ashape3d(as.matrix(grid.f), alpha=.1, pert = TRUE, eps = 1e-09)
 plot(grid.plot, col="blue")
 
 
-axis3d("x", at = seq(0, 1, length.out=10), labels = signif(seq(0, x.max, length.out=10), 2 ))
-axis3d("y", at = seq(0, 1, length.out=10), labels = signif(seq(0, y.max, length.out=10), 2 ))
-axis3d("z", at = seq(0, 1, length.out=10), labels = signif(seq(0, z.max, length.out=10), 2))
+axis3d("x",  at = seq(0, 1, length.out=10), labels = signif(seq(0, x.max, length.out=10), 2 ), color="black")
+axis3d("y",  at = seq(0, 1, length.out=10), labels = signif(seq(0, y.max, length.out=10), 2 ), color="black")
+axis3d("z",  at = seq(0, 1, length.out=10), labels = signif(seq(0, z.max, length.out=10), 2), color="black")
+
+title3d(xlab ="sigma", ylab = "alpha", zlab = "a", color="black") 
+
 
 
 # plot NN:
@@ -303,6 +308,44 @@ axis(1, at=seq(0, 5, length.out=200)[n.star],labels="n*", las=1)
 axis(1, at=5,labels=expression(n[t]), las=1, tick=FALSE)
 
 axis(2, at=max(unique.VV(seq(0, 5, length.out=200))),labels=expression(V[t]), las=1, tick=FALSE)
+
+
+
+
+
+Now, let's try to compute the actual path:'
+
+
+rho <- 0.95
+
+L <- 10000
+an <- grid.pick$a
+sigma <- grid.pick$sigma
+
+A.fn <-function(x) {ifelse(x<1, grid.pick$alpha, 1-grid.pick$alpha)}
+
+V<-.8
+n<-.1
+
+for ( t in 1:100 ) {
+  v.dot <-rho*V[t]- A.fn(n[t])/(rho*n[t])
+
+  n.dot <- max(c(0, L/an - ( 1 - A.fn(n[t])/sigma)/V[t] ))
+  
+  V[t+1]<-V[t]+v.dot
+  n[t+1]<-n[t]+n.dot
+}
+
+
+plot(n[1:5], V[1:5])
+
+# TODO: I think I need a shooting algorithm or use the equation between equations (8) and (9)
+
+
+
+
+
+
 
 
 
