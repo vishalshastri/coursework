@@ -1,5 +1,83 @@
+# load(file=paste0(work.dir, "firm df.Rdata"))
+#### Ok, what would an lm-compatible formula look like?
 
-M <- 5
+# Let's try direct modification of 
+beta01 * log(w01 * theta01) 
+alpha01 *
+alpha.01.01 * y01 * y01
+beta.01.01 * log(w01 * theta01) * log(w01 * theta01)
+gamma.01.03 * y01 * log(w03 * theta03)
+
+restrict.matrix = "Investment_(Intercept) = Consumption_(Intercept)"
+
+We can only use the first part, which means the parameter restrictions will go away:
+
+ln.c.linear <- ln.c
+
+ln.c.linear <- gsub("beta0 [+]", "", ln.c.linear)
+ln.c.linear <- gsub("beta[0-9]+ [*] ", "", ln.c.linear)
+ln.c.linear <- gsub(" [*] theta[0-9]+", "", ln.c.linear)
+ln.c.linear <- gsub("alpha[0-9]+ [*]", "", ln.c.linear)
+ln.c.linear <- gsub("alpha.[0-9]+.[0-9]+ [*] ", "", ln.c.linear)
+ln.c.linear <- gsub("beta.[0-9]+.[0-9]+ [*]", "", ln.c.linear)
+ln.c.linear <- gsub("gamma.[0-9]+.[0-9]+ [*]", "", ln.c.linear)
+ln.c.linear <- gsub("[(]1/2[)] [*]", "", ln.c.linear)
+# we should just scale the parameters to get the 1/2 part down
+ln.c.linear <- gsub("[*]", ":", ln.c.linear)
+# convert to single interaction term
+
+test.lm <-lm(as.formula(paste0("ln.E.data ~", ln.c.linear)))
+
+# So we can impose linear restrictions after all
+
+
+S.n.H <- list()
+
+for ( n in 1:N) {
+ S.n.H[[n]] <- as.formula(
+   paste0( "I( (x", lead.zero(n), " * ", "w", lead.zero(n), ")/ln.E.data) ~ ",
+    paste0("log(w", lead.zero(1:N), ")", collapse=" + "), " + ", 
+    paste0("y", lead.zero(1:M), collapse=" + ")
+   )
+  )
+  names(S.n.H)[n] <- paste0("S.n.H.", lead.zero(n))
+}
+S.n.H[[1]] <- NULL
+
+S.n.H[[length(S.n.H)+1]] <- as.formula(paste0("ln.E.data ~", ln.c.linear))
+names(S.n.H)[length(S.n.H)] <- "cost.fn"
+
+
+test.lm <-lm(S.n.H[[5]])
+kleinOls <- systemfit( S.n.H[1:4], "SUR", maxit = 1  )
+
+
+# We need a cross reference for the parameter names
+
+# So we have it with:
+# A. Linear fit (cross equation parameter restrictions)
+#   1. Cost function
+#   2. Cost share
+# B. Nonlinear fit (Just replace appropriate parameters)
+#   1. Cost function
+#   2. Cost share
+
+
+
+
+
+
+
+list( Consumption = eqConsump, Investment = eqInvest,
+    PrivateWages = eqPrivWage )
+
+
+# x*w/E
+# TODO: pretty sure that this is cost share, but may want to double-check
+
+-1 for no intercept
+
+M <- 12
 N <-5
 
 lead.zero <- function(x) {formatC(x, width = 2, flag = "0")}
@@ -31,13 +109,13 @@ ln.c.2 <-  paste0("beta", lead.zero(1:N),  " * ",
  "log(w", lead.zero(1:N), " * ", "theta", lead.zero(1:N), ")", collapse=" + ")
 # + (1/2) *
 ln.c.3 <-  paste0("alpha", M.2.dim , " * ", y.perm[[1]], " * ", y.perm[[2]], collapse=" + ")
-# +
+# + (1/2) *
 ln.c.4 <-  paste0("beta", do.call(paste0, N.2.dim ), " * ", ln.sh.w.grid.2, collapse=" + ")
 # +
 ln.c.5 <- paste0("gamma", do.call(paste0, M.N.dim), " * ", ym.wn[[1]], " * ", ym.wn[[2]], collapse=" + " )
 
-ln.c <- paste0("beta0 + ", ln.c.1, " + ", ln.c.2, " + (1/2) * ", ln.c.3, " + ", 
-  ln.c.4, " + ", ln.c.5)
+ln.c <- paste0("beta0 + ", ln.c.1, " + ", ln.c.2, " + (1/2) * (", ln.c.3, 
+") + (1/2) * (", ln.c.4, ") + ", ln.c.5)
 
 
 
@@ -68,11 +146,6 @@ ln.E.2nd <- paste0( "log(" ,
   collapse=" + " ), ")" )
    
 # ln.E <- paste0("test.fn <- function(X) {", ln.c, " + ", ln.E.2nd, "}")
-ln.E <- paste0("nls.formula.ln.E <- ln.E.data ~ ", ln.c, " + ", ln.E.2nd)
-
-#function.text <- llf.creator.fn(12,5,1)
-eval(parse(text=ln.E))
-
 
 
 ln.E.data <- log(w01*x01 + w02*x02 + w03*x03 + w04*x04 + w05*x05 )
@@ -82,7 +155,113 @@ ln.E.data <- log(w01*x01 + w02*x02 + w03*x03 + w04*x04 + w05*x05 )
 
 
 
-ln.E.vars <- all.vars(nls.formula.ln.E)
+
+
+
+ln.E.string <- paste(ln.c, " + ", ln.E.2nd)
+
+####################### IMPOSING ADDING-UP RESTRICTIONS
+library(stringr)
+
+
+ln.E.vars <- all.vars(as.formula(paste("ln.E.data ~", ln.E.string)))
+ln.E.vars <- ln.E.vars[ !grepl("(w[0-9])|(y[0-9])|(ln.E.data)", ln.E.vars ) ]
+ln.E.vars <- sort(ln.E.vars)
+
+if (M>1) {
+
+alphas.single <- sort(ln.E.vars[grepl("alpha[0-9][0-9]", ln.E.vars)])
+
+ln.E.string <- str_replace_all(ln.E.string, "alpha01", paste0("(-(", paste0(alphas.single[-1], collapse=" + "), " - 1))" ) )
+# from p. 4 of http://ageconsearch.umn.edu/bitstream/22027/1/sp03mo02.pdf
+
+alpha.input.adding.up <- ln.E.vars[grepl("alpha[.][0-9][0-9]", ln.E.vars)]
+
+alpha.adding.up.mat <-matrix(sort(alpha.input.adding.up ), ncol=M)
+
+alpha.adding.up.mat[, 1] <-
+  paste("(-(",
+    apply(alpha.adding.up.mat[, -1], 1, paste, collapse=" + " ),
+  "))" )
+  
+# data.frame(alpha.input.adding.up, c(alpha.adding.up.mat))
+
+for ( i in 1:length(alpha.input.adding.up )) {
+  ln.E.string <- str_replace_all(ln.E.string, alpha.input.adding.up[i], c(alpha.adding.up.mat)[i])
+}
+
+}
+
+############
+
+
+
+#### imposing symmetry restrictions
+
+
+library(stringr)
+
+replacements <- data.frame(greek=c("alpha", "beta", "gamma"), N=c(M,N,N), M=c(M,N,M))
+replacements <- replacements[1:2, ]
+# so do not actually need for gamma
+
+for ( k in 1:nrow(replacements) ) {
+
+if (replacements$greek[k]=="alpha" & M==1) {next}
+
+symm <- ln.E.vars[grepl(paste0(replacements$greek[k], "[.]"), ln.E.vars) ]
+
+symm.mat<-matrix(paste0(replacements$greek[k], ".", apply(X=expand.grid(lead.zero(1:max(N,M)), lead.zero(1:max(N,M))), MARGIN=1, FUN=paste, collapse=".")), nrow=max(N,M), ncol=max(N,M))
+symm.mat[upper.tri(symm.mat, diag = FALSE)] <- t(symm.mat)[upper.tri(symm.mat, diag = FALSE)]
+symm.mat<-symm.mat[1:replacements$N[k], 1:replacements$M[k]]
+
+# data.frame(symm, c(symm.mat))
+
+for ( i in 1:length(symm)) {
+  ln.E.string <- str_replace_all(ln.E.string, symm[i], c(symm.mat)[i])
+}
+
+}
+
+all.vars(as.formula(paste("ln.E.data ~", ln.E.string)))
+
+#######################
+
+# TODO: double check the symmetry replacements
+
+ln.E <- paste0("nls.formula.ln.E <- ln.E.data ~ ", ln.E.string)
+
+#function.text <- llf.creator.fn(12,5,1)
+eval(parse(text=ln.E))
+
+
+
+
+gsub("[*] theta[0-9]+", "", ln.E.string)
+
+all.vars(as.formula(paste("ln.E.data ~", gsub("[*] theta[0-9]+", "", ln.E.string))))
+
+
+
+
+
+
+gammas.mat<-matrix(paste0("gamma.", apply(X=expand.grid(lead.zero(1:max(N,M)), lead.zero(1:max(N,M))), MARGIN=1, FUN=paste, collapse=".")), nrow=max(N,M), ncol=max(N,M))
+gammas.mat[upper.tri(gammas.mat, diag = FALSE)] <- t(gammas.mat)[upper.tri(gammas.mat, diag = FALSE)]
+gammas.mat<-gammas.mat[1:J, 1:M]
+
+
+
+first.line <- paste0( "args <- c(\"", paste(ln.E.vars, sep="\", \"", collapse="\", \""), "\")\nfor ( i in 1:length(args)) { assign(args[i], x[i])} ; ")
+
+eval(parse(text=paste0("mod.predicted <- function(x) {", first.line, 
+"  ret <- ", ln.E.string, "; ifelse(is.finite(ret), ret, 10^300) }")))
+
+mod.predicted(ln.E.start.vals)
+
+
+# ln.E.vars <- all.vars(nls.formula.ln.E)
+ln.E.vars <- all.vars(as.formula(paste("ln.E.data ~", ln.E.string)))
 ln.E.vars <- ln.E.vars[ !grepl("(w[0-9])|(y[0-9])|(ln.E.data)", ln.E.vars ) ]
 ln.E.start.vals <- vector(mode="numeric", length=length(ln.E.vars))
 ln.E.vars <- sort(ln.E.vars)
@@ -96,7 +275,7 @@ test.nls <- nls(nls.formula.ln.E, start=ln.E.start.vals, trace=TRUE, algorithm="
 # install.packages("minpack.lm")
 library(minpack.lm)
 ### Examples from 'nls' doc ###
-fm1DNase1 <- nlsLM(nls.formula.ln.E, start=ln.E.start.vals, trace=TRUE )
+fm1DNase1 <- nlsLM(nls.formula.ln.E, start=ln.E.start.vals, trace=TRUE, control=list(maxiter=5000, maxfev=2147483647) )
 
 
 library(DEoptim)
@@ -113,37 +292,79 @@ pa <- ss$optim$bestmem
 eval(parse(text=paste0("mod <- function() { ", ln.c, " + ", ln.E.2nd, "}")))
 fun <- function() sum((ln.E.data - mod())^2)
 
+
+
+
+
+
+
+
+
+#### start here
+
+
 first.line <- paste0( "args <- c(\"", paste(ln.E.vars, sep="\", \"", collapse="\", \""), "\")\nfor ( i in 1:length(args)) { assign(args[i], x[i])} ; ")
 
 eval(parse(text=paste0("mod <- function(x) {", first.line, 
-"  sum((ln.E.data - ", ln.c, " + ", ln.E.2nd, ")^2) }")))
+"  ret <- sum((ln.E.data - ", ln.E.string, ")^2); ifelse(is.finite(ret), ret, 10^300) }")))
 
 
 #fun <- function() sum((ln.E.data - mod())^2)
 
 ln.E.low.vals <- vector(mode="numeric", length=length(ln.E.vars))
 names(ln.E.low.vals) <- ln.E.vars
-ln.E.low.vals[grepl("(beta)|(gamma)|(alpha)", names(ln.E.low.vals))] <- 0
+ln.E.low.vals[grepl("(beta)|(gamma)|(alpha)", names(ln.E.low.vals))] <- .01
+ln.E.low.vals[grepl("(alpha[.])|(gamma[.])", names(ln.E.low.vals))] <- -5
+ln.E.low.vals[grepl("beta0", names(ln.E.low.vals))] <- - 10
 ln.E.low.vals[grepl("theta", names(ln.E.low.vals))] <- .1
 ln.E.high.vals <- vector(mode="numeric", length=length(ln.E.vars))
 names(ln.E.high.vals) <- ln.E.vars
-ln.E.high.vals[grepl("(beta)|(gamma)|(alpha)", names(ln.E.high.vals))] <- 1
+ln.E.high.vals[grepl("(beta)|(gamma)|(alpha)", names(ln.E.high.vals))] <- 5
 ln.E.high.vals[grepl("theta", names(ln.E.high.vals))] <- 7
 
-eval(parse(text=paste0("test.fn <- function(x) {", first.line, 
-"  ", ln.c, " + ", ln.E.2nd, " }")))
-test.fn(ln.E.high.vals) # pa
-
-mod(ln.E.high.vals)
 
 
+ln.E.low.vals <- vector(mode="numeric", length=length(ln.E.vars))
+names(ln.E.low.vals) <- ln.E.vars
+ln.E.low.vals[grepl("(beta)|(gamma)|(alpha)", names(ln.E.low.vals))] <- 10^-10
+ln.E.low.vals[grepl("(alpha[.])|(gamma[.])", names(ln.E.low.vals))] <- -10^-10
+ln.E.low.vals[grepl("beta0$", names(ln.E.low.vals))] <- - 10^3
+ln.E.low.vals[grepl("theta", names(ln.E.low.vals))] <- 1
+ln.E.high.vals <- vector(mode="numeric", length=length(ln.E.vars))
+names(ln.E.high.vals) <- ln.E.vars
+ln.E.high.vals[grepl("(beta)|(gamma)|(alpha)", names(ln.E.high.vals))] <- 2*10^-10
+ln.E.high.vals[grepl("theta", names(ln.E.high.vals))] <- 1
 
 ss <- DEoptim(mod, lower=ln.E.low.vals, upper=ln.E.high.vals,
-              control=list(trace=TRUE, itermax=50))
+              control=list(trace=TRUE, itermax=10))
+
+
+x <- c(0.000168052,  2.85579e-05, 0.000177429,  9.5069e-05, -3.55729e-05,  4.36031e-05, -3.73951e-06,  0.00010519, -5.9171e-07,  0.000144837,   0.174041,  0.0345056,  0.000223896,  0.000190657,  0.000110123,  0.00013711,  0.000131213,  0.000225418,  0.00032942,  0.000159108,  0.000170218,  0.000109729,  3.25756e-05,  9.26746e-05, -0.000831097,  0.000130167,  0.000142167,  0.000316966,  0.000389458, -0.000116375,  0.000800904,  0.000136488,  6.74213e-05,  0.000108244,  4.35118e-05, -1.90977e-05,  0.000282828,   -303.722, -0.000629927,  0.000435498, -0.00198801,  0.00247938, -0.000963892,  0.00626949,  0.00681186,  0.00342678,  0.00898112, -0.000346027,  0.0306188,  0.0324538,  0.0414827,  0.0398277, -0.00381113,  0.00553564,  0.00579218,  0.00860441,  0.00561822, -0.00111591,    2.73775,    2.68718,    3.18559,    9.95825 ,  0.165479)
+
+mod(x)
+ln.E.low.vals
+
+eval(parse(text=paste0("mod.predicted <- function(x) {", first.line, 
+"  ret <- ", ln.E.string, "; ifelse(is.finite(ret), ret, 10^300) }")))
+
+mod.predicted(ss$optim$bestmem)
+
+
+#eval(parse(text=paste0("test.fn <- function(x) {", first.line, 
+#"  ", ln.c, " + ", ln.E.2nd, " }")))
+#test.fn(ln.E.high.vals) # pa
+
+#mod(ln.E.high.vals)
+# install.packages("corrgram")
+library(corrgram)
+corrgram( 
+cor(data.frame(y01, y02, y03, y04, y05, x01, x02, x03, x04, x05))
+, lower.panel=panel.shade, upper.panel=panel.pie)
+
 
 pa <- ss$optim$bestmem
 
-fm1DNase1 <- nlsLM(nls.formula.ln.E, start=pa, trace=TRUE )
+fm1DNase1 <- nlsLM(as.formula(paste0("ln.E.data ~ ", ln.E.string)), start=pa, trace=TRUE, lower=ifelse(grepl("theta", names(ln.E.low.vals)), 0, -Inf), control=list( maxiter=500) )
 # install.packages("nlmrt")
 library(nlmrt)
 
@@ -197,6 +418,19 @@ eval(parse(text=function.text))
 
 firm.df<-firm.df[apply(firm.df, 1, FUN=function(x) !any(is.na(x))), ]
 
+firm.df$revenue <- rowSums( 
+  as.matrix(firm.df[, grepl("^price", colnames(firm.df))]) *
+  as.matrix(firm.df[, grepl("^harvest", colnames(firm.df))])
+  )
+  
+# trim.set <- quantile(firm.df$revenue, probs = c(.1, .9))
+# do this once
+
+firm.df<-firm.df[firm.df$revenue >= trim.set[1] & firm.df$revenue <= trim.set[2], ]
+
+# firm.df <- firm.df[ firm.df$harvest.r.PAPA>0 & rowSums(firm.df[, grepl("harvest.r", colnames(firm.df))]) - firm.df$harvest.r.PAPA == 0, ]
+
+
 firm.df<-firm.df[firm.df$harvest.r.ARROZ!=0 | firm.df$harvest.r.MAIZ!=0 |  firm.df$harvest.r.PLATANO!=0 |  firm.df$harvest.r.YUCA!=0 |   firm.df$harvest.r.ARVEJA!=0 |   firm.df$harvest.r.CEBADA!=0 |   firm.df$harvest.r.CEBOLLA!=0 |   firm.df$harvest.r.HABA!=0 |   firm.df$harvest.r.OCA!=0 |   firm.df$harvest.r.PAPA!=0 |   firm.df$harvest.r.QUINUA!=0 |   firm.df$harvest.r.TRIGO!=0,  ]
 
 # WARNING: must do this after actual computation of these
@@ -238,9 +472,9 @@ p06 = firm.df$price.CEBADA
 p07 = firm.df$price.CEBOLLA
 p08 = firm.df$price.HABA
 p09 = firm.df$price.OCA
-p010 = firm.df$price.ARROZ
-p011 = firm.df$price.QUINUA
-p012 = firm.df$price.TRIGO
+p10 = firm.df$price.ARROZ
+p11 = firm.df$price.QUINUA
+p12 = firm.df$price.TRIGO
 
 y01 = firm.df$harvest.r.PAPA 
 y02 = firm.df$harvest.r.MAIZ
@@ -251,17 +485,17 @@ y06 = firm.df$harvest.r.CEBADA
 y07 = firm.df$harvest.r.CEBOLLA
 y08 = firm.df$harvest.r.HABA
 y09 = firm.df$harvest.r.OCA
-y010 = firm.df$harvest.r.ARROZ
-y011 = firm.df$harvest.r.QUINUA
-y012 = firm.df$harvest.r.TRIGO
+y10 = firm.df$harvest.r.ARROZ
+y11 = firm.df$harvest.r.QUINUA
+y12 = firm.df$harvest.r.TRIGO
 
 z1 = firm.df$land.area
 
 profit= p01*y01 + p02*y02 + p03*y03 + p04*y04 + p05*y05 + p06*y06 + p07*y07 + p08*y08 + p09*y09 + 
-  p010*y010 + p011*y011 + p012*y012 - ( w01*x01 + w02*x02 + w03*x03 + w04*x04 + w05*x05 )
+  p10*y10 + p11*y11 + p12*y12 - ( w01*x01 + w02*x02 + w03*x03 + w04*x04 + w05*x05 )
   
 profit.test= p01*y01 + p02*y02 + p03*y03 + p04*y04 + p05*y05 + p06*y06 + p07*y07 + p08*y08 + p09*y09 + 
-  p010*y010 + p011*y011 + p012*y012 - ( w01*x01 + w02*x02 + w03*x03 + w04*x04 )
+  p10*y10 + p11*y11 + p12*y12 - ( w01*x01 + w02*x02 + w03*x03 + w04*x04 )
 
 summary(profit)
 summary(profit.test)
@@ -282,9 +516,9 @@ p06[p06==0] <- mean(p06[p06!=0]) + mean(p06[p06!=0])* rnorm(length(p06[p06==0]),
 p07[p07==0] <- mean(p07[p07!=0]) + mean(p07[p07!=0])* rnorm(length(p07[p07==0]), mean = 0, sd = .1)
 p08[p08==0] <- mean(p08[p08!=0]) + mean(p08[p08!=0])* rnorm(length(p08[p08==0]), mean = 0, sd = .1)
 p09[p09==0] <- mean(p09[p09!=0]) + mean(p09[p09!=0])* rnorm(length(p09[p09==0]), mean = 0, sd = .1)
-p010[p010==0] <- mean(p010[p010!=0]) + mean(p010[p010!=0])* rnorm(length(p010[p010==0]), mean = 0, sd = .1)
-p011[p011==0] <- mean(p011[p011!=0]) + mean(p011[p011!=0])* rnorm(length(p011[p011==0]), mean = 0, sd = .1)
-p012[p012==0] <- mean(p012[p012!=0]) + mean(p012[p012!=0])* rnorm(length(p012[p012==0]), mean = 0, sd = .1)
+p10[p10==0] <- mean(p10[p10!=0]) + mean(p10[p10!=0])* rnorm(length(p10[p10==0]), mean = 0, sd = .1)
+p11[p11==0] <- mean(p11[p11!=0]) + mean(p11[p11!=0])* rnorm(length(p11[p11==0]), mean = 0, sd = .1)
+p12[p12==0] <- mean(p12[p12!=0]) + mean(p12[p12!=0])* rnorm(length(p12[p12==0]), mean = 0, sd = .1)
 
 
 
@@ -369,3 +603,40 @@ print( model.2sls )
 model.3sls <- nlsystemfit( "3SLS", model, start.values, data=ppine,
                                     eqnlabels=labels, inst=inst )
 print( model.3sls )
+
+
+
+
+
+
+
+
+
+
+data( "KleinI" )
+eqConsump  <- consump ~ corpProf + corpProfLag + wages
+eqInvest   <- invest ~ corpProf + corpProfLag + capitalLag
+eqPrivWage <- privWage ~ gnp + gnpLag + trend
+inst <- ~ govExp + taxes + govWage + trend + capitalLag + corpProfLag + gnpLag
+system <- list( Consumption = eqConsump, Investment = eqInvest,
+    PrivateWages = eqPrivWage )
+# OLS estimation:
+ kleinOls <- systemfit( system, data = KleinI, restrict.matrix = "Investment_(Intercept) = Consumption_(Intercept)" )
+ round( coef( summary( kleinOls ) ), digits = 3 )
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
