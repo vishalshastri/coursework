@@ -1,84 +1,19 @@
-# load(file=paste0(work.dir, "firm df.Rdata"))
-#### Ok, what would an lm-compatible formula look like?
-
-# Let's try direct modification of 
-beta01 * log(w01 * theta01) 
-alpha01 *
-alpha.01.01 * y01 * y01
-beta.01.01 * log(w01 * theta01) * log(w01 * theta01)
-gamma.01.03 * y01 * log(w03 * theta03)
-
-restrict.matrix = "Investment_(Intercept) = Consumption_(Intercept)"
-
-We can only use the first part, which means the parameter restrictions will go away:
-
-ln.c.linear <- ln.c
-
-ln.c.linear <- gsub("beta0 [+]", "", ln.c.linear)
-ln.c.linear <- gsub("beta[0-9]+ [*] ", "", ln.c.linear)
-ln.c.linear <- gsub(" [*] theta[0-9]+", "", ln.c.linear)
-ln.c.linear <- gsub("alpha[0-9]+ [*]", "", ln.c.linear)
-ln.c.linear <- gsub("alpha.[0-9]+.[0-9]+ [*] ", "", ln.c.linear)
-ln.c.linear <- gsub("beta.[0-9]+.[0-9]+ [*]", "", ln.c.linear)
-ln.c.linear <- gsub("gamma.[0-9]+.[0-9]+ [*]", "", ln.c.linear)
-ln.c.linear <- gsub("[(]1/2[)] [*]", "", ln.c.linear)
-# we should just scale the parameters to get the 1/2 part down
-ln.c.linear <- gsub("[*]", ":", ln.c.linear)
-# convert to single interaction term
-
-test.lm <-lm(as.formula(paste0("ln.E.data ~", ln.c.linear)))
-
-# So we can impose linear restrictions after all
 
 
-S.n.H <- list()
-
-for ( n in 1:N) {
- S.n.H[[n]] <- as.formula(
-   paste0( "I( (x", lead.zero(n), " * ", "w", lead.zero(n), ")/ln.E.data) ~ ",
-    paste0("log(w", lead.zero(1:N), ")", collapse=" + "), " + ", 
-    paste0("y", lead.zero(1:M), collapse=" + ")
-   )
-  )
-  names(S.n.H)[n] <- paste0("S.n.H.", lead.zero(n))
-}
-S.n.H[[1]] <- NULL
-
-S.n.H[[length(S.n.H)+1]] <- as.formula(paste0("ln.E.data ~", ln.c.linear))
-names(S.n.H)[length(S.n.H)] <- "cost.fn"
-
-
-test.lm <-lm(S.n.H[[5]])
-kleinOls <- systemfit( S.n.H[1:4], "SUR", maxit = 1  )
-
-
-# We need a cross reference for the parameter names
-
-# So we have it with:
-# A. Linear fit (cross equation parameter restrictions)
-#   1. Cost function
-#   2. Cost share
-# B. Nonlinear fit (Just replace appropriate parameters)
-#   1. Cost function
-#   2. Cost share
+# Our flow must be:
+# 1. Construct nonlinear string
+# 2. Impose symmetry restrictions on this string
+# 3. Contruct linear string from this nonlinear string
+# 4. Make the system of equations
+# 5. Create crossreferene dataframe
+# 6. Determine which vars are singular, and note them
+# 7. Delete them from all the equations
 
 
 
-
-
-
-
-list( Consumption = eqConsump, Investment = eqInvest,
-    PrivateWages = eqPrivWage )
-
-
-# x*w/E
-# TODO: pretty sure that this is cost share, but may want to double-check
-
--1 for no intercept
 
 M <- 12
-N <-5
+N <-4
 
 lead.zero <- function(x) {formatC(x, width = 2, flag = "0")}
 
@@ -149,16 +84,248 @@ ln.E.2nd <- paste0( "log(" ,
 
 
 ln.E.data <- log(w01*x01 + w02*x02 + w03*x03 + w04*x04 + w05*x05 )
+# ln.E.data <- log(w01*x01 + w02*x02 + w03*x03 + w04*x04 + 2  )
 
 
 #test.nls <- nls(nls.formula.ln.E, trace=TRUE)
 
+#ln.E.string <- paste(ln.c, " + ", ln.E.2nd)
+
+ln.E.string <- ln.c
+
+
+#### imposing symmetry restrictions
+
+
+####################### IMPOSING ADDING-UP RESTRICTIONS
+library(stringr)
+
+
+ln.E.vars <- all.vars(as.formula(paste("ln.E.data ~", ln.E.string)))
+ln.E.vars <- ln.E.vars[ !grepl("(w[0-9])|(y[0-9])|(ln.E.data)", ln.E.vars ) ]
+ln.E.vars <- sort(ln.E.vars)
+
+
+replacements <- data.frame(greek=c("alpha", "beta", "gamma"), N=c(M,N,N), M=c(M,N,M))
+replacements <- replacements[1:2, ]
+# so do not actually need for gamma
+
+for ( k in 1:nrow(replacements) ) {
+
+if (replacements$greek[k]=="alpha" & M==1) {next}
+
+symm <- ln.E.vars[grepl(paste0(replacements$greek[k], "[.]"), ln.E.vars) ]
+
+symm.mat<-matrix(paste0(replacements$greek[k], ".", apply(X=expand.grid(lead.zero(1:max(N,M)), lead.zero(1:max(N,M))), MARGIN=1, FUN=paste, collapse=".")), nrow=max(N,M), ncol=max(N,M))
+symm.mat[upper.tri(symm.mat, diag = FALSE)] <- t(symm.mat)[upper.tri(symm.mat, diag = FALSE)]
+symm.mat<-symm.mat[1:replacements$N[k], 1:replacements$M[k]]
+
+# data.frame(symm, c(symm.mat))
+
+for ( i in 1:length(symm)) {
+  ln.E.string <- str_replace_all(ln.E.string, symm[i], c(symm.mat)[i])
+}
+
+}
+
+all.vars(as.formula(paste("ln.E.data ~", ln.E.string)))
+
+#######################
+
+# TODO: double check the symmetry replacements
+
+ln.E <- paste0("nls.formula.ln.E <- ln.E.data ~ ", ln.E.string)
+
+#function.text <- llf.creator.fn(12,5,1)
+eval(parse(text=ln.E))
+
+
+
+
+# load(file=paste0(work.dir, "firm df.Rdata"))
+#### Ok, what would an lm-compatible formula look like?
+#test.df <- data.frame(x=runif(500), y=runif(500))
+#summary(lm(y ~ x, data=test.df ))
+
+# Let's try direct modification of 
+#beta01 * log(w01 * theta01) 
+#alpha01 *
+#alpha.01.01 * y01 * y01
+#beta.01.01 * log(w01 * theta01) * log(w01 * theta01)
+#gamma.01.03 * y01 * log(w03 * theta03)
+
+#restrict.matrix = "Investment_(Intercept) = Consumption_(Intercept)"
+
+#We can only use the first part, which means the parameter restrictions will go away:
+ln.c <- ln.E.string 
+ln.c.linear <- ln.c
+
+ln.c.linear <- gsub("beta0 [+]", "", ln.c.linear)
+ln.c.linear <- gsub("beta[0-9]+ [*] ", "", ln.c.linear)
+ln.c.linear <- gsub(" [*] theta[0-9]+", "", ln.c.linear)
+ln.c.linear <- gsub("alpha[0-9]+ [*]", "", ln.c.linear)
+ln.c.linear <- gsub("alpha.[0-9]+.[0-9]+ [*] ", "", ln.c.linear)
+ln.c.linear <- gsub("beta.[0-9]+.[0-9]+ [*]", "", ln.c.linear)
+ln.c.linear <- gsub("gamma.[0-9]+.[0-9]+ [*]", "", ln.c.linear)
+ln.c.linear <- gsub("[(]1/2[)] [*]", "", ln.c.linear)
+# we should just scale the parameters to get the 1/2 part down
+ln.c.linear <- gsub("[*]", ":", ln.c.linear)
+# convert to single interaction term
+for (i in 1:max(c(N,M))) {
+  temp.y <- paste0("y", lead.zero(i))
+  ln.c.linear <- gsub(paste0(temp.y, " : ", temp.y), paste0("I(",temp.y, "^2)"), ln.c.linear)
+  temp.w <- paste0("w", lead.zero(i))
+  ln.c.linear <- gsub(paste0("log[(]", temp.w, "[)] : log[(]", temp.w, "[)]"), paste0("I(log(", temp.w, ")^2)"), ln.c.linear)
+}
+
+#test.lm <-lm(as.formula(paste0("ln.E.data ~", ln.c.linear)))
+
+# So we can impose linear restrictions after all
+
+
+S.n.H <- list()
+
+for ( n in 1:N) {
+ S.n.H[[n]] <- as.formula(
+   paste0( "I( (x", lead.zero(n), " * ", "w", lead.zero(n), ")/ln.E.data) ~ ",
+    paste0("log(w", lead.zero(1:N), ")", collapse=" + "), " + ", 
+    paste0("y", lead.zero(1:M), collapse=" + ")
+   )
+  )
+  names(S.n.H)[n] <- paste0("S.n.H.", lead.zero(n))
+}
+S.n.H[[1]] <- NULL
+
+S.n.H[[length(S.n.H)+1]] <- as.formula(paste0("ln.E.data ~", ln.c.linear))
+names(S.n.H)[length(S.n.H)] <- "cost.fn"
+
+
+#test.lm <-lm(terms(S.n.H[[5]], keep.order=TRUE))
+#names(coef( test.lm))
+#names(coef( test.lm)[is.na(coef( test.lm))])
+#kleinOls <- systemfit( S.n.H[1:4], "SUR", maxit = 1  )
+#names(coef( kleinOls))
+
+# We need a cross reference for the parameter names
+
+# So we have it with:
+# A. Linear fit (cross equation parameter restrictions)
+#   1. Cost function
+#   2. Cost share
+# B. Nonlinear fit (Just replace appropriate parameters)
+#   1. Cost function
+#   2. Cost share
+
+
+
+ln.E.vars <- all.vars(as.formula(paste("ln.E.data ~", ln.c)))
+# ln.E.vars <- all.vars(as.formula(paste("ln.E.data ~", ln.E.string)))
+ln.E.vars <- ln.E.vars[ !grepl("(theta[0-9])|(w[0-9])|(y[0-9])|(ln.E.data)", ln.E.vars ) ]
+ln.E.vars
+param.crossref.df <- data.frame(nlm=ln.E.vars, lm=names(coef(test.lm)), lm.share=NA)
+# already has symmetry
+
+for ( i in lead.zero(2:N)) {
+  param.crossref.df[param.crossref.df$nlm==paste0("beta", i), "lm.share"] <- 
+    paste0("S.n.H.", i, "_(Intercept)")
+  for ( j in lead.zero(1:M)) {
+    param.crossref.df[
+      param.crossref.df$nlm==paste0("beta.", i, ".", j), "lm.share"] <-
+    paste0("S.n.H.", i, "_", "log(w", j, ")")
+    param.crossref.df[
+      param.crossref.df$nlm==paste0("gamma.", j, ".", i), "lm.share"] <-
+    paste0("S.n.H.", i, "_", "y", j)
+  }
+}
+
+#singular.test.lm <-lm(terms(S.n.H[[length(S.n.H)]], keep.order=TRUE))
+singular.test.lm <-lm(S.n.H[[length(S.n.H)]])
+singular.terms <- names(coef(singular.test.lm )[is.na(coef(singular.test.lm ))])
+# singular.terms <- gsub(":", " : ", singular.terms)
+#singular.terms <- paste0(" [+] ", singular.terms)
+
+S.n.H.cost.fn.string <- as.character(S.n.H[[length(S.n.H)]])[3]
+S.n.H.cost.fn.string <- gsub("\n", "", S.n.H.cost.fn.string )
+S.n.H.cost.fn.string <- gsub(" +", " ", S.n.H.cost.fn.string )
+for ( i in singular.terms) {
+  S.n.H.cost.fn.string <- gsub(paste0(" [+] ", i), "", S.n.H.cost.fn.string)
+  rev.temp<-paste0(gsub("y[0-9]+:", "", i), ":", gsub(":y[0-9]+", "", i))
+  S.n.H.cost.fn.string <- gsub(paste0(" [+] ", rev.temp), "", S.n.H.cost.fn.string)
+}
+
+S.n.H[[length(S.n.H)]] <- as.formula(paste0("ln.E.data ~ ", S.n.H.cost.fn.string))
+
+kleinOls <- systemfit( S.n.H, "SUR", maxit = 1  )
+
+singular.test.lm <-lm(terms(S.n.H[[length(S.n.H)]], keep.order=TRUE))
+
+param.crossref.no.singular.df <- 
+  param.crossref.df[param.crossref.df$lm %in% names(coef(singular.test.lm )), ]
+lm.param.restrictions <- paste0("cost.fn_", param.crossref.no.singular.df$lm[!is.na(param.crossref.no.singular.df$lm.share)], " = ", 
+  param.crossref.no.singular.df$lm.share[!is.na(param.crossref.no.singular.df$lm.share)]
+)
+
+linear.sur.est <- systemfit( S.n.H, "SUR", restrict.matrix = lm.param.restrictions,  maxit = 5000  )
+
+# kleinOls.M6.N4 <- systemfit( S.n.H, "SUR", restrict.matrix = lm.param.restrictions,  maxit = 5000  )
+
+
+# Next:
+# maybe impose adding-up restrictions on linear SUR
+# Need to find a way to link linear SUR parameter names to nonlinear SUR
+# Need to zap singular variables in nonlinear string
+
+
+names(linear.sur.est)
 
 
 
 
 
-ln.E.string <- paste(ln.c, " + ", ln.E.2nd)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+grep(i, S.n.H.cost.fn.string)
+
+
+data( "Kmenta" )
+eqDemand <- consump ~ price + income
+eqSupply <- consump ~ price + farmPrice + trend
+system <- list( demand = eqDemand, supply = eqSupply )
+
+restrict <- c( "demand_income - supply_trend = 0",
+   "- demand_price + supply_price = 0.5", "goop = goopB" )
+fitols2b <- systemfit( system, data = Kmenta, restrict.matrix = restrict )
+print( fitols2b )
+
+list( Consumption = eqConsump, Investment = eqInvest,
+    PrivateWages = eqPrivWage )
+
+
+# x*w/E
+# TODO: pretty sure that this is cost share, but may want to double-check
+
+-1 for no intercept
+
+# ln.E.string <- ln.c
 
 ####################### IMPOSING ADDING-UP RESTRICTIONS
 library(stringr)
@@ -193,46 +360,6 @@ for ( i in 1:length(alpha.input.adding.up )) {
 }
 
 ############
-
-
-
-#### imposing symmetry restrictions
-
-
-library(stringr)
-
-replacements <- data.frame(greek=c("alpha", "beta", "gamma"), N=c(M,N,N), M=c(M,N,M))
-replacements <- replacements[1:2, ]
-# so do not actually need for gamma
-
-for ( k in 1:nrow(replacements) ) {
-
-if (replacements$greek[k]=="alpha" & M==1) {next}
-
-symm <- ln.E.vars[grepl(paste0(replacements$greek[k], "[.]"), ln.E.vars) ]
-
-symm.mat<-matrix(paste0(replacements$greek[k], ".", apply(X=expand.grid(lead.zero(1:max(N,M)), lead.zero(1:max(N,M))), MARGIN=1, FUN=paste, collapse=".")), nrow=max(N,M), ncol=max(N,M))
-symm.mat[upper.tri(symm.mat, diag = FALSE)] <- t(symm.mat)[upper.tri(symm.mat, diag = FALSE)]
-symm.mat<-symm.mat[1:replacements$N[k], 1:replacements$M[k]]
-
-# data.frame(symm, c(symm.mat))
-
-for ( i in 1:length(symm)) {
-  ln.E.string <- str_replace_all(ln.E.string, symm[i], c(symm.mat)[i])
-}
-
-}
-
-all.vars(as.formula(paste("ln.E.data ~", ln.E.string)))
-
-#######################
-
-# TODO: double check the symmetry replacements
-
-ln.E <- paste0("nls.formula.ln.E <- ln.E.data ~ ", ln.E.string)
-
-#function.text <- llf.creator.fn(12,5,1)
-eval(parse(text=ln.E))
 
 
 
