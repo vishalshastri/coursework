@@ -100,6 +100,8 @@ VV.line.fn<-function(rho, sigma, n, alpha) {
   A/(rho*sigma*n)
 }
 
+set.seed(100)
+
 grid.pick <- grid.shape.mat[sample(1:nrow(grid.shape.mat), 1), ]
 # grid.pick<-grid.mat[!condition.result, c("sigma", "alpha", "a")][sample(1:sum(!condition.result), 1), ]
 
@@ -113,6 +115,12 @@ for (i in 1:(n.max*n.points)) {
   NN.line[i] <-NN.line.fn(a=grid.pick$a, L=10000, n=seq(0, n.max, length.out=n.max*n.points)[i], sigma=grid.pick$sigma, alpha=grid.pick$alpha)
 }
 
+NN.line.fn<-function(a, L, n, sigma, alpha) {
+  A<-ifelse(n<=1, alpha, 1-alpha)
+  (a/L)*(1-A/sigma)
+}
+
+NN.line.2 <- NN.line.fn(a=511, L=10000, n=seq(0, n.max, length.out=n.max*n.points), sigma=3.2, alpha=.14)
 
 
 VV.line<-rep(0, (n.max*n.points))
