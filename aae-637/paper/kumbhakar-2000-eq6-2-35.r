@@ -2,6 +2,39 @@
 
 It.    2, RSS = 1.0158e+08, Par. =   -11.2465   0.206766 -0.00949779  0.000264324 -0.00856574   0.184142  0.00567597   0.150684   0.356839   0.239383   0.201913  0.0791133 -0.0347391    -2.3538    16.9739    3.59015   -10.9079   0.339644 -3.10587e-08 -1.82429e-10 -5.15555e-08 -4.91528e-06 -1.38804e-07 -1.49601e-07 -7.83236e-07 -8.28525e-07 -1.14802e-06 -2.42801e-05 -2.44617e-06  -0.426558   -2.00446 -0.0747582   -1.13403 -4.40035e-08  8.51069e-07 -4.14373e-06  7.17207e-07 -2.38395e-09  1.2936e-07  1.4387e-07 -5.73749e-07 -8.43622e-08 -1.89406e-06  1.34777e-07 -1.01458e-07 -7.16246e-07 -1.74278e-06 -5.01573e-07 -5.31208e-07 -3.93798e-07 -3.90871e-07 -1.57209e-06  4.62951e-06 -2.03206e-07 -4.32856e-08 -1.07236e-05 -6.70691e-08 -3.15883e-05  3.43942e-06 -1.46693e-06 -6.37864e-06  8.06263e-07  8.21612e-07 -5.71205e-07  0.00466799 -1.54496e-06  3.98153e-07  1.42793e-06 -8.98082e-07  3.78135e-06 -1.13162e-06 -3.80058e-08  5.96916e-06  5.6066e-05  3.35391e-07 -3.34396e-07  6.40312e-07 -2.01856e-08 -4.66876e-07 -1.38411e-06 -4.64311e-06 -3.88537e-06  3.06353e-06    -0.6362  0.0127599    2.28611  -0.752825    1.78704  -0.369704  0.000773739 -0.000220537 -3.32367e-05  0.000544209 -0.00289719 -0.000456464 -0.00107149 -5.60373e-05 -0.00322991 -0.000391968  0.0545491 -0.00931416  0.00058122 -0.000240365 -3.7295e-05 -0.000709217   0.161758   0.010854  0.00212161  0.00279683 -0.00193178 -0.000626399   0.100973  7.67955e-05  0.000496921 -0.000300986 -1.18819e-05 -0.000353566 -0.0677057  -0.023079  0.0015778 -0.000204165 -0.00800896 -0.000634281   0.222561 -0.00457965  0.0299072 -6.00171e-05  1.01558e-05  0.00118608   0.220137 -0.00137586 -0.00121356 -0.000516004 -0.0228574 -0.000638423   0.166803  0.00978752   0.901329   0.720617    1.89033    1.06225
 
+
+
+Parameter:
+  [1] -8.949407e-01  9.173112e-04 -5.627428e-04  4.671626e-05 -5.341999e-04
+  [6]  3.643764e-03 -4.115330e-03  1.106237e-03 -5.320783e-03 -4.087875e-03
+ [11] -9.538023e-04 -6.486851e-03  6.213774e-04  2.511319e+00 -5.003401e-01
+ [16] -7.122069e+00 -9.710491e-08  2.703145e-09  5.332058e-11  6.423759e-08
+ [21]  6.060829e-06 -4.983811e-08 -3.094666e-07 -8.921755e-07 -1.492868e-06
+ [26]  1.669121e-10  7.052175e-06  8.822324e-07  2.333554e+00  5.638040e-01
+ [31] -4.008400e+00  1.437156e-07 -1.122161e-04 -2.185020e-06 -1.151380e-07
+ [36] -2.679851e-08  2.730555e-07  8.311305e-07  1.185381e-06  9.585975e-07
+ [41]  4.003118e-07  6.206697e-09  1.116087e-07  1.808650e-07  8.278210e-08
+ [46] -2.754794e-07  1.447270e-06 -5.971211e-07  2.133392e-08  1.209868e-05
+ [51] -1.009663e-07 -7.585421e-10 -1.811939e-05  1.623870e-08  1.112406e-04
+ [56]  1.471730e-06  2.741514e-08 -3.934763e-06 -2.129206e-06 -2.377179e-06
+ [61]  1.025866e-05  1.509202e-04  9.836496e-06 -1.379178e-07  4.822650e-07
+ [66]  9.728072e-07 -5.426038e-06 -2.295115e-06 -2.685277e-06 -1.498038e-05
+ [71]  4.367199e-05 -1.178657e-05  9.207035e-07 -1.772427e-06  9.387244e-06
+ [76] -2.071513e-06 -1.918281e-05 -1.760422e-06  2.916311e-06  1.693639e-05
+ [81] -2.827089e+00  4.063754e-01  5.148464e+00  1.822818e-01  9.903899e-02
+ [86] -9.813382e-01  1.045428e-04  4.905892e-04  3.040168e-06  7.911662e-04
+ [91]  3.065621e-05  7.109333e-04  1.407689e-03  2.754200e-04  5.482178e-03
+ [96]  9.743265e-04 -2.089711e-02  4.171481e-04 -1.178244e-04 -1.513658e-04
+[101]  3.206467e-05  1.451575e-04 -1.061509e-03 -1.889587e-03  2.659424e-04
+[106] -6.082062e-04 -1.907319e-03 -1.117092e-05  4.175186e-03 -1.529280e-04
+[111]  7.825075e-04 -5.345386e-04 -1.838900e-05 -1.023950e-03  7.320467e-03
+[116] -4.044348e-04 -1.722863e-03 -3.993130e-03 -3.078426e-03 -1.498820e-03
+[121]  9.335840e-05  1.392347e-03  1.008197e+00  9.989607e-01  9.706890e-01
+Function Value
+[1] 3898.263
+
+
+
 # Our flow must be:
 # 1. Construct nonlinear string
 # 2. Impose symmetry restrictions on this string
@@ -11,12 +44,14 @@ It.    2, RSS = 1.0158e+08, Par. =   -11.2465   0.206766 -0.00949779  0.00026432
 # 6. Determine which vars are singular, and note them
 # 7. Delete them from all the equations
 
+# 46536.06
+
 
 
 library(systemfit)
 
 # M <- 5
-M <- 10
+M <- 12
 N <-4
 
 lead.zero <- function(x) {formatC(x, width = 2, flag = "0")}
@@ -267,15 +302,17 @@ S.n.H.cost.fn.string <- gsub("[(]Intercept[)] .", "",  linear.terms.for.adding.u
 
 
 for ( i in 1:M) {
-  S.n.H.cost.fn.string <- gsub(paste0(":y", lead.zero(i)),  
-    paste0(":I(0.5*y", lead.zero(i), ")"), S.n.H.cost.fn.string)
+#  S.n.H.cost.fn.string <- gsub(paste0(":y", lead.zero(i)),  
+#    paste0(":I(0.5*y", lead.zero(i), ")"), S.n.H.cost.fn.string)
+# So the cross terms are supposed to appear twice, but don't, so we can choose not to divide by 0.5 and get the same effect. The squared terms are supposed to appear only once.
   S.n.H.cost.fn.string <- gsub(paste0("I[(]y", lead.zero(i), ".2[)]"),   
     paste0("I(0.5*y", lead.zero(i), "^2)"), S.n.H.cost.fn.string)  
+    
 }
 
 for ( i in 1:N) {
-  S.n.H.cost.fn.string <- gsub(paste0("log[(]w", lead.zero(i), "[)]:"),  
-    paste0("I(0.5*log(w", lead.zero(i), ")):"), S.n.H.cost.fn.string)
+#  S.n.H.cost.fn.string <- gsub(paste0("log[(]w", lead.zero(i), "[)]:"),  
+#    paste0("I(0.5*log(w", lead.zero(i), ")):"), S.n.H.cost.fn.string)
   S.n.H.cost.fn.string <- gsub(paste0("I[(]log[(]w", lead.zero(i), "[)].2[)]"),   
     paste0("I(0.5*log(w", lead.zero(i), ")^2)"), S.n.H.cost.fn.string) 
 }
@@ -311,7 +348,7 @@ for ( i in singular.terms) {
 S.n.H[[length(S.n.H)]] <- as.formula(paste0("ln.E.data ~ ", S.n.H.cost.fn.string))
 
 kleinOls <- systemfit( S.n.H, "SUR", maxit = 1  )
-# TODO: This fails due to singularityafter the (1/2) fix, and not sure why. be careful.
+
 
 singular.test.lm <-lm(terms(S.n.H[[length(S.n.H)]], keep.order=TRUE))
 
@@ -320,6 +357,10 @@ param.crossref.no.singular.df <-
   
 lm.param.restrictions <- paste0("cost.fn_", param.crossref.no.singular.df$lm[!is.na(param.crossref.no.singular.df$lm.share)], " = ", 
   param.crossref.no.singular.df$lm.share[!is.na(param.crossref.no.singular.df$lm.share)]
+)
+
+lm.param.restrictions <- c(lm.param.restrictions, 
+  paste0("cost.fn_I(0.5 * log(w", lead.zero(2:N), ")^2) = S.n.H.", lead.zero(2:N), "_log(w", lead.zero(2:N),")")
 )
 
 # REFERENCE: Kumbhaker & Lovell 2000, p. 223 for parameter restrictions
@@ -346,21 +387,26 @@ ln.lm.E.vars <- attr(terms(as.formula(
 
 if (M>1) {
 
-alphas.single <- sort(ln.lm.E.vars[grepl("^y[0-9][0-9]$", ln.lm.E.vars)])
+betas.single <- sort(ln.lm.E.vars[grepl("^log[(]w[0-9][0-9][)]$", ln.lm.E.vars)])
 
- ln.E.string <- str_replace_all(ln.E.string, "alpha01", paste0("(-(", paste0(alphas.single[-1], collapse=" + "), " - 1))" ) )
+ ln.E.string <- str_replace_all(ln.E.string, "beta01", paste0("(-(", paste0(betas.single[-1], collapse=" + "), " - 1))" ) )
 # OK, this may be wrong: from p. 4 of http://ageconsearch.umn.edu/bitstream/22027/1/sp03mo02.pdf
 
-single.alpha.restriction <- paste0( paste0("cost.fn_", alphas.single, collapse=" + "), " = 1" )
+single.beta.restriction <- paste0( paste0("cost.fn_", betas.single, collapse=" + "), " = 1" )
 
 
 
-alpha.input.adding.up <- ln.lm.E.vars[grepl("(I[(]0.5 . y[0-9][0-9].2[)])|(y[0-9][0-9].I[(]0.5 . y[0-9][0-9][)])" , ln.lm.E.vars )]
+# beta.input.adding.up <- ln.lm.E.vars[grepl("(I[(]0.5 . log[(]w[0-9][0-9][)].2[)])|(log[(]w[0-9][0-9][)].I[(]0.5 . log[(]w[0-9][0-9][)][)])" , ln.lm.E.vars )]
+
+beta.input.adding.up <- ln.lm.E.vars[grepl("(I[(]0.5 . log[(]w[0-9][0-9][)].2[)])|(log[(]w[0-9][0-9][)].log[(]w[0-9][0-9][)])" , ln.lm.E.vars )]
+
+# "log(w02):I(0.5 * log(w01))"
+# "I(0.5 * log(w02)^2)"
 
 
-m2 <- matrix("",  ncol=M, nrow=M)
+m2 <- matrix("",  ncol=N, nrow=N)
 lower.tri(m2)
-m2[lower.tri(m2, diag=TRUE)] <- alpha.input.adding.up
+m2[lower.tri(m2, diag=TRUE)] <- beta.input.adding.up
 ind <- upper.tri(m2) 
 m2[ind] <- t(m2)[ind] 
 # Thanks to http://r.789695.n4.nabble.com/Symmetric-matrix-td853754.html
@@ -371,26 +417,47 @@ m2[m2 %in% singular.terms ] <- NA
 
 
 
-alpha.adding.up.mat <- matrix(paste0("cost.fn_", m2), ncol=M, nrow=M)
+beta.adding.up.mat <- matrix(paste0("cost.fn_", m2), ncol=N, nrow=N)
 
 # y02:I(0.5 * y04)
 # I(0.5 * y02^2)
 
-double.alpha.restrictions <-
+double.beta.restrictions <-
   paste("",
-    apply(alpha.adding.up.mat, 1, paste, collapse=" + " ),
+    apply(beta.adding.up.mat, 1, paste, collapse=" + " ),
   " = 0" )
   
-double.alpha.restrictions <- gsub("[+] cost.fn_NA", "", double.alpha.restrictions)
-double.alpha.restrictions <- gsub("cost.fn_NA [+] ", "", double.alpha.restrictions)
+double.beta.restrictions <- gsub("[+] cost.fn_NA", "", double.beta.restrictions)
+double.beta.restrictions <- gsub("cost.fn_NA [+] ", "", double.beta.restrictions)
+
+
+
+gamma.input.adding.up <- ln.lm.E.vars[grepl("y[0-9][0-9].log[(]w[0-9][0-9][)]" , ln.lm.E.vars )]
+
+# "log(w02):I(0.5 * log(w01))"
+# "I(0.5 * log(w02)^2)"
+
+gamma.adding.up.mat <- matrix(paste0("cost.fn_", gamma.input.adding.up), nrow=M, ncol=N)
+
+# y02:I(0.5 * y04)
+# I(0.5 * y02^2)
+
+double.gamma.restrictions <-
+  paste("",
+    apply(gamma.adding.up.mat, 1, paste, collapse=" + " ),
+  " = 0" )
+  
+double.gamma.restrictions <- gsub("[+] cost.fn_NA", "", double.gamma.restrictions)
+double.gamma.restrictions <- gsub("cost.fn_NA [+] ", "", double.gamma.restrictions)
 
 
 }
 
-lm.param.restrictions <- c(lm.param.restrictions, single.alpha.restriction , double.alpha.restrictions  )
+lm.param.restrictions <- c(lm.param.restrictions, single.beta.restriction , double.beta.restrictions, double.gamma.restrictions   )
 
 
-#  TODO: need to have 1/2 thing
+
+# TODO: say in paper that restrictions ensure that null hypothesis means that the shadow is same as orig
 
 
 # lm.param.restrictions <- lm.param.restrictions[-c(31, 33)]
@@ -398,7 +465,8 @@ lm.param.restrictions <- c(lm.param.restrictions, single.alpha.restriction , dou
 
 linear.sur.est <- systemfit( S.n.H, "SUR", restrict.matrix = lm.param.restrictions,  maxit = 5000 )
 
-linear.sur.est <- systemfit( S.n.H[length(S.n.H)], "SUR", restrict.matrix = lm.param.restrictions[!grepl("S.n.H", lm.param.restrictions)] ,  maxit = 5000 )
+
+# linear.sur.est <- systemfit( S.n.H[length(S.n.H)], "SUR", restrict.matrix = lm.param.restrictions[!grepl("S.n.H", lm.param.restrictions)] ,  maxit = 5000 )
 # TODO: Trying to put only the cost function to avoid eliminating so many observations later
 
 # summary(lm(S.n.H[[length(S.n.H)]]))
@@ -517,46 +585,105 @@ ln.E.data <- log(w01*x01 + w02*x02 + w03*x03 + w04*x04 + w05*x05 )
 
 #ln.E.string <- ln.c
 
-#ln.E.string <- ln.c
+# ln.E.string <- ln.c
 # TODO: Restore this to the below when it is go-time - DONE
  ln.E.string <- paste(ln.c, " + ", ln.E.2nd)
 
+ln.E.string.before.symm <-  ln.E.string 
+# ln.E.string.before.symm <-  paste(ln.c, " + ", ln.E.2nd)
 
-####################### IMPOSING ADDING-UP RESTRICTIONS
+
+
 library(stringr)
 
+####################### IMPOSING SYMMETRY RESTRICTIONS
 
-ln.E.vars <- all.vars(as.formula(paste("ln.E.data ~", ln.E.string)))
+
+
+#replacements <- data.frame(greek=c("alpha", "beta", "gamma"), N=c(M,N,N), M=c(M,N,M))
+#replacements <- replacements[1:2, ]
+# so do not actually need for gamma
+
+#for ( k in 1:nrow(replacements) ) {
+
+#if (replacements$greek[k]=="alpha" & M==1) {next}
+
+#symm <- ln.E.vars[grepl(paste0(replacements$greek[k], "[.]"), ln.E.vars) ]
+
+#symm.mat<-matrix(paste0(replacements$greek[k], ".", apply(X=expand.grid(lead.zero(1:max(N,M)), lead.zero(1:max(N,M))), MARGIN=1, FUN=paste, collapse=".")), nrow=max(N,M), ncol=max(N,M))
+
+# ok the below is trying to reverse it:
+#symm.mat<-matrix(paste0(replacements$greek[k], ".", apply(X=expand.grid(lead.zero(1:max(N,M)), lead.zero(1:max(N,M))), MARGIN=1, FUN=paste, collapse=".")), nrow=max(N,M), ncol=max(N,M))
+
+#symm.mat[upper.tri(symm.mat, diag = FALSE)] <- t(symm.mat)[upper.tri(symm.mat, diag = FALSE)]
+#symm.mat<-symm.mat[1:replacements$N[k], 1:replacements$M[k]]
+
+# data.frame(symm, c(symm.mat))
+
+#for ( i in 1:length(symm)) {
+#  ln.E.string <- str_replace_all(ln.E.string, symm[i], c(symm.mat)[i])
+#}
+
+#}
+
+# It seems symmetry has already been imposed
+
+
+
+
+####################### IMPOSING ADDING-UP RESTRICTIONS
+
+
+
+ln.E.vars <- all.vars(as.formula(paste("ln.E.data ~", ln.E.string.before.symm)))
 ln.E.vars <- ln.E.vars[ !grepl("(w[0-9])|(y[0-9])|(ln.E.data)", ln.E.vars ) ]
 ln.E.vars <- sort(ln.E.vars)
 
 if (M>1) {
 
-alphas.single <- sort(ln.E.vars[grepl("alpha[0-9][0-9]", ln.E.vars)])
+betas.single <- sort(ln.E.vars[grepl("beta[0-9][0-9]", ln.E.vars)])
 
-ln.E.string <- str_replace_all(ln.E.string, "alpha01", paste0("(-(", paste0(alphas.single[-1], collapse=" + "), " - 1))" ) )
+ln.E.string <- str_replace_all(ln.E.string, "beta01", paste0("(-(", paste0(betas.single[-1], collapse=" + "), " - 1))" ) )
 # from p. 4 of http://ageconsearch.umn.edu/bitstream/22027/1/sp03mo02.pdf
 
-alpha.input.adding.up <- ln.E.vars[grepl("alpha[.][0-9][0-9]", ln.E.vars)]
+beta.input.adding.up <- sort( ln.E.vars[grepl("beta[.][0-9][0-9]", ln.E.vars)] )
 
-alpha.adding.up.mat <-matrix(sort(alpha.input.adding.up ), ncol=M)
+beta.adding.up.mat <-matrix(sort(beta.input.adding.up ), ncol=N)
 
-alpha.adding.up.mat[, 1] <-
+beta.adding.up.mat[, 1] <-
   paste("(-(",
-    apply(alpha.adding.up.mat[, -1], 1, paste, collapse=" + " ),
+    apply(beta.adding.up.mat[, -1], 1, paste, collapse=" + " ),
   "))" )
   
 # data.frame(alpha.input.adding.up, c(alpha.adding.up.mat))
 
-for ( i in 1:length(alpha.input.adding.up )) {
-  ln.E.string <- str_replace_all(ln.E.string, alpha.input.adding.up[i], c(alpha.adding.up.mat)[i])
+for ( i in 1:length(beta.input.adding.up )) {
+  ln.E.string <- str_replace_all(ln.E.string, beta.input.adding.up[i], c(beta.adding.up.mat)[i])
 }
 
+
+gamma.input.adding.up <- sort( ln.E.vars[grepl("gamma[.][0-9][0-9]", ln.E.vars)] )
+
+gamma.adding.up.mat <-matrix(sort(gamma.input.adding.up ), ncol=M, byrow=FALSE)
+
+gamma.adding.up.mat[1, ] <-
+  paste("(-(",
+    apply(gamma.adding.up.mat[-1, ], 2, paste, collapse=" + " ),
+  "))" )
+  
+# data.frame(alpha.input.adding.up, c(alpha.adding.up.mat))
+
+for ( i in 1:length(gamma.input.adding.up)) {
+  ln.E.string <- str_replace_all(ln.E.string, gamma.input.adding.up[i], c(gamma.adding.up.mat)[i])
 }
 
-############
 
-#  Symmetry
+}
+
+
+
+
+####################### IMPOSING SYMMETRY RESTRICTIONS again after adding-up restrictions
 
 
 
@@ -568,9 +695,169 @@ for ( k in 1:nrow(replacements) ) {
 
 if (replacements$greek[k]=="alpha" & M==1) {next}
 
-symm <- ln.E.vars[grepl(paste0(replacements$greek[k], "[.]"), ln.E.vars) ]
-
+# ok the below is trying to reverse it:
 symm.mat<-matrix(paste0(replacements$greek[k], ".", apply(X=expand.grid(lead.zero(1:max(N,M)), lead.zero(1:max(N,M))), MARGIN=1, FUN=paste, collapse=".")), nrow=max(N,M), ncol=max(N,M))
+
+symm.mat[upper.tri(symm.mat, diag = FALSE)] <- t(symm.mat)[upper.tri(symm.mat, diag = FALSE)]
+symm.mat<-symm.mat[1:replacements$N[k], 1:replacements$M[k]]
+
+
+expanded.greeks.grid <- expand.grid(lead.zero(1:max(N,M)), lead.zero(1:max(N,M)))
+expanded.greeks.grid <- data.frame(expanded.greeks.grid$Var2, expanded.greeks.grid$Var1)
+
+symm.mat.2<-matrix(paste0(replacements$greek[k], ".", apply(X=expanded.greeks.grid, MARGIN=1, FUN=paste, collapse=".")), nrow=max(N,M), ncol=max(N,M))
+
+symm.mat.2[upper.tri(symm.mat.2, diag = FALSE)] <- t(symm.mat.2)[upper.tri(symm.mat.2, diag = FALSE)]
+symm.mat.2<-symm.mat.2[1:replacements$N[k], 1:replacements$M[k]]
+
+
+
+if (replacements$greek[k]=="alpha") {
+for ( i in 1:length(c(symm.mat.2))) {
+  ln.E.string <- str_replace_all(ln.E.string, c(symm.mat.2)[i], c(symm.mat)[i])
+}
+}
+
+if (replacements$greek[k]=="beta") {
+for ( i in 1:length(c(symm.mat.2))) {
+  ln.E.string <- str_replace_all(ln.E.string, c(symm.mat)[i], c(symm.mat.2)[i])
+}
+}
+
+
+}
+
+
+######### NOW ADDING COST SHARE EQUATIONS
+####################################
+####################################
+
+
+
+gamma.special<-c()
+gamma.mat<-matrix(1:(M*N), nrow=M, ncol=N)
+for ( i in 1:N) {
+  gamma.special[i] <- paste0(
+    paste0("gamma", sort(do.call(paste0, M.N.dim[1:2])), " * ", ym.wn[[1]])[gamma.mat[, i]],
+    collapse=" + " )
+}
+
+beta.special<-c()
+beta.mat<-matrix(1:(N*N), nrow=N, ncol=N)
+for ( i in 1:N) {
+  beta.special[i] <- paste0(
+    paste0("beta", do.call(paste0, N.2.dim[1:2]) , " * ", gsub("[*] $", "", ln.sh.w.grid[[1]]))[beta.mat[, i]],
+    collapse=" + " )
+}
+
+
+S.n.divisor <- paste0( "" , 
+  paste0(
+  paste0(" (w", lead.zero(1:N), " / (w", lead.zero(1:N), " * theta", 
+   lead.zero(1:N), ")) * ", 
+   "(beta", lead.zero(1:N), " + ",
+   gamma.special, " + ",
+   beta.special, ")"),
+  collapse=" + " ), "" )
+   
+# ln.E <- paste0("test.fn <- function(X) {", ln.c, " + ", ln.E.2nd, "}")
+
+S.n.top <- paste0(" w", lead.zero(1:N), " / (w", lead.zero(1:N), " * theta", 
+   lead.zero(1:N), ")" )
+
+
+
+
+
+S.n <- list()
+
+for ( n in 1:N) {
+  betas.for.S.n <- paste0("beta.", lead.zero(n), ".", lead.zero(1:N) )
+  gammas.for.S.n <- paste0("gamma.", lead.zero(1:M), ".", lead.zero(n))
+ 
+ S.n[[n]] <- 
+   paste0( "I( (x", lead.zero(n), " * ", "w", lead.zero(n), ")/ln.E.data) ~ (",
+    "beta", lead.zero(n), " + ",
+    paste0( betas.for.S.n, " * " , " log(w", lead.zero(1:N), " * ", "theta", lead.zero(1:N),  ")", collapse=" + "), " + ", 
+    paste0(gammas.for.S.n, " * ", "y", lead.zero(1:N), collapse=" + "), " ) * (",
+    S.n.top[n], ") / (", S.n.divisor, ")"
+   )
+  
+  names(S.n)[n] <- paste0("S.n", lead.zero(n))
+}
+
+
+S.n[[1]] <- NULL
+
+grepl('gamma.01.05', as.character(S.n[[1]][3]) )
+
+
+
+
+for (j in 1:length(S.n) ) {
+
+targ.S.n <- S.n[[j]]
+
+
+targ.S.n.vars <- all.vars(as.formula(targ.S.n))
+targ.S.n.vars <- targ.S.n.vars[ !grepl("(w[0-9])|(y[0-9])|(ln.E.data)", targ.S.n.vars ) ]
+targ.S.n.vars <- sort(targ.S.n.vars)
+
+if (M>1) {
+
+betas.single <- sort(targ.S.n.vars[grepl("beta[0-9][0-9]", targ.S.n.vars)])
+
+targ.S.n <- str_replace_all(targ.S.n, "beta01", paste0("(-(", paste0(betas.single[-1], collapse=" + "), " - 1))" ) )
+# from p. 4 of http://ageconsearch.umn.edu/bitstream/22027/1/sp03mo02.pdf
+
+# beta.input.adding.up <- sort( targ.S.n.vars[grepl("beta[.][0-9][0-9]", targ.S.n.vars)] )
+
+#beta.adding.up.mat <-matrix(sort(beta.input.adding.up ), ncol=N)
+
+#beta.adding.up.mat[, 1] <-
+#  paste("(-(",
+#    apply(beta.adding.up.mat[, -1], 1, paste, collapse=" + " ),
+#  "))" )
+  
+# data.frame(alpha.input.adding.up, c(alpha.adding.up.mat))
+
+for ( i in 1:length(beta.input.adding.up )) {
+  targ.S.n <- str_replace_all(targ.S.n, beta.input.adding.up[i], c(beta.adding.up.mat)[i])
+}
+
+
+# gamma.input.adding.up <- sort( targ.S.n.vars[grepl("gamma[.][0-9][0-9]", targ.S.n.vars)] )
+
+# gamma.adding.up.mat <-matrix(sort(gamma.input.adding.up ), ncol=M, byrow=FALSE)
+
+# gamma.adding.up.mat[1, ] <-
+#   paste("(-(",
+#     apply(gamma.adding.up.mat[-1, ], 2, paste, collapse=" + " ),
+#   "))" )
+  
+# data.frame(alpha.input.adding.up, c(alpha.adding.up.mat))
+
+for ( i in 1:length(gamma.input.adding.up)) {
+  targ.S.n <- str_replace_all(targ.S.n, gamma.input.adding.up[i], c(gamma.adding.up.mat)[i])
+}
+
+
+}
+
+
+
+
+####################### IMPOSING SYMMETRY RESTRICTIONS again after adding-up restrictions
+
+
+
+replacements <- data.frame(greek=c("alpha", "beta", "gamma"), N=c(M,N,N), M=c(M,N,M))
+replacements <- replacements[1:2, ]
+# so do not actually need for gamma
+
+for ( k in 1:nrow(replacements) ) {
+
+if (replacements$greek[k]=="alpha" & M==1) {next}
 
 # ok the below is trying to reverse it:
 symm.mat<-matrix(paste0(replacements$greek[k], ".", apply(X=expand.grid(lead.zero(1:max(N,M)), lead.zero(1:max(N,M))), MARGIN=1, FUN=paste, collapse=".")), nrow=max(N,M), ncol=max(N,M))
@@ -578,13 +865,46 @@ symm.mat<-matrix(paste0(replacements$greek[k], ".", apply(X=expand.grid(lead.zer
 symm.mat[upper.tri(symm.mat, diag = FALSE)] <- t(symm.mat)[upper.tri(symm.mat, diag = FALSE)]
 symm.mat<-symm.mat[1:replacements$N[k], 1:replacements$M[k]]
 
-# data.frame(symm, c(symm.mat))
 
-for ( i in 1:length(symm)) {
-  ln.E.string <- str_replace_all(ln.E.string, symm[i], c(symm.mat)[i])
+expanded.greeks.grid <- expand.grid(lead.zero(1:max(N,M)), lead.zero(1:max(N,M)))
+expanded.greeks.grid <- data.frame(expanded.greeks.grid$Var2, expanded.greeks.grid$Var1)
+
+symm.mat.2<-matrix(paste0(replacements$greek[k], ".", apply(X=expanded.greeks.grid, MARGIN=1, FUN=paste, collapse=".")), nrow=max(N,M), ncol=max(N,M))
+
+symm.mat.2[upper.tri(symm.mat.2, diag = FALSE)] <- t(symm.mat.2)[upper.tri(symm.mat.2, diag = FALSE)]
+symm.mat.2<-symm.mat.2[1:replacements$N[k], 1:replacements$M[k]]
+
+
+
+if (replacements$greek[k]=="alpha") {
+for ( i in 1:length(c(symm.mat.2))) {
+  targ.S.n <- str_replace_all(targ.S.n, c(symm.mat.2)[i], c(symm.mat)[i])
+}
 }
 
+if (replacements$greek[k]=="beta") {
+for ( i in 1:length(c(symm.mat.2))) {
+  targ.S.n <- str_replace_all(targ.S.n, c(symm.mat)[i], c(symm.mat.2)[i])
 }
+}
+
+
+}
+
+
+S.n[[j]] <- targ.S.n
+
+}
+
+
+
+
+
+
+####################################
+####################################
+
+
 
 
 singular.test.lm <-lm(orig.singular.model)
@@ -605,20 +925,33 @@ singular.terms <- gsub(":", " . ", singular.terms )
 #     gsub(paste0("alpha[.][0-9]{2}[.][0-9]{2} . ", i, " . "), "", ln.E.string)
 #}
 
-# singular.terms <- paste0("alpha.", gsub("( )|(y)", "", singular.terms) )
+ singular.terms <- paste0("alpha.", gsub("( )|(y)", "", singular.terms) )
+
+singular.terms <- c(singular.terms, 
+  paste0("alpha", gsub("^alpha.[0-9][0-9]", "", singular.terms), 
+    gsub("(alpha)|(.[0-9][0-9]$)", "", singular.terms)) )
 
 for ( i in singular.terms) {
    ln.E.string <- 
      gsub(paste0("alpha[.][0-9]{2}[.][0-9]{2} . ", i, " . "), "", ln.E.string)
 }
 
-singular.terms <- paste0("alpha.", gsub("( )|(y)", "", singular.terms) )
+singular.terms <- paste0( gsub("( )|(y)", "", singular.terms) )
 
 for ( i in singular.terms) {
    ln.E.string <- gsub(paste0(i, " . " ), "", ln.E.string)
    ln.E.string <- gsub(paste0(" . ", i ), "", ln.E.string)
    
+   for ( j in 1:length(S.n) ) {
+     S.n[[j]] <- gsub(paste0(i, " . " ), "", S.n[[j]])
+     S.n[[j]] <- gsub(paste0(" . ", i ), "", S.n[[j]])
+   }
+   
    # Because the + could be before or after the term
+}
+
+for ( j in 1:length(S.n) ) {
+  S.n[[j]] <- as.formula(S.n[[j]])
 }
 
 
@@ -652,6 +985,7 @@ for ( i in 1:M) {
   lin.to.nonlin.crossref.df$nonlinear <- str_replace_all(
     lin.to.nonlin.crossref.df$nonlinear,
     paste0("^I[(]0.5 . y", lead.zero(i), ".2[)]$"), paste0("alpha.", lead.zero(i), ".", lead.zero(i)))
+    # paste0("^I[(] y", lead.zero(i), ".2[)]$")
 }
 
 
@@ -665,16 +999,15 @@ for ( i in 1:M) {
 for ( i in 1:length( M.2.dim )) {
   lin.to.nonlin.crossref.df$nonlinear <- str_replace_all(
     lin.to.nonlin.crossref.df$nonlinear,
-    paste0(y.perm[[2]][i], ":", "I[(]0.5 . ", y.perm[[1]][i], "[)]"), 
+    paste0(y.perm[[2]][i], ":", y.perm[[1]][i]), 
     paste0("alpha", M.2.dim[i]) )
+    # paste0(y.perm[[2]][i], ":", "I[(]0.5 . ", y.perm[[1]][i], "[)]"), 
 }
 
 
 # y01:I(0.5 * y02)
-
-paste0("^I[(]0.5 . log[(]w", lead.zero(i), "[)].I[(]0.5 . log[)]$")
-
-"log(w03):I(0.5 * log(w01))"
+#paste0("^I[(]0.5 . log[(]w", lead.zero(i), "[)].I[(]0.5 . log[)]$")
+#"log(w03):I(0.5 * log(w01))"
 
 
 
@@ -693,8 +1026,9 @@ N.2.dim.fixed <- lapply(N.2.dim, FUN=gsub, pattern="[.]", replacement="")
 for ( i in 1:length( N.2.dim.fixed[[1]] )) {
   lin.to.nonlin.crossref.df$nonlinear <- str_replace_all(
     lin.to.nonlin.crossref.df$nonlinear,
-    paste0("log[(]w", N.2.dim.fixed[[1]][i], "[)]:I[(]0.5 . log[(]w", N.2.dim.fixed[[2]][i], "[)][)]"), 
+    paste0("log[(]w", N.2.dim.fixed[[1]][i], "[)]:log[(]w", N.2.dim.fixed[[2]][i], "[)]"), 
     paste0("beta.", N.2.dim.fixed[[1]][i], ".", N.2.dim.fixed[[2]][i]) )
+    #    paste0("log[(]w", N.2.dim.fixed[[1]][i], "[)]:I[(]0.5 . log[(]w", N.2.dim.fixed[[2]][i], "[)][)]"), 
 }
 
 
@@ -734,6 +1068,17 @@ ln.E.start.vals <- coef(linear.sur.est)[grepl("cost.fn_", names(coef(linear.sur.
 names(ln.E.start.vals) <- ln.E.vars
 #ln.E.start.vals[grepl("(beta)|(gamma)|(alpha)", names(ln.E.start.vals))] <- 5
 #ln.E.start.vals[grepl("theta", names(ln.E.start.vals))] <- 1
+
+# NOTE: Would need to fix the below if M=1
+# ln.E.start.vals <- ln.E.start.vals[!grepl("(beta01)|(beta....01)|(gamma....01)", 
+#   names(ln.E.start.vals))]
+
+ln.E.start.vals <- ln.E.start.vals[!grepl("(alpha.03.01)|(beta01)|(beta....01)|(gamma....01)", 
+  names(ln.E.start.vals))]
+alpha.03.01 <- 0
+
+#TODO: for now we will kill alpha.03.01 since it only pertains to one observation and it will screw up gradient
+
 theta.starts <- rep(1, times=N-1)
 names(theta.starts) <- paste0("theta", lead.zero(1:(N-1)))
 theta04 <- 1
@@ -756,10 +1101,10 @@ keep.safe.args.list <- list(x01=x01, x02=x02, x03=x03, x04=x04, x05=x05, w01=w01
  w04=w04, w05=w05, y01=y01, y02=y02, y03=y03, y04=y04, y05=y05, y06=y06, y07=y07, 
  y08=y08, y09=y09, y10=y10, y11=y11, y12=y12, ln.E.data=ln.E.data)
 # TODO: very important
-rm( list=names(keep.safe.args.list))
+# rm( list=names(keep.safe.args.list))
 
 
-include.these <- mod.predicted(ln.E.start.vals) < 10^100
+include.these <- mod.predicted(ln.E.start.vals) < 100
 
 which(!include.these)
 
@@ -786,10 +1131,23 @@ which(do.call(mod.predicted, args.list) > 10^100)
 
 # TODO: would arbitrarily killing alpha.00.00 due to singularity mess up our adding-up restrictions?
 
-sum((do.call(mod.predicted, args.list) - args.list$ln.E.data)^2)
+do.call(function(x){args.list[[1]] <- x;  sum((do.call(mod.predicted, args.list) - args.list$ln.E.data)^2) }, list(x=unlist(test)[1:length(ln.E.start.vals)]))
 
-sum(resid(linear.sur.est)^2)
+do.call(function(x){args.list[[1]] <- x;  do.call(mod.predicted, args.list) - args.list$ln.E.data }, list(x=unlist(test)[1:length(ln.E.start.vals)]))
 
+zero.grad <- numDeriv::grad(function(x){args.list[[1]] <- x;  sum((do.call(mod.predicted, args.list) - args.list$ln.E.data)^2) }, unlist(test)[1:length(ln.E.start.vals)])
+# sum((do.call(mod.predicted, args.list) - args.list$ln.E.data)^2)
+
+
+sum((predict(linear.sur.est)$cost.fn.pred - args.list$ln.E.data)^2)
+sum((resid(linear.sur.est)$cost.fn)^2)
+# TODO: not sure why the above two expressions are not the same
+
+do.call(mod.predicted, args.list) -  predict(linear.sur.est)$cost.fn.pred
+
+# TODO: test: get to min when only really OLS
+
+sum((predict(linear.sur.est)$cost.fn.pred - args.list$ln.E.data)^2)
 
 ln.E <- paste0("nls.formula.ln.E <- ln.E.data ~ ", ln.E.string)
 
@@ -800,8 +1158,6 @@ eval(parse(text=ln.E))
 # x01 <- x01.store
 
 
-
-
 ##########################
 ##########################
 ##########################
@@ -809,8 +1165,59 @@ eval(parse(text=ln.E))
 ##########################
 ##########################
 
+full.system.ls <- S.n
+full.system.ls[[length(full.system.ls)+1]] <- nls.formula.ln.E
+names(full.system.ls)[length(full.system.ls)] <-"cost.fn"
 
-# TODO: We have way to many NaNs when we cull them
+# TODO: Do we have to consider the environment when forming the formula?
+
+try.nls <- nlsystemfit(eqns= full.system.ls, startvals=ln.E.start.vals, data=as.data.frame(args.list[-1]), print.level=2)
+
+
+
+
+
+
+# WARNING: Non-identification is due to adding-up restriction
+# TODO: change in performance may be due to dropping an observation
+
+zero.grad <- numDeriv::grad(function(x){args.list[[1]] <- x;  sum((do.call(mod.predicted, args.list) - args.list$ln.E.data)^2) }, test$par)
+
+numDeriv::grad(function(x){args.list[[1]] <- x;  sum((do.call(mod.predicted, args.list) - args.list$ln.E.data)^2) }, ln.E.start.vals)
+
+# install.packages("optfntools",repos="http://r-forge.r-project.org", type = "source")
+library(optfntools)
+
+#install.packages("optimx")
+library("optimx")
+
+test <- optimx(ln.E.start.vals, function(x){args.list[[1]] <- x;  sum((do.call(mod.predicted, args.list) - args.list$ln.E.data)^2) },
+      method = "BFGS", control = list(trace=6, maxit=160, save.failures = TRUE))
+      
+      
+test.2 <- optimx(coef(fm1DNase1), function(x){args.list[[1]] <- x;  sum((do.call(mod.predicted, args.list) - args.list$ln.E.data)^2) },
+      method ="BFGS" , control = list(trace=6, maxit=1000000, save.failures = TRUE))
+
+save.failures = TRUE
+
+fm1DNase1 <- nlsLM(nls.formula.ln.E, data=as.data.frame(args.list[-1]),
+start=unlist(test)[1:length(ln.E.start.vals)], trace=TRUE, control=list(factor=.01, maxiter=5000, maxfev=2147483647))
+
+
+xx <- ln.E.start.vals
+
+test <- optim(ln.E.start.vals, function(x){args.list[[1]] <- x;  sum((do.call(mod.predicted, args.list) - args.list$ln.E.data)^2) },
+      method = "CG", control = list(trace=6, maxit=1000000))
+
+c("Nelder-Mead", "BFGS", "CG", "L-BFGS-B", "SANN",
+                 "Brent")
+# 13031.75
+# TODO: May be some scaling issues
+# Scaling help: http://rsnippets.blogspot.com/2014/01/tuning-optim-with-parscale.html
+
+numDeriv::grad(function(x){args.list[[1]] <- x;  sum((do.call(mod.predicted, args.list) - args.list$ln.E.data)^2) }, test$par)
+
+
 
 
 
@@ -825,6 +1232,10 @@ test.nls <- nls(nls.formula.ln.E, start=ln.E.start.vals, trace=TRUE,
   data=as.data.frame(args.list[-1]))
 
 
+test.nls <- nls(nls.formula.ln.E, start=coef(fm1DNase1), trace=TRUE,
+  data=as.data.frame(args.list[-1]))
+
+
 test.nls <- nls(nls.formula.ln.E, start=ln.E.start.vals, trace=TRUE, subset=include.these)
 # , algorithm="plinear")
 
@@ -836,15 +1247,20 @@ test.nls <- nls(nls.formula.ln.E, start=ln.E.start.vals, trace=TRUE, subset=incl
 
 
 
-test.nls <- nls(nls.formula.ln.E, start=ln.E.start.vals, trace=TRUE,
-  data=as.data.frame(args.list[-1]), algorithm="plinear")
+test.nls <- nls(nls.formula.ln.E, start=test$par, trace=TRUE,
+  data=as.data.frame(args.list[-1]))
+  
+  , algorithm="plinear")
 
 
 library(minpack.lm)
 ### Examples from 'nls' doc ###
 fm1DNase1 <- nlsLM(nls.formula.ln.E, data=as.data.frame(args.list[-1]),
-start=ln.E.start.vals, trace=TRUE, control=list(maxiter=5000, maxfev=2147483647))
+start=ln.E.start.vals, trace=TRUE, control=list(factor=.01, maxiter=5000, maxfev=2147483647))
 
+
+fm1DNase1 <- nlsLM(nls.formula.ln.E, data=as.data.frame(args.list[-1]),
+start=test$par, trace=TRUE, control=list(maxiter=5000, maxfev=2147483647))
 
 # Maybe we have something that is not identified in the nonlinear model
 
@@ -865,7 +1281,7 @@ init.mat<-matrix(0, nrow=10*length(args.list[[1]]), ncol=length(args.list[[1]]))
 
 init.values <- args.list[[1]]
 
-init.values <- best.nls.params
+# init.values <- best.nls.params
 
 init.mat[1,] <- init.values
 
@@ -881,7 +1297,7 @@ summary(jitter(args.list[[1]], amount=.1) - args.list[[1]])
 # DEoptim.cmp <- cmpfun(DEoptim)
 # ln.E.start.vals
 
-ss <- DEoptim.cmp(mod.for.DEOoptim, lower=init.values - 1, upper=init.values + 1,
+ss <- DEoptim(mod.for.DEOoptim, lower= -abs(init.values) * 0.2, upper=abs(init.values) * 2,
               control=list(trace=TRUE, itermax=100, initialpop=init.mat))
 
 
@@ -1107,6 +1523,14 @@ eval(parse(text=function.text))
 
 
 
+work.dir <- "/Users/travismcarthur/Desktop/Metrics (637)/Final paper/"
+
+load(file=paste0(work.dir, "firm df.Rdata"))
+
+
+
+
+
 
 firm.df<-firm.df[apply(firm.df, 1, FUN=function(x) !any(is.na(x))), ]
 
@@ -1119,6 +1543,8 @@ firm.df$revenue <- rowSums(
 # do this once
 
 firm.df<-firm.df[firm.df$revenue >= trim.set[1] & firm.df$revenue <= trim.set[2], ]
+firm.df<-firm.df[!(firm.df$harvest.r.PAPA!=0 & firm.df$harvest.r.PLATANO!=0), ]
+# TODO: killing platano x papa mix for now
 
 # firm.df <- firm.df[ firm.df$harvest.r.PAPA>0 & rowSums(firm.df[, grepl("harvest.r", colnames(firm.df))]) - firm.df$harvest.r.PAPA == 0, ]
 
