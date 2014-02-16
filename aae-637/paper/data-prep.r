@@ -649,7 +649,7 @@ length(unique(crop.wide.df$comunidad.id))
 
 
 save(crop.wide.df, file=paste0(work.dir, "crop wide df2.Rdata"))
-#load(file=paste0(work.dir, "crop wide df2.Rdata"))
+#load(file=paste0(work.dir, "crop wide df4.Rdata"))
 
 crop.wide.df$credit.source<-factor(crop.wide.df$credit.source)
 crop.wide.df$hhh.edu.measure<-factor(crop.wide.df$hhh.edu.measure)
@@ -659,12 +659,7 @@ crop.wide.df[] <- lapply(crop.wide.df,function(x) if(is.factor(x)) factor(x) els
 
 
 
-
-
-
-
-
-
+crop.wide.df$num.pers.agropecuaria
 
 
 
@@ -835,6 +830,9 @@ save(prod01.df,  file=paste0(work.dir, "prod01.df imputed prices.Rdata"))
 
 
 
+###################
+
+miembros01.df<-read.spss(paste0(work.dir, "bd18 (2001).zip Folder/mcv01.sav"), to.data.frame = TRUE)
 
 
 input.prices.df<-read.delim(paste0(work.dir, "2008 input prices.txt"), stringsAsFactors=FALSE, na.strings="-", dec=",")
@@ -877,7 +875,7 @@ misc.input.prices.ls<-by(input.prices.df, INDICES=list(input.prices.df$departmen
 misc.input.prices.df<-do.call(rbind, misc.input.prices.ls)
 misc.input.prices.df$department<-names(misc.input.prices.ls)
 
-for ( i in 1:ncol(misc.input.prices.df)) {
+for ( i in 1:(ncol(misc.input.prices.df)-1)) {
   misc.input.prices.df[is.na(misc.input.prices.df[, i]), i] <- mean(misc.input.prices.df[, i], na.rm=TRUE)
 }
 
@@ -1025,11 +1023,15 @@ for (impute.level in impute.levels) {
 
 
 
-land.agg<-aggregate(prod01.df$area.r, by=list(FOLIO=prod01.df$FOLIO), FUN=sum, na.rm=TRUE)
-colnames(land.agg)[2] <- "land.area"
+land.agg<-aggregate(prod01.df$area.r, by=list(FOLIO=prod01.df$FOLIO), FUN=sum, na.rm=TRUE); colnames(land.agg)[2] <- "land.area"
+
 
 firm.df <- crop.wide.df[, c("FOLIO", "fert.exp", "seed.exp", "manure.exp", "pesticide.exp", 
-  "hired.labor.exp", "imputed.ag.wage", "crop.labor", "crop.and.livestick.labor")]
+  "hired.labor.exp", "imputed.ag.wage", "crop.labor", "crop.and.livestick.labor", "num.pers.agropecuaria" )]
+  
+#c("FOLIO", "fert.exp", "seed.exp", "manure.exp", "pesticide.exp", 
+#  "hired.labor.exp", "imputed.ag.wage", "crop.labor", "crop.and.livestick.labor", #"num.pers.agropecuaria" ) %in% names(crop.wide.df)
+  
   
 firm.df<-data.frame(lapply(firm.df, FUN=function(x) {
 	x[!is.finite(x)]<-0 
@@ -1048,6 +1050,11 @@ firm.df<-data.frame(lapply(firm.df, FUN=function(x) {
 firm.df$labor.hours <- firm.df$hired.labor.exp / firm.df$imputed.ag.wage +
   (firm.df$crop.labor + firm.df$crop.and.livestick.labor) * (4.345 * 6)
 # 6 month growing season,and 4.3 weeks in a month
+
+# Below is for the new way (hired labor only
+firm.df$labor.hours <- firm.df$hired.labor.exp / firm.df$imputed.ag.wage 
+
+# PERSAGRO
   
 firm.df$fert.quintals <- firm.df$fert.exp / firm.df$fert.price.quintal
 firm.df$plaguicida.liters <- firm.df$pesticide.exp / firm.df$plaguicida.price.liter
@@ -1073,9 +1080,9 @@ firm.df<-data.frame(lapply(firm.df, FUN=function(x) {
 
 
 
+# save( firm.df , file=paste0(work.dir, "firm df.Rdata"))
 
-
-
+save( firm.df , file=paste0(work.dir, "firm df2.Rdata"))
 
 
 

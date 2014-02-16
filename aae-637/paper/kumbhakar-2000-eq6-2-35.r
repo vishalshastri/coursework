@@ -13,6 +13,33 @@ http://www.sfu.ca/~mrekkas/surv3.pdf
 
 # Loook up using covariates in translog cost function
 
+# todo: think about bootstrapping since CI cant go below zero, and is probably not symmetric
+
+# Idea: check if parameter values are statistically different across the different "technology" groupings. Test them pairwise against the full sample model
+# Ok, maybe this is the way to do it: http://www.stata.com/statalist/archive/2012-02/msg00736.html
+
+# TODO: double-gamma parameters (y's times w's) may be not identoified in subsample regression, and we do not deal with it in the cost share equations for the linear case ( or nonlinear case for that matter), so the not-identified double-gammas should be deleted in the cost share equations
+
+# Ok, this article definitely says that theta < 1 means overuse of that input:  Nitrogen efficiency of Dutch dairy farms: a shadow cost system approach
+
+# We almost certainly need to cite this article: "Estimation of Multicrop Production Functions"
+
+# Incorporates output-specific inputs to help pin down efficiency better: http://ideas.repec.org/p/ete/ceswps/ces11.10.html
+
+# Probably also damn useful (by Kuhmbakar) - Also helps defend our price imputation and gives a method for varying alloc. eff. by HH characteristics: Price Distortions and Resource-Use Efficiency in Indian Agriculture: A Restricted Profit Function Approach
+
+# Maybe also useful: Government Interventions, Market Imperfections, and Technical Inefficiency in a Mixed Economy: A Case Study of Indian Agriculture
+
+# put in (one) fixed cost, we need: (logs of all of these) : 
+# F itself, F squared (and times every other F), F times every w00, F times every y
+# F, F^2, F * w, F * y
+# 1 F: 1 + 1 + N + M
+# 2 F: 2 + 2^2 + 2*N + 2* M
+
+M <- 5
+N <-4
+
+
 
 iteration = 128
 Step:
@@ -227,7 +254,16 @@ Gradient:
 
 
 
-
+ -1.164353e+00  2.306744e-04  5.996563e-03  3.783412e-03  1.295889e-04
+  4.594726e-03 -2.746313e+00 -1.225206e-01  1.374865e-02 -1.790100e-08
+ -1.547928e-07 -1.570154e-06  3.775979e-08  1.601061e-05  1.936514e+00
+  1.364754e+00  1.728536e+00  9.018337e-07  4.922581e-08  4.269121e-07
+ -3.297513e-07 -1.454488e-07  1.829481e-05  1.660571e-06  3.610227e-05
+  2.434729e-06 -7.589386e-01 -1.979269e+00  4.046668e+00 -4.010761e-01
+  1.789087e+00 -1.844894e+00  3.672204e-06  2.809829e-05 -4.081711e-04
+  5.554004e-04  5.966679e-04 -7.393837e-06  7.486729e-06 -2.733781e-03
+ -7.137061e-05 -2.668370e-03 -2.860235e-05 -2.130847e-03  5.416662e-04
+  2.658160e-04 -7.566107e-04  1.680922e-02  1.415979e-02  6.561629e+00
 
 
 
@@ -236,7 +272,11 @@ try.params <- readLines(pipe("pbpaste"))
 try.params <- unlist(strsplit(paste0(try.params, collapse=" "), "( +)|(\n+)"))
 try.params <- try.params[try.params!=""]
 try.params <- as.numeric(try.params)
+
 names(try.params) <- names(args.list[[1]])
+# OR:
+names(try.params) <- names(ln.E.start.vals)
+
 
 fm1DNase2 <- nlsLM(nls.formula.ln.E, data=as.data.frame(args.list[-1]),
 start=try.params, trace=TRUE, control=list(factor=.01, maxiter=16, maxfev=2147483647))
@@ -255,16 +295,35 @@ summary(fm1DNase2 )
 # 46536.06
 
 
+# put in (one) fixed cost, we need: (logs of all of these) : 
+# F itself, F squared (and times every other F), F times every w00, F times every y
+# F, F^2, F * w, F * y
+# 1 F: 1 + 1 + N + M
+# 2 F: 2 + 2^2 + 2*N + 2* M
+# zeta.single, zeta.double, kappa, delta
+
+
+
+
+
+
+
+
+# To retroactively remove fixed costs, we can just set q01=0 for all elements of q01
+
 
 library(systemfit)
 
 # ln.E.data <- log(w01*x01 + w02*x02 + w03*x03 + w04*x04 + w05*x05 )
- ln.E.data <- log(w01*x01 + w02*x02 + w03*x03 + w04*x04 + 2  )
+ ln.E.data <- log(w01*x01 + w02*x02 + w03*x03 + w04*x04 + 1  )
+ 
+# ln.E.data <- log(w01*x01 + w02*x02 + w03*x03 + w04*x04 + w05*x05 + 1 )
 
 # M <- 5
 # M <- 12
-M <- 12
-N <-4
+M <- 4
+N <-5
+J <- 2
 
 lead.zero <- function(x) {formatC(x, width = 2, flag = "0")}
 
@@ -275,16 +334,31 @@ M.2.dim <- gsub( "y", ".", do.call(paste0, y.perm))
 
 N.2.dim <- expand.grid(paste0(".", lead.zero(1:N)), paste0(".", lead.zero(1:N)))
 
+J.2.dim <- expand.grid(paste0(".", lead.zero(1:J)), paste0(".", lead.zero(1:J)))
+
 ln.sh.w.grid <- expand.grid( paste0("log(w", lead.zero(1:N), " * theta", lead.zero(1:N), ") * "),
   paste0("log(w", lead.zero(1:N), " * theta", lead.zero(1:N), ")") )
+  
+ln.sh.q.grid <- expand.grid( paste0("log(q", lead.zero(1:J),  ") * "),
+  paste0("log(q", lead.zero(1:J),  ")") )
 
 ln.sh.w.grid.2 <- do.call(paste0, ln.sh.w.grid)
+
+ln.sh.q.grid.2 <- do.call(paste0, ln.sh.q.grid)
 
 M.N.dim <- expand.grid(paste0(".", lead.zero(1:M)), paste0(".", lead.zero(1:N)))
 
 ym.wn <- expand.grid(paste0("y", lead.zero(1:M)), paste0("log(w", lead.zero(1:N), " * theta", lead.zero(1:N), ")"))
 
-# data.frame(M.N.dim, ym.wn) # checks out
+M.J.dim <- expand.grid(paste0(".", lead.zero(1:M)), paste0(".", lead.zero(1:J)))
+
+ym.qj <- expand.grid(paste0("y", lead.zero(1:M)), paste0("log(q", lead.zero(1:J), ")"))
+
+J.N.dim <- expand.grid(paste0(".", lead.zero(1:J)), paste0(".", lead.zero(1:N)))
+
+qj.wn <- expand.grid(paste0("log(q", lead.zero(1:J), ")"), paste0("log(w", lead.zero(1:N), " * theta", lead.zero(1:N), ")"))
+
+# data.frame(M.N.dim, ym.wn) # checks out  data.frame(M.J.dim, ym.qj)
 
 # ln.c part
 # beta0 + 
@@ -300,8 +374,17 @@ ln.c.4 <-  paste0("beta", do.call(paste0, N.2.dim ), " * ", ln.sh.w.grid.2, coll
 # +
 ln.c.5 <- paste0("gamma", do.call(paste0, M.N.dim), " * ", ym.wn[[1]], " * ", ym.wn[[2]], collapse=" + " )
 
+ln.c.6 <-  paste0("zeta", lead.zero(1:J),  " * ", "log(q", lead.zero(1:J), ")", collapse=" + ")
+ 
+ln.c.7 <-  paste0("zeta", do.call(paste0, J.2.dim ), " * ", ln.sh.q.grid.2, collapse=" + ")
+
+ln.c.8 <-  paste0("kappa", do.call(paste0, J.N.dim), " * ", qj.wn[[1]], " * ", qj.wn[[2]], collapse=" + " )
+
+ln.c.9 <-  paste0("delta", do.call(paste0, M.J.dim), " * ", ym.qj[[1]], " * ", ym.qj[[2]], collapse=" + " )
+
 ln.c <- paste0("beta0 + ", ln.c.1, " + ", ln.c.2, " + (1/2) * (", ln.c.3, 
-") + (1/2) * (", ln.c.4, ") + ", ln.c.5)
+  ") + (1/2) * (", ln.c.4, ") + ", ln.c.5, " + ", ln.c.6, " + (1/2) * (", ln.c.7 ,
+  ") + ", ln.c.8, " + ", ln.c.9)
 
 
 
@@ -321,14 +404,23 @@ for ( i in 1:N) {
     collapse=" + " )
 }
 
+kappa.special<-c()
+kappa.mat<-matrix(1:(J*N), nrow=J, ncol=N)
+for ( i in 1:N) {
+  kappa.special[i] <- paste0(
+    paste0("kappa", do.call(paste0, J.N.dim), " * ", qj.wn[[1]])[kappa.mat[, i]],
+    collapse=" + " )
+}
+
 
 ln.E.2nd <- paste0( "log(" , 
   paste0(
-  paste0("(w", lead.zero(1:N), " / (w", lead.zero(1:N), " * theta)", 
-   lead.zero(1:N), ") * ", 
+  paste0("(w", lead.zero(1:N), " / (w", lead.zero(1:N), " * theta", 
+   lead.zero(1:N), ")) * ", 
    "(beta", lead.zero(1:N), " + ",
    gamma.special, " + ",
-   beta.special, ")"),
+   beta.special, " + ",
+   kappa.special, ")"),
   collapse=" + " ), ")" )
    
 # ln.E <- paste0("test.fn <- function(X) {", ln.c, " + ", ln.E.2nd, "}")
@@ -350,13 +442,15 @@ library(stringr)
 
 
 ln.E.vars <- all.vars(as.formula(paste("ln.E.data ~", ln.E.string)))
-ln.E.vars <- ln.E.vars[ !grepl("(w[0-9])|(y[0-9])|(ln.E.data)", ln.E.vars ) ]
+ln.E.vars <- ln.E.vars[ !grepl("(w[0-9])|(q[0-9])|(y[0-9])|(ln.E.data)", ln.E.vars ) ]
 ln.E.vars <- sort(ln.E.vars)
 
 
-replacements <- data.frame(greek=c("alpha", "beta", "gamma"), N=c(M,N,N), M=c(M,N,M))
-replacements <- replacements[1:2, ]
+# replacements <- data.frame(greek=c("alpha", "beta", "gamma"), N=c(M,N,N), M=c(M,N,M))
 # so do not actually need for gamma
+replacements <- data.frame(greek=c("alpha", "beta", "zeta"), N=c(M,N,J), M=c(M,N,J))
+if (J==1) {replacements <- replacements[1:2, ] }
+
 
 for ( k in 1:nrow(replacements) ) {
 
@@ -415,6 +509,11 @@ ln.c.linear <- gsub("alpha[0-9]+ [*]", "", ln.c.linear)
 ln.c.linear <- gsub("alpha.[0-9]+.[0-9]+ [*] ", "", ln.c.linear)
 ln.c.linear <- gsub("beta.[0-9]+.[0-9]+ [*]", "", ln.c.linear)
 ln.c.linear <- gsub("gamma.[0-9]+.[0-9]+ [*]", "", ln.c.linear)
+ln.c.linear <- gsub("zeta[0-9]+ [*] ", "", ln.c.linear)
+ln.c.linear <- gsub("zeta.[0-9]+.[0-9]+ [*]", "", ln.c.linear)
+ln.c.linear <- gsub("kappa.[0-9]+.[0-9]+ [*]", "", ln.c.linear)
+ln.c.linear <- gsub("delta.[0-9]+.[0-9]+ [*]", "", ln.c.linear)
+
 ln.c.linear <- gsub("[(]1/2[)] [*]", "", ln.c.linear)
 # we should just scale the parameters to get the 1/2 part down
 ln.c.linear <- gsub("[*]", ":", ln.c.linear)
@@ -424,6 +523,8 @@ for (i in 1:max(c(N,M))) {
   ln.c.linear <- gsub(paste0(temp.y, " : ", temp.y), paste0("I(",temp.y, "^2)"), ln.c.linear)
   temp.w <- paste0("w", lead.zero(i))
   ln.c.linear <- gsub(paste0("log[(]", temp.w, "[)] : log[(]", temp.w, "[)]"), paste0("I(log(", temp.w, ")^2)"), ln.c.linear)
+  temp.q <- paste0("q", lead.zero(i))
+  ln.c.linear <- gsub(paste0("log[(]", temp.q, "[)] : log[(]", temp.q, "[)]"), paste0("I(log(", temp.q, ")^2)"), ln.c.linear)
 }
 
 #test.lm <-lm(as.formula(paste0("ln.E.data ~", ln.c.linear)))
@@ -437,7 +538,8 @@ for ( n in 1:N) {
  S.n.H[[n]] <- as.formula(
    paste0( "I( (x", lead.zero(n), " * ", "w", lead.zero(n), ")/exp(ln.E.data)) ~ ",
     paste0("log(w", lead.zero(1:N), ")", collapse=" + "), " + ", 
-    paste0("y", lead.zero(1:M), collapse=" + ")
+    paste0("y", lead.zero(1:M), collapse=" + "), " + ", 
+    paste0("log(q", lead.zero(1:J), ")", collapse=" + ")
    )
   )
   names(S.n.H)[n] <- paste0("S.n.H.", lead.zero(n))
@@ -469,12 +571,14 @@ test.lm <-lm(terms(S.n.H[[length(S.n.H)]], keep.order=TRUE))
 
 ln.E.vars <- all.vars(as.formula(paste("ln.E.data ~", ln.c)))
 # ln.E.vars <- all.vars(as.formula(paste("ln.E.data ~", ln.E.string)))
-ln.E.vars <- ln.E.vars[ !grepl("(theta[0-9])|(w[0-9])|(y[0-9])|(ln.E.data)", ln.E.vars ) ]
+ln.E.vars <- ln.E.vars[ !grepl("(theta[0-9])|(w[0-9])|(q[0-9])|(y[0-9])|(ln.E.data)", ln.E.vars ) ]
 ln.E.vars
-param.crossref.df <- data.frame(nlm=ln.E.vars, lm=names(coef(test.lm)), lm.share=NA)
+param.crossref.df <- data.frame(nlm=ln.E.vars, lm=names(coef(test.lm)), lm.share=NA, stringsAsFactors=FALSE)
 # already has symmetry
 
-
+for ( i in grep("kappa", param.crossref.df$nlm)) {
+  param.crossref.df$lm[i] <- paste0(gsub(".+:", "", param.crossref.df$lm[i]), ":", gsub(":.+", "", param.crossref.df$lm[i]) )
+}
 
 
 
@@ -488,6 +592,11 @@ for ( i in lead.zero(2:N)) {
     param.crossref.df[
       param.crossref.df$nlm==paste0("gamma.", j, ".", i), "lm.share"] <-
     paste0("S.n.H.", i, "_", "y", j)
+  }
+  for ( j in lead.zero(1:J)) {
+      param.crossref.df[
+      param.crossref.df$nlm==paste0("kappa.", j, ".", i), "lm.share"] <-
+    paste0("S.n.H.", i, "_", "log(q", j, ")")
   }
 }
 
@@ -530,6 +639,13 @@ for ( i in 1:N) {
     paste0("I(0.5*log(w", lead.zero(i), ")^2)"), S.n.H.cost.fn.string) 
 }
 
+for ( i in 1:J) {
+#  S.n.H.cost.fn.string <- gsub(paste0("log[(]w", lead.zero(i), "[)]:"),  
+#    paste0("I(0.5*log(w", lead.zero(i), ")):"), S.n.H.cost.fn.string)
+  S.n.H.cost.fn.string <- gsub(paste0("I[(]log[(]q", lead.zero(i), "[)].2[)]"),   
+    paste0("I(0.5*log(q", lead.zero(i), ")^2)"), S.n.H.cost.fn.string) 
+}
+
 linear.terms.for.adding.up <- S.n.H.cost.fn.string
 
 
@@ -565,8 +681,14 @@ kleinOls <- systemfit( S.n.H, "SUR", maxit = 1  )
 
 singular.test.lm <-lm(terms(S.n.H[[length(S.n.H)]], keep.order=TRUE))
 
+singular.test.lm.names <- names(coef(singular.test.lm ))
+
+for ( i in grep("log[(]q[0-9][0-9][)]:log[(]w[0-9][0-9][)]", param.crossref.df$lm) ) {
+  param.crossref.df$lm[i] <- paste0(gsub(".+:", "", param.crossref.df$lm[i]), ":", gsub(":.+", "", param.crossref.df$lm[i]) )
+}
+
 param.crossref.no.singular.df <- 
-  param.crossref.df[param.crossref.df$lm %in% names(coef(singular.test.lm )), ]
+  param.crossref.df[param.crossref.df$lm %in% singular.test.lm.names, ]
   
 lm.param.restrictions <- paste0("cost.fn_", param.crossref.no.singular.df$lm[!is.na(param.crossref.no.singular.df$lm.share)], " = ", 
   param.crossref.no.singular.df$lm.share[!is.na(param.crossref.no.singular.df$lm.share)]
@@ -576,16 +698,28 @@ lm.param.restrictions <- c(lm.param.restrictions,
   paste0("cost.fn_I(0.5 * log(w", lead.zero(2:N), ")^2) = S.n.H.", lead.zero(2:N), "_log(w", lead.zero(2:N),")")
 )
 
-# REFERENCE: Kumbhaker & Lovell 2000, p. 223 for parameter restrictions
+#if (J>1) {
+#lm.param.restrictions <- c(lm.param.restrictions, 
+#  paste0("cost.fn_I(0.5 * log(q", lead.zero(2:J), ")^2) = S.n.H.", lead.zero(2:J), "_log(w", #lead.zero(2:N),")")
+#)
+#}
+# Above we never correct - we dont have that restriction since w00 does not appear in the  q00 cross terms
+
+# REFERENCE: Kumbhaker & Lovell 2000, p. 223 for parameter restrictions and 178, footnote 10 of Reinhard and Thijssen
 
 # ln.lm.E.vars <- names(coef(test.lm))
 # ln.lm.E.vars <- names(coef(linear.terms.for.adding.up))
 # ln.lm.E.vars <- names(coef(linear.terms.for.adding.up))
+# add up across 2nd number (w) for kappa
 
 ln.lm.E.vars <- attr(terms(as.formula(
   paste0("ln.E.data ~ ",  gsub("[(]Intercept[)] .", "",  linear.terms.for.adding.up))
   ), keep.order=TRUE), "term.labels")
 
+
+#for ( i in grep("log[(]w[0-9][0-9][)]:log[(]q[0-9][0-9][)]", ln.lm.E.vars) ) {
+#  ln.lm.E.vars[i] <- paste0(gsub(".+:", "", ln.lm.E.vars[i]), ":", gsub(":.+", "", ln.lm.E.vars[i]) )
+#}
 
 
 # ln.c.linear
@@ -603,7 +737,7 @@ ln.lm.E.vars <- attr(terms(as.formula(
 betas.single <- sort(ln.lm.E.vars[grepl("^log[(]w[0-9][0-9][)]$", ln.lm.E.vars)])
 
  ln.E.string <- str_replace_all(ln.E.string, "beta01", paste0("(-(", paste0(betas.single[-1], collapse=" + "), " - 1))" ) )
-# OK, this may be wrong: from p. 4 of http://ageconsearch.umn.edu/bitstream/22027/1/sp03mo02.pdf
+# OK, this reference may be wrong, but the code above is right: p. 4 of http://ageconsearch.umn.edu/bitstream/22027/1/sp03mo02.pdf
 
 single.beta.restriction <- paste0( paste0("cost.fn_", betas.single, collapse=" + "), " = 1" )
 
@@ -652,6 +786,11 @@ gamma.input.adding.up <- ln.lm.E.vars[grepl("y[0-9][0-9].log[(]w[0-9][0-9][)]" ,
 
 gamma.adding.up.mat <- matrix(paste0("cost.fn_", gamma.input.adding.up), nrow=M, ncol=N)
 
+for ( i in singular.terms) {
+  gamma.adding.up.mat <- gsub(i , "NA", gamma.adding.up.mat, fixed=TRUE)
+}
+
+
 # y02:I(0.5 * y04)
 # I(0.5 * y02^2)
 
@@ -662,11 +801,34 @@ double.gamma.restrictions <-
   
 double.gamma.restrictions <- gsub("[+] cost.fn_NA", "", double.gamma.restrictions)
 double.gamma.restrictions <- gsub("cost.fn_NA [+] ", "", double.gamma.restrictions)
+double.gamma.restrictions <- gsub("cost.fn_NA", "", double.gamma.restrictions)
+
+double.gamma.restrictions <- double.gamma.restrictions[grepl("cost.fn", double.gamma.restrictions)]
+
+
+kappa.input.adding.up <- ln.lm.E.vars[grepl("log[(]w[0-9][0-9][)].log[(]q[0-9][0-9][)]" , ln.lm.E.vars )]
+
+kappa.adding.up.mat <- matrix(paste0("cost.fn_", kappa.input.adding.up), nrow=J, ncol=N)
+
+for ( i in singular.terms) {
+  kappa.adding.up.mat <- gsub(i , "NA", kappa.adding.up.mat, fixed=TRUE)
+}
+
+double.kappa.restrictions <-
+  paste("",
+    apply(kappa.adding.up.mat, 1, paste, collapse=" + " ),
+  " = 0" )
+  
+double.kappa.restrictions <- gsub("[+] cost.fn_NA", "", double.kappa.restrictions)
+double.kappa.restrictions <- gsub("cost.fn_NA [+] ", "", double.kappa.restrictions)
+double.kappa.restrictions <- gsub("cost.fn_NA", "", double.kappa.restrictions)
+
+double.kappa.restrictions <- double.kappa.restrictions[grepl("cost.fn", double.kappa.restrictions)]
 
 
 # }
 
-lm.param.restrictions <- c(lm.param.restrictions, single.beta.restriction , double.beta.restrictions, double.gamma.restrictions   )
+lm.param.restrictions <- c(lm.param.restrictions, single.beta.restriction , double.beta.restrictions, double.gamma.restrictions, double.kappa.restrictions    )
 
 
 
@@ -677,6 +839,198 @@ lm.param.restrictions <- c(lm.param.restrictions, single.beta.restriction , doub
 
 
 linear.sur.est <- systemfit( S.n.H, "SUR", restrict.matrix = lm.param.restrictions,  maxit = 5000 )
+
+
+
+
+
+
+
+
+
+
+# Below, need to deal with the fact that log(w03):log(q01)  is reversed
+
+
+S.n.H.tech.test <- list()
+
+for ( n in 1:N) {
+ S.n.H.tech.test[[n]] <- as.formula(
+   paste0( "I( (x", lead.zero(n), " * ", "w", lead.zero(n), ")/exp(ln.E.data)) ~ tech:(",
+    paste0("log(w", lead.zero(1:N), ")", collapse=" + "), " + ", 
+    paste0("y", lead.zero(1:M), collapse=" + "), ")"
+   )
+  )
+  names(S.n.H.tech.test)[n] <- paste0("S.n.H.", lead.zero(n))
+}
+
+S.n.H.tech.test[[1]] <- NULL
+
+S.n.H.tech.test[[length(S.n.H.tech.test)+1]] <- as.formula(paste0("ln.E.data ~ tech:(", S.n.H.cost.fn.string, ")"))
+
+names(S.n.H.tech.test)[length(S.n.H.tech.test)] <- "cost.fn"
+
+tech <- as.factor(groups)
+
+
+
+linear.sur.est.tech.test <- systemfit( S.n.H.tech.test, "SUR", restrict.matrix = lm.param.restrictions,  maxit = 5000 )
+
+# tech <- as.factor(rep(1, length(groups))
+# linear.sur.est.tech.test <- systemfit( S.n.H.tech.test[1:2], "SUR",  maxit = 5000 )
+# linear.sur.est.tech.test <- lm( S.n.H.tech.test[[1]])
+
+
+# I think I can check the linear equality hypothesis with UCLA's R SUR page
+# Also would have to have a separate intercept for cost fn, which just means a stand-alone dummy var
+
+# Ok, actually I am not convinced that this is a good idea. Maybe we need to just delete interaction for the groups that it doesnt apply for
+
+
+#for (i in 1:length(S.n.H)) {
+#  lm.tech.check <- lm( S.n.H.tech.test[[i]] )
+#  singular.terms <- names(coef(lm.tech.check )[is.na(coef(lm.tech.check ))])
+# }  
+
+
+
+lm.tech.check <- lm( S.n.H.tech.test[[length(S.n.H.tech.test)]] )
+tech.check.singular.terms <- names(coef(lm.tech.check )[is.na(coef(lm.tech.check ))])
+
+S.n.H.cost.fn.string.tech.test.terms <- strsplit(S.n.H.cost.fn.string, "+", fixed=TRUE)[[1]]
+
+# I'm not sure whether not taking out w01 from this will result in a singularity:
+S.n.H.cost.fn.string.tech.test.terms <- paste0("tech", 
+  rep( 1:length(unique(groups)), each=length(S.n.H.cost.fn.string.tech.test.terms)),
+   ":", gsub(" ", "", S.n.H.cost.fn.string.tech.test.terms))
+# Also could be a problem with terms switching places
+
+S.n.H.cost.fn.string.tech.test.terms <- S.n.H.cost.fn.string.tech.test.terms[ ! S.n.H.cost.fn.string.tech.test.terms %in% gsub(" ", "", tech.check.singular.terms) ]
+
+S.n.H.cost.fn.string.tech.test <- paste0(S.n.H.cost.fn.string.tech.test.terms, collapse=" + ")
+
+tech1 <- ifelse(tech==1, 1, 0)
+tech2 <- ifelse(tech==2, 1, 0)
+tech3 <- ifelse(tech==3, 1, 0)
+tech4 <- ifelse(tech==4, 1, 0)
+tech5 <- ifelse(tech==5, 1, 0)
+tech6 <- ifelse(tech==6, 1, 0)
+
+lm.tech.check.2 <- lm(
+  as.formula(paste0("ln.E.data ~ tech + ", S.n.H.cost.fn.string.tech.test))
+)
+# Oll Korrect!
+
+# I believe that all that we have to worry about below is double-gamma parameters
+
+S.n.H.tech.test <- list()
+
+for ( n in 1:N) {
+ S.n.H.tech.test[[n]] <- paste0(
+    paste0("log(w", lead.zero(1:N), ")", collapse=" + "), " + ", 
+    paste0("y", lead.zero(1:M), collapse=" + ")
+   )
+  names(S.n.H.tech.test)[n] <- paste0("S.n.H.", lead.zero(n))
+  S.n.H.tech.test[[n]] <- strsplit(S.n.H.tech.test[[n]], " + ", fixed=TRUE)[[1]]
+  
+  S.n.H.tech.test[[n]] <- paste0("tech", 
+  rep( 1:length(unique(groups)), each=length(S.n.H.tech.test[[n]])),
+   ":", gsub(" ", "", S.n.H.tech.test[[n]])) 
+   
+   gammas.cost.share.can.have <- gsub("[:]log[(]w[0-9][0-9][)]", "", 
+   S.n.H.cost.fn.string.tech.test.terms[
+     grepl(paste0("log(w", lead.zero(n), ")"), S.n.H.cost.fn.string.tech.test.terms, fixed=TRUE)])
+   
+   S.n.H.tech.test[[n]] <- S.n.H.tech.test[[n]][ grepl("log", S.n.H.tech.test[[n]]) |
+     S.n.H.tech.test[[n]] %in% gammas.cost.share.can.have ]
+     
+   S.n.H.tech.test[[n]]  <- c(paste0("tech", 1:length(unique(groups))), S.n.H.tech.test[[n]] )
+     
+   S.n.H.tech.test[[n]]  <- paste0("I( (x", lead.zero(n), 
+   " * ", "w", lead.zero(n), ")/exp(ln.E.data)) ~ ",
+   paste0(S.n.H.tech.test[[n]], collapse=" + "), " - 1" )
+   # Negative 1 gives us no intercept
+
+}
+
+S.n.H.tech.test[[1]] <- NULL
+
+# gsub("[:]log[(]w04[)]", "", "tech5:y08:log(w04)" )
+# "tech1:y02"
+
+S.n.H.tech.test[[length(S.n.H.tech.test) + 1]] <- paste0("ln.E.data ~ tech + ", S.n.H.cost.fn.string.tech.test)
+
+for ( i in 1:length(S.n.H.tech.test)) {
+  S.n.H.tech.test[[i]] <- as.formula(S.n.H.tech.test[[i]])
+}
+
+
+test.test <- linear.sur.est.tech.test <- systemfit( S.n.H.tech.test, "SUR", maxit = 5000 )
+# Yeshhh!!
+# Ok, now we just need the restriction  vector
+# probably should replace the explicit intercept with tech1
+
+# Computing marginal products of inputs: 
+# http://ageconsearch.umn.edu/bitstream/29726/1/16020001.pdf
+# www.econjournals.com/index.php/ijeep/article/download/123/99
+
+
+# interactin vs. separate regressions: http://www3.nd.edu/~rwilliam/stats2/l51.pdf
+# better source: http://www.uv.es/uriel/5%20Multiple%20regression%20analysis%20with%20qualitative%20information.pdf
+# Also see this: http://forums.eviews.com/viewtopic.php?f=4&t=440
+# <aybe I should have an honest-t0-God zero var for one of the technologies
+
+# Probably a rigorous way to test for structural breaks, but seems like hell to implement: http://www.jstor.org/stable/4501997
+# Well, maybe we could do the above. Also this is similar: http://sws1.bu.edu/perron/papers/dealing.pdf
+
+# This may be what we need, but it is behind a paywall: http://www.tandfonline.com/doi/full/10.1080/13504851.2012.689105#preview
+
+# This could help too: Seemingly Unrelated Regression Equations Models: Estimation and Inference
+
+# Note: the main SUR function is not quadratic since second deriv is not always negative
+
+summary( test.test <- lm(S.n.H.tech.test[[1]]))
+
+
+
+# has to be a tech intercept for all cost share eqns
+
+
+
+
+
+
+S.n.H.tech.test[[length(S.n.H.tech.test)+1]] <- as.formula(paste0("ln.E.data ~ tech + tech:(", S.n.H.cost.fn.string.tech.test, ")"))
+
+
+S.n.H.tech.test <- list()
+
+for ( n in 1:N) {
+ S.n.H.tech.test[[n]] <- as.formula(
+   paste0( "I( (x", lead.zero(n), " * ", "w", lead.zero(n), ")/exp(ln.E.data)) ~ tech:(",
+    paste0("log(w", lead.zero(1:N), ")", collapse=" + "), ")"
+   )
+  )
+  names(S.n.H.tech.test)[n] <- paste0("S.n.H.", lead.zero(n))
+}
+
+S.n.H.tech.test[[1]] <- NULL
+
+S.n.H.cost.fn.string.tech.test.terms <- strsplit(S.n.H.cost.fn.string, "+", fixed=TRUE)[[1]]
+
+S.n.H.cost.fn.string.tech.test <- S.n.H.cost.fn.string.tech.test.terms[!grepl("y[0-9][0-9]", strsplit(S.n.H.cost.fn.string.tech.test.terms, "+", fixed=TRUE))]
+
+S.n.H.cost.fn.string.tech.test <- paste0(S.n.H.cost.fn.string.tech.test, collapse="+")
+
+S.n.H.tech.test[[length(S.n.H.tech.test)+1]] <- as.formula(paste0("ln.E.data ~ tech + tech:(", S.n.H.cost.fn.string.tech.test, ")"))
+
+names(S.n.H.tech.test)[length(S.n.H.tech.test)] <- "cost.fn"
+
+
+
+
+
+
 
 
 # linear.sur.est <- systemfit( S.n.H[length(S.n.H)], "SUR", restrict.matrix = lm.param.restrictions[!grepl("S.n.H", lm.param.restrictions)] ,  maxit = 5000 )
@@ -1123,7 +1477,13 @@ S.n[[j]] <- targ.S.n
 singular.test.lm <-lm(orig.singular.model)
 singular.terms <- names(coef(singular.test.lm )[is.na(coef(singular.test.lm ))])
 
+
+# If we dont have <if> statement, then we will get something like this in ln.E.string:  * y01 * y0102.01 * y02 * y0103.01 * y03 * y0104.01 * y04 * y0105.01 * y05 * y0102.01 * y01 * y0202.02 * y02 * y0203.02 * y03 * y0204.02 * y04 * y0205.02 * y05 * y0203.01 
+if (length(singular.terms)>0 ) {
+
 singular.terms <- gsub("(I[(]0.5 . )|([)])", "", singular.terms )
+
+
 
 for ( i in singular.terms) {
   singular.terms<-c(singular.terms, 
@@ -1132,6 +1492,7 @@ for ( i in singular.terms) {
 
 singular.terms <- gsub(":", " . ", singular.terms )
 
+# Ok, this will give an error if one of the crops never uses a particular input
 
 #for ( i in singular.terms) {
 #   ln.E.string <- 
@@ -1163,12 +1524,7 @@ for ( i in singular.terms) {
    # Because the + could be before or after the term
 }
 
-for ( j in 1:length(S.n) ) {
-  S.n[[j]] <- as.formula(S.n[[j]])
 }
-
-
-
 
 all.vars(as.formula(paste("ln.E.data ~", ln.E.string)))
 
@@ -1286,20 +1642,28 @@ names(ln.E.start.vals) <- ln.E.vars
 # ln.E.start.vals <- ln.E.start.vals[!grepl("(beta01)|(beta....01)|(gamma....01)", 
 #   names(ln.E.start.vals))]
 
+
+# This is to handle the fact that some of these drop out with adding-up restrictions:
 ln.E.start.vals <- ln.E.start.vals[!grepl("(alpha.03.01)|(beta01)|(beta....01)|(gamma....01)", 
   names(ln.E.start.vals))]
 alpha.03.01 <- 0
 
 #TODO: for now we will kill alpha.03.01 since it only pertains to one observation and it will screw up gradient
 
-theta.starts <- rep(1, times=N-1)
+
 
 # theta.starts <- c(.75, 1, 1.25)
  
 #theta.starts <- c(.8, 1, 1.2)
 
+theta.starts <- rep(1, times=N-1)
 names(theta.starts) <- paste0("theta", lead.zero(1:(N-1)))
 theta04 <- 1
+
+# Now making manure numeraire and changing to price translation:
+# theta.starts <- rep(0, times=N-1)
+# names(theta.starts) <- paste0("theta", lead.zero(c(1,2,4)))
+# theta03 <- 0
 
 
 
@@ -1386,6 +1750,9 @@ args.list <- lapply(args.list, FUN=function(x) {
 
 args.list <- c(list(x=ln.E.start.vals), args.list)
 
+# THE above line is actually pretty crucial
+# NOTE: WE NEED TO READ UP TO HERE
+
 eval(parse(text=paste0("mod.predicted <- function(x, ", paste0(names(args.list)[-1], collapse=", "), ") {", first.line, 
 "  ret <- ", ln.E.string, "; ifelse(is.finite(ret), ret, 10^300) }")))
 
@@ -1415,14 +1782,16 @@ sum((resid(linear.sur.est)$cost.fn)^2)
 
 do.call(mod.predicted, args.list) -  predict(linear.sur.est)$cost.fn.pred
 
+mod.predicted(ln.E.start.vals) - predict(linear.sur.est)$cost.fn.pred
+
 # TODO: test: get to min when only really OLS
 
 sum((predict(linear.sur.est)$cost.fn.pred - args.list$ln.E.data)^2)
 
-ln.E <- paste0("nls.formula.ln.E <- ln.E.data ~ ", ln.E.string)
+
 
 #function.text <- llf.creator.fn(12,5,1)
-eval(parse(text=ln.E))
+
 
 # x01.store <-x01; rm(x01)   ;     
 # x01 <- x01.store
@@ -1436,13 +1805,87 @@ eval(parse(text=ln.E))
 ##########################
 ##########################
 
+# Changing to price translation - DONT DO THIS if dont want the additive model
+
+for ( j in 1:length(S.n) ) {
+  S.n[[j]] <- gsub("* theta", "+ theta", S.n[[j]], fixed=TRUE)
+}
+
+ln.E.string <- gsub("* theta", "+ theta", ln.E.string, fixed=TRUE)
+
+
+ln.E <- paste0("nls.formula.ln.E <- ln.E.data ~ ", ln.E.string)
+eval(parse(text=ln.E))
+
+for ( j in 1:length(S.n) ) {
+  S.n[[j]] <- as.formula(S.n[[j]])
+}
+
+
+
 full.system.ls <- S.n
 full.system.ls[[length(full.system.ls)+1]] <- nls.formula.ln.E
 names(full.system.ls)[length(full.system.ls)] <-"cost.fn"
 
 # TODO: Do we have to consider the environment when forming the formula?
 
-try.nls.off.thetas <- nlsystemfit(eqns= full.system.ls, startvals=ln.E.start.vals, data=as.data.frame(args.list[-1]), print.level=2)
+
+try.nls.group.2.SUR.fix <- nlsystemfit(method="SUR", eqns= full.system.ls, startvals=ln.E.start.vals, data=as.data.frame(args.list[-1]), print.level=2, maxiter=100000)
+
+try.nls.group.2.SUR <- nlsystemfit(method="SUR", eqns= full.system.ls, startvals=try.params, data=as.data.frame(args.list[-1]), print.level=2, maxiter=100000)
+
+do.call(function(x){args.list[[1]] <- x;  sum((do.call(mod.predicted, args.list) - args.list$ln.E.data)^2) }, list(x=unlist(test)[1:length(ln.E.start.vals)]))
+
+
+
+
+eval(parse(text=paste0("mod.predicted <- function(x, ", paste0(names(args.list)[-1], collapse=", "), ") {", first.line, 
+"  ret <- ", ln.E.string, "; ifelse(is.finite(ret), ret, 10^300) }")))
+
+
+
+
+sum((args.list$ln.E.data - mean(args.list$ln.E.data))^2)
+
+sum((predict(linear.sur.est)$cost.fn.pred - args.list$ln.E.data)^2)
+
+do.call(function(x){args.list[[1]] <- x;  sum((do.call(mod.predicted, args.list) - args.list$ln.E.data)^2) }, list(x=try.nls.group.2.SUR$b))
+
+do.call(function(x){args.list[[1]] <- x;  do.call(mod.predicted, args.list)  }, list(x=try.nls.group.2.SUR$b))
+
+
+linear.sur.est
+
+
+ok, it just said, "Successive iterates within tolerance.
+Current iterate is probably solution." quite quickly ofter the try.params. probably having to do with setting up the hessian at teh beginning or something
+
+# Wow, taking a subset is much faster out of the starting line, probably because of fewer parameters
+# The output mix will influence input mix - does the model capture this?
+# Stuff is messed up again - somehow the gammas linear restriction is messed up
+
+
+algo.analysis.txt<-readLines("/Users/travismcarthur/Desktop/Metrics (637)/Final paper/minimization algorithm analysis.txt")
+
+algo.analysis.txt <- as.numeric( gsub("[1] ", "", algo.analysis.txt[grep("Function Value", algo.analysis.txt ) + 1 ], fixed=TRUE) )
+
+# Of course, the below analysis assumes that the same step length is applied each time
+plot(algo.analysis.txt[-(1:100)], type="l")
+plot(diff(algo.analysis.txt[-(1:100)], differences = 1), type="l")
+plot(diff(algo.analysis.txt[-(1:100)], differences = 2), type="l")
+plot(diff(algo.analysis.txt[-(1:100)], differences = 3), type="l")
+plot(diff(algo.analysis.txt[-(1:100)], differences = 4), type="l")
+plot(diff(algo.analysis.txt[-(1:100)], differences = 5), type="l")
+plot(diff(algo.analysis.txt[-(1:100)], differences = 6), type="l")
+
+The "breathing time" seems to be a function of the number of observations. Maybe they are doing BHH or a variant
+
+
+try.nls.translation.SUR <- nlsystemfit(method="SUR", eqns= full.system.ls, startvals=ln.E.start.vals, data=as.data.frame(args.list[-1]), print.level=2)
+
+
+
+try.nls.off.thetas <- nlsystemfit(method="SUR", eqns= full.system.ls, startvals=ln.E.start.vals, data=as.data.frame(args.list[-1]), print.level=2)
 # maxiter=10000
 
 # save(file=paste0(work.dir, "try-nls.Rdata"), try.nls)
@@ -1803,10 +2246,10 @@ eval(parse(text=function.text))
 
 work.dir <- "/Users/travismcarthur/Desktop/Metrics (637)/Final paper/"
 
-load(file=paste0(work.dir, "firm df.Rdata"))
+load(file=paste0(work.dir, "firm df2.Rdata"))
 
 
-
+#  firm.df <- firm.df[-which.max(firm.df$labor.hours), ]
 
 
 
@@ -1820,7 +2263,9 @@ firm.df$revenue <- rowSums(
  trim.set <- quantile(firm.df$revenue, probs = c(.1, .9))
 # do this once
 
-firm.df<-firm.df[firm.df$revenue >= trim.set[1] & firm.df$revenue <= trim.set[2], ]
+# Going to keep in all the obs. -- Actually, we get a much better fit from this
+#  firm.df<-firm.df[firm.df$revenue >= trim.set[1] & firm.df$revenue <= trim.set[2], ]
+
 firm.df<-firm.df[!(firm.df$harvest.r.PAPA!=0 & firm.df$harvest.r.PLATANO!=0), ]
 # TODO: killing platano x papa mix for now
 
@@ -1830,16 +2275,30 @@ firm.df<-firm.df[!(firm.df$harvest.r.PAPA!=0 & firm.df$harvest.r.PLATANO!=0), ]
 firm.df<-firm.df[firm.df$harvest.r.ARROZ!=0 | firm.df$harvest.r.MAIZ!=0 |  firm.df$harvest.r.PLATANO!=0 |  firm.df$harvest.r.YUCA!=0 |   firm.df$harvest.r.ARVEJA!=0 |   firm.df$harvest.r.CEBADA!=0 |   firm.df$harvest.r.CEBOLLA!=0 |   firm.df$harvest.r.HABA!=0 |   firm.df$harvest.r.OCA!=0 |   firm.df$harvest.r.PAPA!=0 |   firm.df$harvest.r.QUINUA!=0 |   firm.df$harvest.r.TRIGO!=0,  ]
 
 # WARNING: must do this after actual computation of these
-firm.df<-firm.df[0!=rowSums(firm.df[, c("fert.quintals", "seed.quintals","abono.quintals", "plaguicida.liters", "labor.hours") ]), ]
+#firm.df<-firm.df[0!=rowSums(firm.df[, c("fert.quintals", "seed.quintals","abono.quintals", "plaguicida.liters", "labor.hours") ]), ]
+# Ok, actually I think it's ok to have zero values for all the inputs, since we were actually doing that whenever we didnt include labor before
 
 
+if (TRUE) {
 # Ok, trying the clustering thing:
- firm.df <- firm.df[groups==5, ]
- k <- 1
- for (i in 1:12) {
-  targ.column <- firm.df[, grepl("harvest.r", colnames(firm.df))][, i ]
-  if (sum(targ.column>0)) {assign(paste0("y", lead.zero(k)), targ.column); k <- k + 1}
+firm.df <- firm.df[groups==6, ]
+ #  
+# Ok, the below is an easier way to do this 
+firm.df <- firm.df[, apply(firm.df, 2, FUN=function(x) sum(x)>0) ]
+# Below takes out one-crop stragglers
+firm.df <- firm.df[, apply(firm.df, 2, FUN=function(x) sum(x>0)-1>0) ]
+for (i in 1:sum(grepl("harvest.r", colnames(firm.df)))) {
+  targ.column <- firm.df[, grepl("harvest.r", colnames(firm.df)), drop=FALSE][, i ]
+  assign(paste0("y", lead.zero(i)), targ.column)
 }
+
+}
+ 
+# k <- 1
+# for (i in 1:12) {
+#  targ.column <- firm.df[, grepl("harvest.r", colnames(firm.df))][, i ]
+#  if (any(targ.column>0)) {assign(paste0("y", lead.zero(k)), targ.column); k <- k + 1}
+#}
 
 
 # TODO: need to fix
@@ -1860,6 +2319,13 @@ firm.df<-firm.df[0!=rowSums(firm.df[, c("fert.quintals", "seed.quintals","abono.
 
 # Below is not a legit check since there is non-identification of parameters
 # w01<-rep(runif(1),nrow(firm.df)) ; w02<-rep(runif(1),nrow(firm.df)); w03<-rep(runif(1),nrow(firm.df)); w04<-rep(runif(1),nrow(firm.df)) ; ln.E.data <- log(w01*x01 + w02*x02 + w03*x03 + w04*x04 + 2  )
+
+q01 = firm.df$land.area
+q01[q01 ==0] = median(q01)
+q02 = firm.df$num.pers.agropecuaria 
+q02[q02 == 0] = .5
+
+# TODO: two observations have zero land input - this is for a subset, so probably more
 
 w01 = firm.df$fert.price.quintal
 w02 = firm.df$seed.price
@@ -1886,18 +2352,18 @@ p10 = firm.df$price.ARROZ
 p11 = firm.df$price.QUINUA
 p12 = firm.df$price.TRIGO
 
-y01 = firm.df$harvest.r.PAPA 
-y02 = firm.df$harvest.r.MAIZ
-y03 = firm.df$harvest.r.PLATANO
-y04 = firm.df$harvest.r.YUCA
-y05 = firm.df$harvest.r.ARVEJA
-y06 = firm.df$harvest.r.CEBADA
-y07 = firm.df$harvest.r.CEBOLLA
-y08 = firm.df$harvest.r.HABA
-y09 = firm.df$harvest.r.OCA
-y10 = firm.df$harvest.r.ARROZ
-y11 = firm.df$harvest.r.QUINUA
-y12 = firm.df$harvest.r.TRIGO
+#y01 = firm.df$harvest.r.PAPA 
+#y02 = firm.df$harvest.r.MAIZ
+#y03 = firm.df$harvest.r.PLATANO
+#y04 = firm.df$harvest.r.YUCA
+#y05 = firm.df$harvest.r.ARVEJA
+#y06 = firm.df$harvest.r.CEBADA
+#y07 = firm.df$harvest.r.CEBOLLA
+#y08 = firm.df$harvest.r.HABA
+#y09 = firm.df$harvest.r.OCA
+#y10 = firm.df$harvest.r.ARROZ
+#y11 = firm.df$harvest.r.QUINUA
+#y12 = firm.df$harvest.r.TRIGO
 
 z1 = firm.df$land.area
 
@@ -1916,6 +2382,24 @@ w02[w02==0] <- mean(w02[w02!=0]) + mean(w02[w02!=0])* rnorm(length(w02[w02==0]),
 w03[w03==0] <- mean(w03[w03!=0]) + mean(w03[w03!=0])* rnorm(length(w03[w03==0]), mean = 0, sd = .1)
 w04[w04==0] <- mean(w04[w04!=0]) + mean(w04[w04!=0])* rnorm(length(w04[w04==0]), mean = 0, sd = .1)
 w05[w05==0] <- mean(w05[w05!=0]) + mean(w05[w05!=0])* rnorm(length(w05[w05==0]), mean = 0, sd = .1)
+
+# Fix for translation of prices - and now we're incorporating it into the standard run:
+w03[w03==min(w03)] <- min(w03[w03!=min(w03)])
+
+min(w01)
+min(w02)
+min(w03)
+min(w04)
+
+#> min(w01)
+#[1] 70.3731
+#> min(w02)
+#[1] 45.90055
+#> min(w03)
+#[1] 7.268086
+#> min(w04)
+#[1] 33.1459
+
 
 p01[p01==0] <- mean(p01[p01!=0]) + mean(p01[p01!=0])* rnorm(length(p01[p01==0]), mean = 0, sd = .1)
 p02[p02==0] <- mean(p02[p02!=0]) + mean(p02[p02!=0])* rnorm(length(p02[p02==0]), mean = 0, sd = .1)
@@ -1953,17 +2437,19 @@ groups
 
 harvest.yes.no.df <- apply(firm.df[, grepl("harvest.r", colnames(firm.df))], 2, FUN=function(x) ifelse(x>0, 1, 0) )
 
+prop.table(table(rowSums(harvest.yes.no.df)))
+
 d <- dist(harvest.yes.no.df , method = "euclidean") # distance matrix
 fit <- hclust(d, method="ward") 
 plot(fit) # display dendogram
-groups <- cutree(fit, k=5) # cut tree into 5 clusters
+groups <- cutree(fit, k=6) # cut tree into 5 clusters
 # draw dendogram with red borders around the 5 clusters 
-rect.hclust(fit, k=5, border="red")
+rect.hclust(fit, k=6, border="red")
 
 aggregate(harvest.yes.no.df,  by=list(groups), FUN=sum)
 
 t(aggregate(harvest.yes.no.df,  by=list(groups), FUN=sum))
-t(aggregate(harvest.yes.no.df,  by=list(kmeans(harvest.yes.no.df, 5)$cluster), FUN=sum))
+t(aggregate(harvest.yes.no.df,  by=list(kmeans(harvest.yes.no.df, 6)$cluster), FUN=sum))
 
 # number of crop types per cluster
 sort(colSums((t(aggregate(harvest.yes.no.df,  by=list(groups), FUN=function(x) ifelse(sum(x)>0, 1, 0))[,-1]))))
@@ -1978,6 +2464,26 @@ sort(table(kmeans(harvest.yes.no.df, 5)$cluster))
 library(fpc)
 cluster.stats(dist(harvest.yes.no.df), groups, kmeans(harvest.yes.no.df, 5)$cluster)
 # Not sure what any of the stats mean, though
+
+New sample:
+
+                  [,1] [,2] [,3] [,4] [,5] [,6]
+Group.1              1    2    3    4    5    6
+harvest.r.ARROZ      0    0    0   10    0  355
+harvest.r.MAIZ     141  203    0  459   17  290
+harvest.r.PLATANO    0    0    0    3    0  238
+harvest.r.YUCA       0    0    0    7    0  264
+harvest.r.ARVEJA     0    0    0  146   16    0
+harvest.r.CEBADA     0    0    0  160  282    0
+harvest.r.CEBOLLA    0    0    0  194   18    0
+harvest.r.HABA       0    0    0  289  196    0
+harvest.r.OCA        0    0    0  119  166    0
+harvest.r.PAPA     141    0  239  627  492    0
+harvest.r.QUINUA     0    0    0   24  150    0
+harvest.r.TRIGO      0    0    0  434   43    0
+
+
+
 
 
                   [,1] [,2] [,3] [,4] [,5]
@@ -2002,15 +2508,34 @@ harvest.r.TRIGO     97    0  328    0    0
 
 
 
+for ( i in 1:8) {
 
+  groups <- cutree(fit, k=i)
 
+  print( 
+    sort(colSums((t(aggregate(harvest.yes.no.df,  by=list(groups), FUN=function(x) ifelse(sum(x)>0, 1, 0))[,-1]))))
+  )
 
+}
 
+  groups <- cutree(fit, k=6)
 
+t(aggregate(harvest.yes.no.df,  by=list(groups), FUN=sum))
 
-
-
-
+                  [,1] [,2] [,3] [,4] [,5] [,6]
+Group.1              1    2    3    4    5    6
+harvest.r.ARROZ      0    0    6    0    0  266
+harvest.r.MAIZ     225    0  319  143    1  229
+harvest.r.PLATANO    0    0    1    0    0  168
+harvest.r.YUCA       0    0    4    0    0  209
+harvest.r.ARVEJA     0    0  139    0    0    0
+harvest.r.CEBADA     0    0  160    0  225    0
+harvest.r.CEBOLLA    0    0  168    0    0    0
+harvest.r.HABA       0    0  269    0  149    0
+harvest.r.OCA        0    0  133    0  113    0
+harvest.r.PAPA     225  167  505    0  373    0
+harvest.r.QUINUA     0    0   65    0   93    0
+harvest.r.TRIGO     97    0  328    0    0    0
 
 
 
