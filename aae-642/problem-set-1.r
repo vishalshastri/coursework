@@ -172,7 +172,7 @@ hist(pov.test$p)
 summary(pov.test$p)
 pov.test$p[pov.test$p>0.01]
 
-unsignif.tests<- pov.test[pov.test$p>0.01, ]
+unsignif.tests<- pov.test[pov.test$p>0.05, ]
 
 for ( i in 1:nrow(unsignif.tests)) { 
   print( poverty.options[unsignif.tests[i, 1], ])
@@ -258,14 +258,14 @@ for ( target.family in unique(lsms.df$family.type)) {
       y=x.subset$real.equiv.consumption, 
       weight=x.subset$hhwght,
       z=x.subset$povline[1], 
-      alpha=2)
+      alpha=0)
       
     pov.data.container[3] <- Ravallion.92.se(
       y=x.subset$real.equiv.consumption, 
      # cluster.var=x.subset$departmt,   # constant
       weight=x.subset$hhwght,
       z=x.subset$povline[1], 
-      alpha=2)
+      alpha=0)
   
 #    pov.data.container[3] <- Howes.Lanjouw.clustered.se(
 #      y=x.subset$real.equiv.consumption, 
@@ -378,8 +378,8 @@ for ( i in 1:nrow(crossover.check) ) {
     scales=list(x=list(cex=.42), y=list(cex=.5))
     )   
   
-  print(p, split=c(ifelse(k %in% c(1:3,7:9), 1, 2) ,
-    ifelse(k %% 3 == 0, 3, k %% 3), 2,3), more= k!=6)
+  print(p, split=c(ifelse(k %in% c(1:3,7:9, 13), 1, 2) ,
+    ifelse(k %% 3 == 0, 3, k %% 3), 2,3), more= ! k %in% c(6, 12))
 }
 
 dev.off()
@@ -415,20 +415,149 @@ layout(matrix(c(1,2,3,4), 2, 2, byrow = TRUE))
 for (i in 1:4+j*4) {
   
   corrplot(equiv.mat.ls[[i]][nrow(equiv.mat.ls[[i]]):1, ], 
+    col="blue",
+    cl.pos="n",
     method = "pie", 
     is.corr = FALSE, 
     cl.lim = c(0, max(unlist(equiv.mat.ls))), 
     tl.col="black", 
     title=paste0("Figure 1.", letters[i], ": ", names(equiv.mat.ls)[i]), 
-    mar = c(2, 2, 2, 2))
+    mar = c(2, 2, 3, 2))
   # add=c(FALSE, TRUE, TRUE, TRUE)[i]
 
   mtext(expression(alpha), side = 2, las=1, cex=1.5, col="blue") # , padj = 5
-  mtext(expression(theta), side = 3, padj =1.3, cex=1.5, col="blue")
+  mtext(expression(theta), side = 3, padj =.6, cex=1.5, col="blue")
 }
 }
 
 dev.off()
+
+max(unlist(equiv.mat.ls))
+
+
+pov.dets.df <- lsms.df[lsms.df$parent %in% "head", ]
+
+
+summary(pov.dets.df$alfabet)
+summary(pov.dets.df$educ)
+summary(pov.dets.df$language)
+summary(pov.dets.df$occ)
+summary(pov.dets.df$act)
+summary(pov.dets.df$position)
+summary(pov.dets.df$hhsize)
+summary(pov.dets.df$headmale)
+
+# TODO: unemployed or what?
+
+pov.dets.df$occ <- as.character(pov.dets.df$occ)
+pov.dets.df$act <- as.character(pov.dets.df$act)
+pov.dets.df$position <- as.character(pov.dets.df$position)
+pov.dets.df$occ[is.na(pov.dets.df$occ)] <- "unemp"
+#pov.dets.df$act[is.na(pov.dets.df$act)] <- "unemp"
+pov.dets.df$position[is.na(pov.dets.df$position)] <- "unemp"
+
+#install.packages("texreg")
+#library("texreg")
+
+summary(pov.det.lm <- lm(log(real.per.cap.consumption) ~ educ +  age + hhsize + headmale + language + alfabet + occ + act + position + region, weights=hhwght, data=pov.dets.df)
+  )
+
+unique(pov.dets.df$region)
+unique(pov.dets.df$position)
+unique(pov.dets.df$act)
+unique(pov.dets.df$occ)
+unique(pov.dets.df$language)
+
+# Reference levels in the regression:
+# Lang: Spanish
+# Occ: professional
+# Act: Manuf
+# Position: Day Worker
+
+#names(pov.det.lm$coefficients)[substr(names(pov.det.lm$coefficients), 1, 11) == "languageIng" ] <- "languageIng"
+
+library("stargazer")
+
+# #texreg(pov.det.lm, single.row=TRUE, use.packages =TRUE,  dcolumn = TRUE, booktabs = TRUE) 
+# 
+# stargazer(pov.det.lm, title="OLS of Determinants of Income", align=FALSE, no.space=TRUE, single.row=TRUE)
+# 
+# summary(lm( real.per.cap.consumption ~ alfabet + educ + I(educ^2) + age + I(age^2) + language + occ + act + position + hhsize + headmale + region, weights=hhwght, data=pov.dets.df)
+#   )
+# 
+# summary(lm(log(real.per.cap.consumption) ~ alfabet + educ + age +  language + occ + act + position + hhsize + headmale + region, weights=hhwght, data=pov.dets.df)
+#   )
+
+# wow, ok, we need http://davegiles.blogspot.com/2011/03/dummies-for-dummies.html
+
+
+
+
+# 100[exp(c*-½v*(c*)) -1],
+
+pov.det.elast  <- 100 * (exp(coef(summary(pov.det.lm))[, "Estimate"]-.5*coef(summary(pov.det.lm))[, "Std. Error"]^2) -1)
+
+
+pov.det.elast[names(pov.det.elast) %in% c("educ", "age", "hhsize") ] <-  100 * coef(summary(pov.det.lm))[, "Estimate"][names(pov.det.elast) %in% c("educ", "age", "hhsize") ]
+
+names(pov.det.lm$coefficients)[substr(names(pov.det.lm$coefficients), 1, 11) == "languageIng" ] <- "languageIng"
+
+names( pov.det.elast)[substr(names( pov.det.elast), 1, 11) == "languageIng" ] <- "languageIng"
+
+pov.det.lm.2 <- pov.det.lm
+
+pov.det.lm.2$coefficients <- pov.det.elast
+
+# install.packages("sandwich")
+# install.packages("lmtest")
+library(sandwich)
+library(lmtest)
+coeftest(pov.det.lm, vcov = (vcovHC(pov.det.lm, "HC0")))
+
+# Ok, so in the assignment I turned in, I estimated the % effect with the uncorrected standard errors and then displayed the White-corrected standard errors. I should have estimated the % effect with the White-corrected standard errors.
+
+
+stargazer(coeftest(pov.det.lm, vcov = (vcovHC(pov.det.lm, "HC0"))), pov.det.lm.2, title="OLS of Determinants of Income", align=TRUE, no.space=TRUE, single.row=TRUE, summary=FALSE, 
+  se=list(coeftest(pov.det.lm, vcov = (vcovHC(pov.det.lm, "HC0")))[, "Std. Error"], NA))
+
+
+
+
+
+stargazer(pov.det.lm, pov.det.lm.2, title="OLS of Determinants of Income", align=TRUE, no.space=TRUE, single.row=TRUE, summary=FALSE, se=list(coef(summary(pov.det.lm))[, "Std. Error"], NA))
+
+#also:  "the coefficient b is the percentage increase in Y from a unit increase in X."
+#http://blog.modelworks.ch/?p=104
+
+# so we are using "nearly unbiased"
+
+
+
+t(t(pov.det.elast))
+
+
+
+stargazer(pov.det.lm, as.data.frame(t(test)), title="OLS of Determinants of Income", align=TRUE,  summary=FALSE)
+
+
+coef(summary(pov.det.lm))[, "Std. Error"]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # settle.equiv.df <- lsms.df[lsms.df$parent %in% "head", ]
@@ -444,7 +573,7 @@ summary(settle.equiv.df$real.equiv.consumption)
 
 
 gini.coef <- function(y, weights) {
-  y <- rep(y, times=weights)
+  y <- rep(y, times=round(weights))
   n <- length(y)
   y <- sort(y)
   2*sum( 1:n * y) / (n * sum(y)) - (n+1)/n  
@@ -465,13 +594,14 @@ gini.coef.2 <- function(y, weights) {
 
 
 kuznets.20.40 <- function(y, weights) {
-  y <- rep(y, times=weights)
+  y <- rep(y, times=round(weights))
   poor.40th <-quantile(y, 0.4)
   rich.20th <-quantile(y, 0.8)
-    cat(sum(y[y > rich.20th]))
+#    cat(length(y), "\n")
   sum(y[y > rich.20th]) / sum(y[y<=poor.40th]) 
-
 }
+
+
 
 library(e1071) 
 
@@ -502,9 +632,14 @@ coef.of.variation.2 <- function(y, weights) {
 }
 # From lecture notes
 
+library(Hmisc)
 kuznets.20.40(settle.equiv.df$real.equiv.consumption, settle.equiv.df$hhwght)
 weighted.mean(settle.equiv.df$real.equiv.consumption, settle.equiv.df$hhwght)
+wtd.quantile(settle.equiv.df$real.equiv.consumption, settle.equiv.df$hhwght, probs=.4)
 # kuznets.20.40(settle.equiv.df$real.equiv.consumption, 1)
+
+rep( 1, 2)
+summary(settle.equiv.df$hhwght)
 
 # y <- settle.equiv.df$real.equiv.consumption
 
@@ -513,8 +648,13 @@ weighted.mean(settle.equiv.df$real.equiv.consumption, settle.equiv.df$hhwght)
 
 gini.coef(settle.equiv.df$real.equiv.consumption, settle.equiv.df$hhwght) 
 
-gini.coef(settle.equiv.df$real.equiv.consumption[1:1000], settle.equiv.df$hhwght[1:1000]) 
-gini.coef.2(settle.equiv.df$real.equiv.consumption[1:1000], settle.equiv.df$hhwght[1:1000])
+gini.coef(settle.equiv.df$real.equiv.consumption[1:10000], settle.equiv.df$hhwght[1:10000]) 
+gini.coef.2(settle.equiv.df$real.equiv.consumption[1:10000], settle.equiv.df$hhwght[1:10000])
+
+gini.sample <- sample(1:nrow(settle.equiv.df), 10000)
+
+gini.coef(settle.equiv.df$real.equiv.consumption[gini.sample], settle.equiv.df$hhwght[gini.sample]) /
+gini.coef.2(settle.equiv.df$real.equiv.consumption[gini.sample], settle.equiv.df$hhwght[gini.sample])
 
 #unbiased.CV(settle.equiv.df$real.equiv.consumption)
 coef.of.variation(settle.equiv.df$real.equiv.consumption, settle.equiv.df$hhwght)
@@ -567,6 +707,7 @@ data.frame(gini = c(gini.coef(real.equiv.consumption[urban==0], hhwght[urban==0]
   }
 )
 
+
 ineq.measures.df[, 2]/ ineq.measures.df[, 1]
 ineq.measures.df[, 4]/ ineq.measures.df[, 3]
 ineq.measures.df[, 6]/ ineq.measures.df[, 5]
@@ -582,35 +723,47 @@ ineq.measures.df$N <- c(sum(settle.equiv.df$urban==0),
 
 ineq.measures.df
 
-
+weighted.mean(settle.equiv.df$real.equiv.consumption[settle.equiv.df$urban==0], settle.equiv.df$hhwght[settle.equiv.df$urban==0]) /
+weighted.mean(settle.equiv.df$real.equiv.consumption[settle.equiv.df$urban==1], settle.equiv.df$hhwght[settle.equiv.df$urban==1])
 
 
 
 
 
 rural.lorenz <- with(settle.equiv.df, { 
-  cumsum(sort(rep(real.equiv.consumption[urban==0], times=hhwght[urban==0]))) / 
-  sum(rep(real.equiv.consumption[urban==0], times=hhwght[urban==0])) 
+  cumsum(sort(rep(real.equiv.consumption[urban==0], times=round(hhwght[urban==0])))) / 
+  sum(rep(real.equiv.consumption[urban==0], times=round(hhwght[urban==0])) )
   }
 )
 
 urban.lorenz <- with(settle.equiv.df, { 
-  cumsum(sort(rep(real.equiv.consumption[urban==1], times=hhwght[urban==1]))) / 
-  sum(rep(real.equiv.consumption[urban==1], times=hhwght[urban==1])) 
+  cumsum(sort(rep(real.equiv.consumption[urban==1], times=round(hhwght[urban==1])))) / 
+  sum(rep(real.equiv.consumption[urban==1], times=round(hhwght[urban==1])) )
   }
 )
 
 
+# png(filename=paste0(work.dir, "lorenz.png"), width=480, height=480)
+pdf(file=paste0(work.dir, "lorenz.pdf"), width=4, height=4)
 
+par(mar=c(5, 4, 4, 2) + 0.1)
+par(pty="s")  ## before plotting 
 
-plot(x=0:1, y=0:1, type="l", ylim=0:1, xlim=0:1, xaxs = "i", yaxs = "i")
+plot(x=0:1, y=0:1, type="l", ylim=0:1, xlim=0:1, xaxs = "i", yaxs = "i", main="Figure 3: Lorenz curves", xlab="", ylab="", asp=1)
 
 lines( (1:length(rural.lorenz)) / length(rural.lorenz),  y = rural.lorenz)
 
-lines( (1:length(urban.lorenz)) / length(urban.lorenz),  y = urban.lorenz, lty=3, col="red")
+lines( (1:length(urban.lorenz)) / length(urban.lorenz),  y = urban.lorenz, col="red")
+# , lty=3
 # abline(h=0)
 # abline(v=1)
 # Maybe no way to deal with not having dotted lines
+
+legend("topleft", legend=c("Rural", "Urban"), lty=1, col=c("black", "red"), lwd=2)
+
+dev.off()
+
+par(pty="m")
 
 
 table(quantile( rural.lorenz, probs=seq(0, 1, .001) ) < quantile( urban.lorenz, probs=seq(0, 1, .001) ))
@@ -620,20 +773,20 @@ lorenz.which <- which(quantile( rural.lorenz, probs=seq(0, 1, .001) ) < quantile
 1 - quantile( rural.lorenz, probs=seq(0, 1, .001) )[lorenz.which]
 1 - quantile( urban.lorenz, probs=seq(0, 1, .001) )[lorenz.which]
 
-require(quantreg) 
-
-
-test.rq <- rq(settle.equiv.df$real.equiv.consumption[settle.equiv.df$urban==1] ~ 1, tau = c(.5) , weights=settle.equiv.df$hhwght[settle.equiv.df$urban==1]/sum(settle.equiv.df$hhwght[settle.equiv.df$urban==1]))
-
-summary(test.rq, se="boot", R=10000)
-
-  bootmed <- apply(matrix(sample(settle.equiv.df$real.equiv.consumption[settle.equiv.df$urban==1],rep=TRUE,10^4*length(settle.equiv.df$real.equiv.consumption[settle.equiv.df$urban==1])),nrow=10^4),1,median)
-  quantile(bootmed, c(.05,0.95))
-
-
-  bootmed <- apply(matrix(sample(rural.lorenz,size= 10^5*length(x), replace=TRUE),nrow=10^5),1,median)
-  quantile(bootmed, c(.05,0.95))
-
+# require(quantreg) 
+# 
+# 
+# test.rq <- rq(settle.equiv.df$real.equiv.consumption[settle.equiv.df$urban==1] ~ 1, tau = c(.5) , weights=settle.equiv.df$hhwght[settle.equiv.df$urban==1]/sum(settle.equiv.df$hhwght[settle.equiv.df$urban==1]))
+# 
+# summary(test.rq, se="boot", R=10000)
+# 
+#   bootmed <- apply(matrix(sample(settle.equiv.df$real.equiv.consumption[settle.equiv.df$urban==1],rep=TRUE,10^4*length(settle.equiv.df$real.equiv.consumption[settle.equiv.df$urban==1])),nrow=10^4),1,median)
+#   quantile(bootmed, c(.05,0.95))
+# 
+# 
+#   bootmed <- apply(matrix(sample(rural.lorenz,size= 10^5*length(x), replace=TRUE),nrow=10^5),1,median)
+#   quantile(bootmed, c(.05,0.95))
+# 
 
 
 
@@ -667,17 +820,63 @@ sample.split <- rep(FALSE, nrow(settle.equiv.head.df))
 
 sample.split[sample(1:nrow(settle.equiv.head.df), size=round(nrow(settle.equiv.head.df)/2))] <- TRUE
 
-svyglm() in the survey
+#svyglm() in the survey
 
 # install.packages("survey")
 library(survey)
+# install.packages("stargazer")
+library(stargazer)
+
+# so in reality don't need survey package isnce the naive weighting give the same results
+# summary(
+# poverty.probit <- svyglm(is.poor ~ educ + I(educ^2) + hhsize + runwater + drtfloor + electr + bathroom + region + male + age + I(age^2) + act, 
+#   design=svydesign(id=~1, weights=~hhwght, data=settle.equiv.head.df, subset=sample.split),
+#   family= quasibinomial(link = "probit"), x=TRUE
+#     )
+# ) # + region  departmt
+# 
+# summary(
+# poverty.probit <- svyglm(is.poor ~ educ + poly(educ, degree=2, raw=TRUE) + hhsize + runwater + drtfloor + electr + bathroom + region + male + age + I(age^2) + act, 
+#   design=svydesign(id=~1, weights=~hhwght, data=settle.equiv.head.df[!is.na(settle.equiv.head.df$educ) & sample.split, ]),
+#   family= quasibinomial(link = "probit"), x=TRUE
+#     )
+) # + region  departmt
+# http://diffuseprior.wordpress.com/2012/04/23/probitlogit-marginal-effects-in-r-2/
+
 
 summary(
-poverty.probit <- svyglm(is.poor ~ educ + I(educ^2) + hhsize + runwater + drtfloor + electr + bathroom + region + male + age + I(age^2) + act, 
-  design=svydesign(id=~1, weights=~hhwght, data=settle.equiv.head.df, subset=sample.split),
-  family= quasibinomial(link = "probit")
+poverty.probit <- glm(is.poor ~ poly(educ, degree=2, raw=TRUE) + hhsize + runwater + drtfloor + electr + bathroom + region + male + age + I(age^2) + act, 
+  data=settle.equiv.head.df[!is.na(settle.equiv.head.df$educ) & sample.split, ],
+  family= quasibinomial(link = "probit"), weights=hhwght, x=TRUE
     )
 ) # + region  departmt
+
+unique(settle.equiv.head.df$region)
+unique(settle.equiv.head.df$act)
+
+#install.packages("erer")
+library(erer)
+
+summary(maBina(poverty.probit ))
+maBina(poverty.probit)
+
+# install.packages("effects")
+library("effects")
+with(settle.equiv.head.df[!is.na(settle.equiv.head.df$educ) & sample.split, ],  {cat(summary(is.poor)); allEffects(poverty.probit)})
+
+summary(allEffects(poverty.probit, se=TRUE, typical = mean))
+
+Effect("educ", poverty.probit, se=TRUE, typical = mean)
+
+summary(settle.equiv.head.df$educ)
+
+
+plot(allEffects(poverty.probit), ask = FALSE, rescale.axis = FALSE)
+
+
+stargazer(poverty.probit, title="Probit on Household Likelihood of Being Poor", align=TRUE, no.space=TRUE)
+
+
 
 settle.equiv.cross.v.df <- settle.equiv.head.df[!sample.split, ]
 
@@ -706,8 +905,8 @@ classification.error.mat <- matrix(0, ncol=2, nrow=length(cutoff.seq) )
 for ( i in 1:length(cutoff.seq)) {
 
   error.rate.table <- prop.table(table(
-    rep(poverty.predict, times=settle.equiv.cross.v.df[, "hhwght"]) > cutoff.seq[i], 
-    rep(settle.equiv.cross.v.df[, "is.poor"], times=settle.equiv.cross.v.df[, "hhwght"])
+    rep(poverty.predict, times=round(settle.equiv.cross.v.df[, "hhwght"])) > cutoff.seq[i], 
+    rep(settle.equiv.cross.v.df[, "is.poor"], times=round(settle.equiv.cross.v.df[, "hhwght"]))
     ), margin=2)
   
   classification.error.mat[i , 1] <- error.rate.table[ 1, 2]
@@ -727,7 +926,10 @@ for ( i in 1:length(cutoff.seq)) {
 }
 
 
-plot(matrix(c(0,1,0,1), nrow=2), col="white")
+
+pdf(file=paste0(work.dir, "poverty misclassification.pdf"), width=4, height=4)
+
+plot(matrix(c(0,1,0,1), nrow=2), col="white", xlab="Classification threshold", ylab="Error rate", main="Figure 4: Error rate vs. threshold", xaxs = "i", yaxs = "i",)
 
 
 lines(x=cutoff.seq, y=rowSums(classification.error.mat), col="green", lwd=2)
@@ -735,297 +937,20 @@ lines(x=cutoff.seq, y=classification.error.mat[, 1], col="red", lwd=2)
 lines(x=cutoff.seq, y=classification.error.mat[, 2], col="blue", lwd=2)
 cutoff.green.zone <- cutoff.seq[classification.error.mat[, 1] <= 0.1]
 
+# classification.error.mat[classification.error.mat[, 1] <= 0.1,]
+
 cutoff.green.zone[length(cutoff.green.zone)]
 
 abline(v=cutoff.green.zone[length(cutoff.green.zone)], lty=2)
 
-# TODO: need to divide by the total amount
+legend("right", legend=c("Type I", "Type II", "Sum of types\nI & II"), cex=.7, col=c("red", "blue", "green"), lty=1, lwd=2)
 
+dev.off()
 
 
+par(mar=c(5, 4, 4, 2) + 0.1)
 
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# TRASH CODE:
-
-
-
-
-boot.gini.u <- with(settle.equiv.head.df, {
-  apply(matrix(sample(1:sum(urban==1),rep=TRUE,10^4*sum(urban==1)),nrow=10^4),1,FUN=function(x) {
-    gini.coef(real.equiv.consumption[urban==1][x], hhwght[urban==1][x])
-  }
-  )
-} )
-
-sqrt(var(boot.gini.u))
-mean(boot.gini.u)
-
-boot.gini.r <- with(settle.equiv.head.df, {
-  apply(matrix(sample(1:sum(urban==0),rep=TRUE,10^4*length(sum(urban==0))),nrow=10^4),1,FUN=function(x) {
-    gini.coef(real.equiv.consumption[urban==0][x], hhwght[urban==0][x])
-  }
-  )
-} )
-
-
-
-sqrt(var(boot.gini.r))
-
-
-
-
-
-
-
-
-hist(bootmed)
-mean(bootmed)
-
-range(bootmed)
-      
-  quantile(bootmed, c(.05,0.95))
-
-
-  
-max(unlist(equiv.mat.ls))
-min(unlist(equiv.mat.ls))
-
-library(corrgram)
-
-corrgram(x
-
-
-corrgram(equiv.mat, type="cor")
-
-library(scales)
-
-#ggplot likes the data 'melted' one value per row
-p <- ggplot(data=melt(equiv.mat) , aes(x=Var1, y=Var2, fill=value)) + geom_tile() + scale_fill_gradient2(mid="beige", high=muted("red", c=200), limits=c(min(equiv.mat), max(equiv.mat)))
-print(p )
-  
-  
-poverty.options$poverty <- 0
-poverty.options$poverty.se <- 0
-poverty.options$N <- 0
-
-
-lsms.df$constant <- factor("a")
-
-# TODO: The clustered standard errors probably aren't correct
-
-
-for (i in 1:nrow(poverty.options)) {
-  
-  lsms.df.subset <- lsms.df[lsms.df$urban==poverty.options$urban[i], ]
-  
-  poverty.options$N[i] <- nrow(lsms.df.subset)
-  
-  poverty.options$poverty[i] <- fgt.poverty(
-      y=lsms.df.subset[, poverty.options$measure[i]], 
-      weight=lsms.df.subset$hhwght,
-      z=poverty.options$line[i], 
-      alpha=poverty.options$alpha[i])
-  
-  poverty.options$poverty.se[i] <- Howes.Lanjouw.clustered.se(
-      y=lsms.df.subset[, poverty.options$measure[i]], 
-      cluster.var=lsms.df.subset$departmt,   # constant
-      weight=lsms.df.subset$hhwght,
-      z=poverty.options$line[i], 
-      alpha=poverty.options$alpha[i])
-   
-}
-
-print(poverty.options, digits=1)
-
-  
-}
-
-
-
-
-
-
-
-
-lsms.df
-
-
-
-
-
-poverty.options <- expand.grid(alpha=c(0,2), 
-  urban=1:0, 
-  measure=c("real.per.cap.consumption", "real.per.cap.income"), 
-  line=c(lsms.df$povline[1], lsms.df$xpovline[1]),
-  stringsAsFactors = FALSE
-)
-
-poverty.options$poverty <- 0
-poverty.options$poverty.se <- 0
-poverty.options$N <- 0
-
-
-lsms.df$constant <- factor("a")
-
-# TODO: The clustered standard errors probably aren't correct
-
-
-for (i in 1:nrow(poverty.options)) {
-  
-  lsms.df.subset <- lsms.df[lsms.df$urban==poverty.options$urban[i], ]
-  
-  poverty.options$N[i] <- nrow(lsms.df.subset)
-  
-  poverty.options$poverty[i] <- fgt.poverty(
-      y=lsms.df.subset[, poverty.options$measure[i]], 
-      weight=lsms.df.subset$hhwght,
-      z=poverty.options$line[i], 
-      alpha=poverty.options$alpha[i])
-  
-  poverty.options$poverty.se[i] <- Howes.Lanjouw.clustered.se(
-      y=lsms.df.subset[, poverty.options$measure[i]], 
-      cluster.var=lsms.df.subset$departmt,   # constant
-      weight=lsms.df.subset$hhwght,
-      z=poverty.options$line[i], 
-      alpha=poverty.options$alpha[i])
-   
-}
-
-print(poverty.options, digits=1)
-
-
-
-# Proposal:
-# Intergenerational family (4 adults, any number of children) ( hard to say what age people are grandparents, so will not distiguish on age. Could be just "adult, unmarried" children in house). In general, for sure we are going to pick up "non-target" households.
-# Single mother - may just be due to temporary labor migration.
-# Two adults, no children
-# Misc category
-
-
-
-
-
-
-
-kid0_14  adultf
-
-
-lsms.df <- lsms.df[!duplicated(lsms.df$codhh), ]
-
-
-
-equiv.grid$values <- c(equiv.mat)
-
-library(lattice)
-panel.corrgram.2(equiv.grid$alpha.equiv, equiv.grid$theta, equiv.grid$equiv.mat)
-
-
-library(ellipse)
-
-
-panel.corrgram.2<-function(x,y,z,
-subscripts,at=pretty(z),scale=0.8,...)
-{
-require('grid',quietly=TRUE)
-x<-as.numeric(x)[subscripts]
-y<-as.numeric(y)[subscripts]
-z<-as.numeric(z)[subscripts]
-zcol<-level.colors(z,at=at,...)
-for(i in seq(along=z))
-{
-lims<-range(0,z[i])
-tval<-2*base::pi*
-seq(from=lims[1],to=lims[2],by=0.01)
-grid.polygon(x=x[i]+.5*scale*c(0,sin(tval)),
-y=y[i]+.5*scale*c(0,cos(tval)),
-default.units='native',
-gp=gpar(fill=zcol[i]))
-grid.circle(x=x[i],y=y[i],r=.5*scale,
-default.units='native')
-}
-}
-
-
-levelplot(cor(longley),
-at=do.breaks(c(-1.01,1.01),101),xlab=NULL,  # at=do.breaks(c(-1.01,1.01),101)
-ylab=NULL,colorkey=list(space='top'),
-scales=list(x=list(rot=90)),
-panel=panel.corrgram.2,
-col.regions=colorRampPalette(c('red','white','blue')))
-
-
-equiv.mat[1:5, 1:5]*100
-
-
-
-corrplot(cor(longley), method = "pie")
-
-corrplot(equiv.mat, method = "pie", is.corr = FALSE, cl.lim = c(0, max(unlist(equiv.mat.ls))))
-
-
-screen(1)
-
-par(mfg=c(1,1))
-
-
-## allocate figure 2 the intersection of column 2 and row 2
-
-
-#layout(
-
-
-
-# Cairo and cairoDevice packages is strongly recommended to produce high-quality PNG, JPEG, TIFF bitmap files, especially for that method circle, ellipse .
-
-corrplot(equiv.mat.ls[[2]][nrow(equiv.mat.ls[[2]]):1, ], method = "pie", is.corr = FALSE, cl.lim = c(0, max(unlist(equiv.mat.ls))), add=TRUE, )
-
-plot(1)
-
-
-title(main="My Title", col.main="red", 
-    sub="My Sub-title", col.sub="blue", 
- 	 xlab="My X label", ylab="My Y label",
-  col.lab="green", cex.lab=0.75)
-
-resetPar <- function() {
-    dev.new()
-    op <- par(no.readonly = TRUE)
-    dev.off()
-    op
-}
-
-par(resetPar())
-
-
-test.mat <- equiv.mat.ls[[1]]
-
-Vectorize
-do.call()
-
-colnames(test.mat) <- c(expression(as.list(paste0(beta, ": ", colnames(test.mat)))), expression(paste0(beta, ": ", colnames(test.mat))))
-
-corrplot([nrow(equiv.mat.ls[[1]]):1, ], method = "pie", is.corr = FALSE, cl.lim = c(0, max(unlist(equiv.mat.ls))), tl.col="black"), xlab="My X label")
-
-expression(paste("Sampled values, ", mu, "=5, ", sigma,
-    "=1"))
 
