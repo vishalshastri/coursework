@@ -109,7 +109,12 @@ library(reshape)
 compute.land.df <- main.df[, c("unique.hhid", "year", "landsize_cat")]
 compute.land.df$value <- 1
 
-compute.land.df <- cast(compute.land.df, unique.hhid + year ~ landsize_cat, fill=0)
+compute.land.df <- cast(compute.land.df, unique.hhid + year ~ landsize_cat , fill=0)
+
+compute.vill.df <- main.df[, c("unique.hhid", "year", "vill")]
+compute.vill.df$value <- 1
+
+compute.vill.df <- cast(compute.vill.df, unique.hhid + year ~ vill , fill=0)
 
 stargazer(main.df[, c("netinc_real", "rsrf.dev", "rsrf.sq.dev", "above34.dev", "above34.sq.dev", 
     "hhcomp_females0to14", "hhcomp_males0to14", 
@@ -118,7 +123,13 @@ stargazer(main.df[, c("netinc_real", "rsrf.dev", "rsrf.sq.dev", "above34.dev", "
     "hhnone_females15plus", "hhnone_males15plus", "landsize_cat") ], compute.land.df,
   median = TRUE)
 
+stargazer(compute.vill.df, median = TRUE)
+
 summary(main.df$landsize_cat)
+
+#coef.names.crosstable <- 
+
+#names(tab3.col1.lm$coefficients) <-paste0(names(tab3.col1.lm$coefficients), "test") 
 
 stargazer(tab3.col1.lm, se=list(sqrt(diag(vcovHC(tab3.col1.lm, type = "HC0"))) ) , 
   align=TRUE, no.space=TRUE,  single.row=TRUE,
@@ -166,11 +177,12 @@ temp.inc.pred.df[, c("hhcomp_females0to14", "hhcomp_males0to14", "hhhigher_femal
 
 temp.inc.pred.df$landsize_cat <- levels(temp.inc.pred.df$landsize_cat)[1]
 temp.inc.pred.df$vill <- unique(temp.inc.pred.df$vill)[1]
+temp.inc.pred.df$year <- unique(temp.inc.pred.df$year)[1]
 
 head(predict(tab3.col1.lm, main.df))
 head(predict(tab3.col1.lm, temp.inc.pred.df))
 
-main.df$inctrans <- predict(tab3.col1.lm, temp.inc.pred.df)
+main.df$inctrans <- predict(tab3.col1.lm, temp.inc.pred.df) - coef(tab3.col1.lm)[1]
 
 main.df$incunexp <- main.df$netinc_real - main.df$incperm - main.df$inctrans
 
@@ -279,6 +291,19 @@ tab3.col3.lm <- lm( I( netinc_real - cons_real  ) ~
     landsize_cat + factor(year) + vill, data=main.df)
 
 
+tab3.col2.only.weather.lm <- lm( I( -netincassetsale_real) ~ rsrf.dev + rsrf.sq.dev + above34.dev + above34.sq.dev +
+   factor(year) + vill, data=main.df[-tab3.col2.lm$na.action, ])
+
+tab3.col3.only.weather.lm <- lm( I( netinc_real - cons_real  ) ~ 
+    rsrf.dev + rsrf.sq.dev + above34.dev + above34.sq.dev +
+    factor(year) + vill, data=main.df[-tab3.col3.lm$na.action, ])
+
+#linearHypothesis(tab3.col2.lm,  white.adjust="hc0")
+
+lrtest(tab3.col2.lm, tab3.col2.only.weather.lm )
+lrtest(tab3.col3.lm, tab3.col3.only.weather.lm )
+
+
 stargazer(tab3.col1.lm, tab3.col2.lm, tab3.col3.lm,   se=list(
     sqrt(diag(vcovHC(tab3.col1.lm, type = "HC0"))),
     sqrt(diag(vcovHC(tab3.col2.lm, type = "HC0"))),
@@ -298,6 +323,32 @@ tab3.col1.col2.joint.lm <- lm( cbind(netinc_real, I( -netincassetsale_real)) ~ r
     hhnone_females15plus + hhnone_males15plus +
     landsize_cat + factor(year) + vill, data=main.df)
 
+
+tab3.col1.col2.joint.sur <- systemfit( list(netinc_real ~ rsrf.dev + rsrf.sq.dev + above34.dev + above34.sq.dev +
+    hhcomp_females0to14 + hhcomp_males0to14 +
+    hhhigher_females15plus + hhhigher_males15plus + hhmiddle_females15plus + 
+    hhmiddle_males15plus + hhprimary_females15plus + hhprimary_males15plus +
+    hhnone_females15plus + hhnone_males15plus +
+    landsize_cat + factor(year) + vill,
+  save1 ~ rsrf.dev + rsrf.sq.dev + above34.dev + above34.sq.dev +
+    hhcomp_females0to14 + hhcomp_males0to14 +
+    hhhigher_females15plus + hhhigher_males15plus + hhmiddle_females15plus + 
+    hhmiddle_males15plus + hhprimary_females15plus + hhprimary_males15plus +
+    hhnone_females15plus + hhnone_males15plus +
+    landsize_cat + factor(year) + vill), data=main.df, method="SUR")
+
+# Ok, with the OLS method , the var-cov matrix is block diag, but with SUR, we get a full var-cov, but the estimates are different.
+
+linearHypothesis(tab3.col1.col2.joint.sur, 
+  c("eq1_rsrf.dev = eq2_rsrf.dev",
+    "eq1_rsrf.sq.dev = eq2_rsrf.sq.dev",
+    "eq1_above34.dev = eq2_above34.dev",
+    "eq1_above34.sq.dev = eq2_above34.sq.dev"))
+
+linear.hypothesis(tab3.col1.col2.joint.sur, c("eq1_rsrf.dev = eq2_rsrf.dev",
+    "eq1_rsrf.sq.dev = eq2_rsrf.sq.dev",
+    "eq1_above34.dev = eq2_above34.dev",
+    "eq1_above34.sq.dev = eq2_above34.sq.dev"), test = "Chisq")
 
 #linearHypothesis(tab3.col1.col2.joint.lm, "rsrf.dev")
 # "0.5*SPPversicolor = 0.5*SPPvirginica"
@@ -330,13 +381,18 @@ cross.eq.test <- function(y1, y2, formula, hypothesis, data) {
     hypothesis=hypothesis, rhs=NULL)
   hypothesis.mat <- hypothesis.mat[, -ncol(hypothesis.mat)]
   
-  wald.test(Sigma=vcovHC(fitted.lm, type = "HC0"), 
+  wald.test(Sigma=vcov(fitted.lm),  # vcovHC(fitted.lm, type = "HC0")
   b=rbind(coef(fitted.lm)[, 1, drop=FALSE], coef(fitted.lm)[, 2, drop=FALSE]), 
   L=hypothesis.mat )
 }
 
 main.df$save1 <- -main.df$netincassetsale_real
 #neg.netincassetsale_real
+
+
+# sandwich:::vcovHC.mlm
+# This exists, so it is doing mlm-specific White correction
+
 
 main.df$save2 <- main.df$netinc_real - main.df$cons_real
 #- main.df$netincassetsale_real 
@@ -372,10 +428,27 @@ cross.eq.test(y1="netinc_real",
 
 
 
+
+test.systemfit <- systemfit(formula=list(first= I( -netincassetsale_real) ~ rsrf.dev + rsrf.sq.dev + above34.dev + above34.sq.dev +
+    hhcomp_females0to14 + hhcomp_males0to14 +
+    hhhigher_females15plus + hhhigher_males15plus + hhmiddle_females15plus + 
+    hhmiddle_males15plus + hhprimary_females15plus + hhprimary_males15plus +
+    hhnone_females15plus + hhnone_males15plus +
+    landsize_cat + factor(year) + vill,
+  second= I( netinc_real - cons_real  ) ~ 
+    rsrf.dev + rsrf.sq.dev + above34.dev + above34.sq.dev +
+    hhcomp_females0to14 + hhcomp_males0to14 +
+    hhhigher_females15plus + hhhigher_males15plus + hhmiddle_females15plus + 
+    hhmiddle_males15plus + hhprimary_females15plus + hhprimary_males15plus +
+    hhnone_females15plus + hhnone_males15plus +
+    landsize_cat + factor(year) + vill
+   ), method="OLS", data=main.df)
+
+summary(test.systemfit)
+
 # E.
 
 tab4.revised.save1.lm <- lm( save1 ~ inctrans + 
-    STD.DEV.rain + STD.DEV.above34 + 
     hhcomp_females0to14 + hhcomp_males0to14 +
     hhhigher_females15plus + hhhigher_males15plus + hhmiddle_females15plus + 
     hhmiddle_males15plus + hhprimary_females15plus + hhprimary_males15plus +
@@ -386,7 +459,6 @@ tab4.revised.save1.lm <- lm( save1 ~ inctrans +
 # TODO: keep or drop village dummies?
 
 tab4.revised.save2.lm <- lm( save2 ~ inctrans + 
-    STD.DEV.rain + STD.DEV.above34 + 
     hhcomp_females0to14 + hhcomp_males0to14 +
     hhhigher_females15plus + hhhigher_males15plus + hhmiddle_females15plus + 
     hhmiddle_males15plus + hhprimary_females15plus + hhprimary_males15plus +
@@ -431,8 +503,9 @@ save1.2sls <- systemfit( save1 ~ netinc_real  +
 
 # TODO: should we use the STD.DEV or the ones we use above?
 
-summary(save1.2sls)
 
+# BELOW: put all regressors as instruments? This works a heck of a lot better...
+# ALso taking out netinc_real since that is what we are instrumenting for
 
 save1.2sls <- systemfit( save1 ~ netinc_real  +
     hhcomp_females0to14 + hhcomp_males0to14 +
@@ -441,8 +514,53 @@ save1.2sls <- systemfit( save1 ~ netinc_real  +
     hhnone_females15plus + hhnone_males15plus +
     landsize_cat + factor(year) + vill,
   method="2SLS", 
-  inst= ~ STD.DEV.rain + STD.DEV.above34,
+  inst= ~ rsrf.dev + rsrf.sq.dev + above34.dev + above34.sq.dev +
+    hhcomp_females0to14 + hhcomp_males0to14 +
+    hhhigher_females15plus + hhhigher_males15plus + hhmiddle_females15plus + 
+    hhmiddle_males15plus + hhprimary_females15plus + hhprimary_males15plus +
+    hhnone_females15plus + hhnone_males15plus +
+    landsize_cat + factor(year) + vill,
   data=main.df)
+
+save2.2sls <- systemfit( save2 ~ netinc_real  +
+    hhcomp_females0to14 + hhcomp_males0to14 +
+    hhhigher_females15plus + hhhigher_males15plus + hhmiddle_females15plus + 
+    hhmiddle_males15plus + hhprimary_females15plus + hhprimary_males15plus +
+    hhnone_females15plus + hhnone_males15plus +
+    landsize_cat + factor(year) + vill,
+  method="2SLS", 
+  inst= ~ rsrf.dev + rsrf.sq.dev + above34.dev + above34.sq.dev +
+    hhcomp_females0to14 + hhcomp_males0to14 +
+    hhhigher_females15plus + hhhigher_males15plus + hhmiddle_females15plus + 
+    hhmiddle_males15plus + hhprimary_females15plus + hhprimary_males15plus +
+    hhnone_females15plus + hhnone_males15plus +
+    landsize_cat + factor(year) + vill,
+  data=main.df)
+
+summary(save1.2sls)
+
+
+summary(main.df$rsrf.dev)
+
+aggregate(main.df$rsrf.dev, by=list(main.df$vill), FUN=mean, na.rm=TRUE)
+
+
+
+
+# save1.2sls <- systemfit( save1 ~ netinc_real  +
+#     hhcomp_females0to14 + hhcomp_males0to14 +
+#     hhhigher_females15plus + hhhigher_males15plus + hhmiddle_females15plus + 
+#     hhmiddle_males15plus + hhprimary_females15plus + hhprimary_males15plus +
+#     hhnone_females15plus + hhnone_males15plus +
+#     landsize_cat + factor(year) + vill,
+#   method="2SLS", 
+#   inst= ~ rsrf.dev + rsrf.sq.dev + above34.dev + above34.sq.dev +
+#     hhcomp_females0to14 + hhcomp_males0to14 +
+#     hhhigher_females15plus + hhhigher_males15plus + hhmiddle_females15plus + 
+#     hhmiddle_males15plus + hhprimary_females15plus + hhprimary_males15plus +
+#     hhnone_females15plus + hhnone_males15plus +
+#     landsize_cat + factor(year) + vill,
+#   data=main.df)
 # + factor(year) + vill
 
 # TODO: should we use the STD.DEV or the ones we use above?
@@ -459,14 +577,14 @@ summary(save1.2sls)
 
 
 
-save2.2sls <- systemfit( save2 ~ netinc_real  +
-    hhhigher_females15plus + hhhigher_males15plus + hhmiddle_females15plus + 
-    hhmiddle_males15plus + hhprimary_females15plus + hhprimary_males15plus +
-    hhnone_females15plus + hhnone_males15plus +
-    landsize_cat + factor(year) + vill,
-  method="2SLS", 
-  inst= ~ rsrf.dev + rsrf.sq.dev + above34.dev + above34.sq.dev,
-  data=main.df)
+# save2.2sls <- systemfit( save2 ~ netinc_real  +
+#     hhhigher_females15plus + hhhigher_males15plus + hhmiddle_females15plus + 
+#     hhmiddle_males15plus + hhprimary_females15plus + hhprimary_males15plus +
+#     hhnone_females15plus + hhnone_males15plus +
+#     landsize_cat + factor(year) + vill,
+#   method="2SLS", 
+#   inst= ~ rsrf.dev + rsrf.sq.dev + above34.dev + above34.sq.dev,
+#   data=main.df)
 # + factor(year) + vill
 
 # TODO: should we use the STD.DEV or the ones we use above?
@@ -474,10 +592,10 @@ save2.2sls <- systemfit( save2 ~ netinc_real  +
 summary(save2.2sls)
 
 
-save1.2sls
+# save1.2sls
 
-stargazer(save1.2sls,  save2.2sls
-  align=TRUE, no.space=TRUE,  single.row=TRUE,
+stargazer(save1.2sls,  save2.2sls,
+  align=TRUE, no.space=TRUE,  single.row=TRUE
 )
 
 # Cannot do White-corrected standard errors since singular vcov matrix:
@@ -486,14 +604,29 @@ stargazer(save1.2sls,  save2.2sls
 #  sqrt(diag(vcovHC(save2.2sls, type = "HC0")))
 #  )
 
+
+
+
+library(texreg)
+
+texreg(list(save1.2sls, save2.2sls))
+
+
+#vcovHC(save1.2sls, type="HC0")
+
 linearHypothesis(save1.2sls, hypothesis.matrix="eq1_netinc_real = 1", test="Chisq", white.adjust="hc0")
 linearHypothesis(save2.2sls, hypothesis.matrix="eq1_netinc_real = 1", test="Chisq", white.adjust="hc0")
+
+
+linearHypothesis(save1.2sls, hypothesis.matrix="eq1_netinc_real = 1", test="Chisq")
+linearHypothesis(save2.2sls, hypothesis.matrix="eq1_netinc_real = 1", test="Chisq")
+
 
 # TODO: Weird; the white correction should be failing. It seems that it is not actually White-correcting since without it there is no change. ALso, I'm not sure what "transitory income" is.
 
 
 #install.packages("texreg")
-library(texreg)
+
 
 # Ok, I don't know how we are going to outreg this
 
@@ -512,14 +645,41 @@ texreg(list(save1.2sls, save2.2sls),
 library(AER)
 
 save1.ivreg <- ivreg(save1 ~ netinc_real  +
+    hhcomp_females0to14 + hhcomp_males0to14 +
     hhhigher_females15plus + hhhigher_males15plus + hhmiddle_females15plus + 
     hhmiddle_males15plus + hhprimary_females15plus + hhprimary_males15plus +
     hhnone_females15plus + hhnone_males15plus +
     landsize_cat + factor(year) + vill |
-    rsrf.dev + rsrf.sq.dev + above34.dev + above34.sq.dev,
+    hhcomp_females0to14 + hhcomp_males0to14 +
+    rsrf.dev + rsrf.sq.dev + above34.dev + above34.sq.dev + 
+    hhhigher_females15plus + hhhigher_males15plus + hhmiddle_females15plus + 
+    hhmiddle_males15plus + hhprimary_females15plus + hhprimary_males15plus +
+    hhnone_females15plus + hhnone_males15plus +
+    landsize_cat + factor(year) + vill,
   data=main.df)
 
+summary(save1.ivreg, diagnostics=TRUE)
+
 summary(save1.ivreg)
+
+save2.ivreg <- ivreg(save2 ~ netinc_real  +
+    hhcomp_females0to14 + hhcomp_males0to14 +
+    hhhigher_females15plus + hhhigher_males15plus + hhmiddle_females15plus + 
+    hhmiddle_males15plus + hhprimary_females15plus + hhprimary_males15plus +
+    hhnone_females15plus + hhnone_males15plus +
+    landsize_cat + factor(year) + vill |
+    hhcomp_females0to14 + hhcomp_males0to14 +
+    rsrf.dev + rsrf.sq.dev + above34.dev + above34.sq.dev + 
+    hhhigher_females15plus + hhhigher_males15plus + hhmiddle_females15plus + 
+    hhmiddle_males15plus + hhprimary_females15plus + hhprimary_males15plus +
+    hhnone_females15plus + hhnone_males15plus +
+    landsize_cat + factor(year) + vill,
+  data=main.df)
+
+
+
+stargazer(save1.ivreg, save2.ivreg,   align=TRUE, no.space=TRUE,  single.row=TRUE)
+#   align=TRUE, no.space=TRUE,  single.row=TRUE
 
 # install.packages("sem")
 #  library(sem)
@@ -534,6 +694,66 @@ summary(save1.ivreg)
 #  )
 #  
 # summary(save.2sls)
+
+# install.packages("gmm")
+library(gmm)
+
+
+summary( test.gmm<- gmm(g= save1 ~ netinc_real  +
+    hhcomp_females0to14 + hhcomp_males0to14 +
+    hhhigher_females15plus + hhhigher_males15plus + hhmiddle_females15plus + 
+    hhmiddle_males15plus + hhprimary_females15plus + hhprimary_males15plus +
+    hhnone_females15plus + hhnone_males15plus +
+    landsize_cat + factor(year) + vill, 
+  x = ~ 1 + rsrf.dev + rsrf.sq.dev + above34.dev + above34.sq.dev +
+    hhcomp_females0to14 + hhcomp_males0to14 +
+    hhhigher_females15plus + hhhigher_males15plus + hhmiddle_females15plus + 
+    hhmiddle_males15plus + hhprimary_females15plus + hhprimary_males15plus +
+    hhnone_females15plus + hhnone_males15plus +
+    landsize_cat + factor(year) + vill,
+  type= "iterative", data=main.df, traceIter=TRUE  # , wmatrix="ident"  # ,  "iterative" itermax=0
+))
+
+
+test.gmm$algoinfo
+
+# TODO: ok maybe we should not have het robust SE for the naive 2nd stage least squares. That correction may add invalidity to something that is already invalid.
+
+# 3SLS
+
+
+
+specTest(save1.2sls)
+
+save1.2sls <- systemfit( save1 ~ netinc_real  +
+    hhcomp_females0to14 + hhcomp_males0to14 +
+    hhhigher_females15plus + hhhigher_males15plus + hhmiddle_females15plus + 
+    hhmiddle_males15plus + hhprimary_females15plus + hhprimary_males15plus +
+    hhnone_females15plus + hhnone_males15plus +
+    landsize_cat + factor(year) + vill,
+  method="W2SLS", 
+  inst= ~ rsrf.dev + rsrf.sq.dev + above34.dev + above34.sq.dev +
+    hhcomp_females0to14 + hhcomp_males0to14 +
+    hhhigher_females15plus + hhhigher_males15plus + hhmiddle_females15plus + 
+    hhmiddle_males15plus + hhprimary_females15plus + hhprimary_males15plus +
+    hhnone_females15plus + hhnone_males15plus +
+    landsize_cat + factor(year) + vill,
+  data=main.df, control=systemfit.control( maxiter=3 ) )
+
+summary(save1.2sls)
+
+# ok, whatevs, I belive gmm with weight matrix is more efficient
+
+
+
+
+
+
+
+
+
+
+
 
 
 # H.
@@ -651,26 +871,72 @@ by(main.df, INDICES=list(main.df$vill), FUN=function(x) {
   rcorr(x$idiosyc.income, x$idiosyc.consumption, type="pearson")
 }) 
 
+
+
 # Now onto the regressions
 
 # Within estimator means person FE, I think
 # install.packages("plm")
 library(plm)
 
-townsend.within.plm <- plm(cons_real ~ netinc_real, model="within",
-  data=main.df, index=c("unique.hhid", "year"))
+cons.vill.mean.df<- aggregate(main.df$cons_real, by=list(vill=main.df$vill, year=main.df$year), FUN=mean, na.rm=TRUE)
+names(cons.vill.mean.df)[3]<- "vill.year.mean.cons"
 
-#summary(townsend.within.plm)
+main.df <- merge(main.df, cons.vill.mean.df)
 
-summary(lm(cons_real ~ netinc_real + unique.hhid, data=main.df) )
+main.df$cons_real.minus.mean <- main.df$cons_real - main.df$vill.year.mean.cons
+
+inc.vill.mean.df<- aggregate(main.df$netinc_real, by=list(vill=main.df$vill, year=main.df$year), FUN=mean, na.rm=TRUE)
+names(inc.vill.mean.df)[3]<- "vill.year.mean.inc"
+
+main.df <- merge(main.df, inc.vill.mean.df)
+
+main.df$netinc_real.minus.mean <- main.df$netinc_real - main.df$vill.year.mean.inc
+
+
+library(Hmisc)
+
+by(main.df, INDICES=list(main.df$vill), FUN=function(x) {
+  rcorr(x$netinc_real.minus.mean, x$cons_real.minus.mean, type="pearson")
+}) 
+
+# Ok, let's ignore the correlation analysis
+
+
+
+#townsend.within.plm <- plm(cons_real.minus.mean ~ netinc_real, model="within",
+#  data=main.df, index=c("vill", "year"))
+
+#townsend.within.plm <- lm(cons_real.minus.mean ~ netinc_real + vill + factor(year),
+#  data=main.df)
+# TODO: What control do we have? year or village? 
+
+townsend.within.plm <- lm(cons_real.minus.mean ~ netinc_real.minus.mean,
+  data=main.df)
+
+summary(townsend.within.plm)
+
+
+#summary(lm(cons_real.minus.mean ~ netinc_real + unique.hhid, data=main.df) )
 
 
 # Doing eqn 19, without measurement error correction
 
-townsend.fd.plm <- plm(cons_real ~ netinc_real, model="fd",
+#townsend.fd.plm <- plm(cons_real.minus.mean~ netinc_real, model="fd",
+#  data=main.df, index=c("unique.hhid", "year"))
+
+#townsend.fd.plm <- lm(diff(cons_real.minus.mean) ~ diff(netinc_real),
+#  data=main.df)
+
+#townsend.fd.plm <- lm(diff(cons_real.minus.mean) ~ diff(netinc_real.minus.mean),
+#  data=main.df)
+
+townsend.fd.plm <- plm(cons_real.minus.mean ~ netinc_real.minus.mean,
+  model="fd",
   data=main.df, index=c("unique.hhid", "year"))
 
 summary(townsend.fd.plm)
+
 
 # stargazer(townsend.within.plm, townsend.fd.plm, 
 #   coef=list(coef(townsend.within.plm),
@@ -685,6 +951,10 @@ summary(townsend.fd.plm)
 # )
 
 # Thiis fails to give me what I want. Use the below.
+
+
+stargazer(townsend.within.plm, townsend.fd.plm,
+  notes="Standard errors in parentheses")
 
 
 texreg(list(townsend.within.plm, townsend.fd.plm), digits=5, notes="Standard errors in parentheses")
@@ -705,185 +975,6 @@ texreg(list(townsend.within.plm, townsend.fd.plm), digits=5, notes="Standard err
 #  y=main.df[main.df$vill=="A", "unique.hhid"],
 #  z=main.df[main.df$vill=="A", "idiosyc.income"],
 #  color="red", smooth=FALSE) 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# Trash code:
-
-
-
-
-wald.test(Sigma=vcov(tab4.save2.lm), b=coef(tab4.save2.lm), Terms = NULL, L = NULL, H0 = NULL, df = NULL, verbose = FALSE)
-
-b = coef(fm), Sigma = vcov(fm)
-
-
-
-
-
-hhcomp_males15to55 hhcomp_males56plus
-
-
-
-table(main.df$vill)
-
-
-
-t(main.df[main.df$netinc_real %in% max(main.df$netinc_real, na.rm=TRUE),])
-vill                    "E"                     
-hhid                    "51" 
-
-t(main.df[main.df$vill %in% "E" & main.df$hhid %in% "51",])
-
-
-summary(lm(  netinc_real  ~ rsrf.dev + rsrf.sq.dev + above34.dev + above34.sq.dev +
-    hhcomp_females0to14 + hhcomp_males0to14 +
-    hhhigher_females15plus + hhhigher_males15plus + hhmiddle_females15plus + 
-    hhmiddle_males15plus + hhprimary_females15plus + hhprimary_males15plus +
-    hhnone_females15plus + hhnone_males15plus +
-    landsize_cat + factor(year) + vill + paste0(main.df$vill, main.df$hhid), data=main.df))
-
-
-
-
-
-
-
-
-L <- makeHypothesis(names(b), hypothesis.matrix, rhs)
-
-
-t(test)
-
-wald.test(Sigma=vcov(tab3.col1.col2.joint.lm), 
-  b=rbind(coef(tab3.col1.col2.joint.lm)[, 1, drop=FALSE], coef(tab3.col1.col2.joint.lm)[, 2, drop=FALSE]), 
-  L=test
-)
-coef()
-
-
-car:::makeHypothesis
-
-
-makeHypothesis <- function(cnames, hypothesis, rhs = NULL){
-  parseTerms <- function(terms){
-		component <- gsub("^[-\\ 0-9\\.]+", "", terms)
-		component <- gsub(" ", "", component, fixed=TRUE)
-		component
-	}
-	stripchars <- function(x) {
-	  x <- gsub("\\n", " ", x)
-	  x <- gsub("\\t", " ", x)
-		x <- gsub(" ", "", x, fixed = TRUE)
-		x <- gsub("*", "", x, fixed = TRUE)
-		x <- gsub("-", "+-", x, fixed = TRUE)
-		x <- strsplit(x, "+", fixed = TRUE)[[1]]
-		x <- x[x!=""]
-		x
-	}
-	char2num <- function(x) {
-		x[x == ""] <- "1"
-		x[x == "-"] <- "-1"
-		as.numeric(x)
-	}
-	constants <- function(x, y) { 
-		with.coef <- unique(unlist(sapply(y,
-								function(z) which(z == parseTerms(x)))))
-		if (length(with.coef) > 0) x <- x[-with.coef]
-		x <- if (is.null(x)) 0 else sum(as.numeric(x))
-		if (any(is.na(x)))
-			stop('The hypothesis "', hypothesis,
-					'" is not well formed: contains bad coefficient/variable names.')
-		x
-	}
-	coefvector <- function(x, y) {
-		rv <- gsub(" ", "", x, fixed=TRUE) ==
-				parseTerms(y)
-		if (!any(rv)) return(0)
-		if (sum(rv) > 1) stop('The hypothesis "', hypothesis,
-					'" is not well formed.')
-		rv <- sum(char2num(unlist(strsplit(y[rv], x, fixed=TRUE))))
-		if (is.na(rv))
-			stop('The hypothesis "', hypothesis,
-					'" is not well formed: contains non-numeric coefficients.')
-		rv
-	}
-	
-	if (!is.null(rhs)) rhs <- rep(rhs, length.out = length(hypothesis))
-	if (length(hypothesis) > 1)
-		return(rbind(Recall(cnames, hypothesis[1], rhs[1]),
-						Recall(cnames, hypothesis[-1], rhs[-1])))
-	
-	cnames_symb <- sapply(c("@", "#", "~"), function(x) length(grep(x, cnames)) < 1)
-	
-	if(any(cnames_symb)) {
-		cnames_symb <- head(c("@", "#", "~")[cnames_symb], 1)
-		cnames_symb <- paste(cnames_symb, seq_along(cnames), cnames_symb, sep = "")
-		hypothesis_symb <- hypothesis
-		for(i in order(nchar(cnames), decreasing = TRUE))
-			hypothesis_symb <- gsub(cnames[i], cnames_symb[i], hypothesis_symb, fixed = TRUE)
-	} else {
-		stop('The hypothesis "', hypothesis,
-				'" is not well formed: contains non-standard coefficient names.')
-	}
-	
-	lhs <- strsplit(hypothesis_symb, "=", fixed=TRUE)[[1]] 
-	if (is.null(rhs)) {
-		if (length(lhs) < 2) rhs <- "0"
-		else if (length(lhs) == 2) {
-			rhs <- lhs[2]
-			lhs <- lhs[1]
-		}
-		else stop('The hypothesis "', hypothesis,
-					'" is not well formed: contains more than one = sign.')
-	}
-	else {
-		if (length(lhs) < 2) as.character(rhs)
-		else stop('The hypothesis "', hypothesis,
-					'" is not well formed: contains a = sign although rhs was specified.')
-	}
-	lhs <- stripchars(lhs)
-	rhs <- stripchars(rhs)
-	rval <- sapply(cnames_symb, coefvector, y = lhs) - sapply(cnames_symb, coefvector, y = rhs) 
-	rval <- c(rval, constants(rhs, cnames_symb) - constants(lhs, cnames_symb)) 
-	names(rval) <- c(cnames, "*rhs*")
-	rval
-}
-
-
-
-
-
 
 
 
