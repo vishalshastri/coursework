@@ -16,36 +16,16 @@ nic.df <- read.dta("/Users/travismcarthur/Desktop/Dev - AAE 642/Problem sets/PS 
 
 # QUESTION 1.7
 
-# TODO: no region dummies
-
-summary( lm(S~ P + factor(area), data=nic.df ))
-
-
-nic.dropped.region.df <- nic.df 
-
-#nic.dropped.region.df$area[nic.dropped.region.df$area==2] <- 1 
-
-#naive.est.ivreg <- ivreg(lwage3 ~ S + factor(area)  | 
-#     P + factor(area),
-#  data=nic.dropped.region.df)
-
-naive.est.ivreg <- ivreg(lwage3 ~ S  | 
-     P ,
+naive.est.ivreg <- ivreg(lwage3 ~ S  | P ,
   data=nic.df)
 
 summary(naive.est.ivreg, diagnostics=TRUE)
 
-cluster.robust.se(naive.est.ivreg, nic.df[, "area"]) # -naive.est.ivreg$na.action
-
+cluster.robust.se(naive.est.ivreg, nic.df[, "area"]) 
 
 
 # QUESTION 1.8
 
-
-
-#wald.est.ivreg <- ivreg(lwage3 ~ factor(area) + C + S | 
-#     factor(area) + C + P:C,
-#  data=nic.df)
 
 wald.est.ivreg <- ivreg(lwage3 ~ S + C + P | 
       C + P + P:C,
@@ -54,50 +34,38 @@ wald.est.ivreg <- ivreg(lwage3 ~ S + C + P |
 summary(wald.est.ivreg, diagnostics=TRUE)
 
 cluster.robust.se(wald.est.ivreg, nic.df[-wald.est.ivreg$na.action, "area"])
-#[, "Std. Error"]
 
 stargazer(naive.est.ivreg, wald.est.ivreg, 
   se=list(cluster.robust.se(naive.est.ivreg, nic.df[, "area"])[, "Std. Error"],
     cluster.robust.se(wald.est.ivreg, nic.df[-wald.est.ivreg$na.action, "area"])[, "Std. Error"]
   ),
-  align=TRUE, no.space=TRUE,  single.row=TRUE, omit="factor")
+  align=TRUE, no.space=TRUE,  single.row=TRUE, 
+  notes="White-corrected standard errors clustered at the region level are in parentheses")
 
-# stargazer( wald.est.ivreg,  se=list(cluster.robust.se(wald.est.ivreg, nic.df[-wald.est.ivreg$na.action, "area"])[, "Std. Error"]),  align=TRUE, no.space=TRUE,  single.row=TRUE, omit="factor")
 
 # QUESTION 1.9
 
 # Dif-in-dif
 
-#summary( dif.in.dif.edu.lm <- lm(S ~ P*C, data=nic.df) )
-
-dif.in.dif.edu.lm <- ols(S ~ P*C , data=nic.df, x=TRUE, y=TRUE) # + factor(area) ?
+dif.in.dif.edu.lm <- ols(S ~ P*C , data=nic.df, x=TRUE, y=TRUE) 
 
 robcov(dif.in.dif.edu.lm , nic.df$area, method='huber')
 
 
-dif.in.dif.illit.lm <- ols(I ~ P*C , data=nic.df, x=TRUE, y=TRUE) # + factor(area) ?
+dif.in.dif.illit.lm <- lrm(I ~ P*C , data=nic.df, x=TRUE, y=TRUE)
 
 robcov(dif.in.dif.illit.lm , nic.df$area, method='huber')
-
 
 
 summary(lm(S ~ P*C:I(S<=6) , data=nic.df))
 
 summary(dif.in.dif.primary.check.lm <- ols(S ~ P*C , data=nic.df, subset=S<=6, x=TRUE, y=TRUE))
 summary(dif.in.dif.secondary.check.lm <- ols(S ~ P*C , data=nic.df, subset=S>6, x=TRUE, y=TRUE))
-# OK, I think the above reg does it
-
-# dif.in.dif.primary.check.lm <- ols(S ~ P*C:I(S<=6) , data=nic.df, x=TRUE, y=TRUE) # + factor(area) ?
-
-# robcov(dif.in.dif.primary.check.lm , nic.df$area, method='huber')[, "Std. Error"]
 
 
 robcov(dif.in.dif.primary.check.lm , nic.df$area[nic.df$S<=6], method='huber') 
 
 sqrt(diag(robcov(dif.in.dif.primary.check.lm , nic.df$area[nic.df$S<=6], method='huber')$var ))
-
-
-
 
 stargazer(dif.in.dif.edu.lm, dif.in.dif.illit.lm, dif.in.dif.primary.check.lm, dif.in.dif.secondary.check.lm,
   se=list(
@@ -106,70 +74,16 @@ stargazer(dif.in.dif.edu.lm, dif.in.dif.illit.lm, dif.in.dif.primary.check.lm, d
     sqrt(diag(robcov(dif.in.dif.primary.check.lm , nic.df$area[nic.df$S<=6], method='huber')$var )),
     sqrt(diag(robcov(dif.in.dif.secondary.check.lm , nic.df$area[nic.df$S>6], method='huber')$var ))
   ),
-  align=TRUE, no.space=FALSE,  single.row=FALSE, omit="factor")
+  align=TRUE, no.space=FALSE,  single.row=FALSE, 
+  notes="White-corrected standard errors clustered at the region level are in parentheses")
 
 
+# With help from http://stats.stackexchange.com/questions/21815/is-there-a-r-command-for-testing-the-difference-in-coefficients-of-two-linear-re
+d <- coef(dif.in.dif.primary.check.lm)[4] - coef(dif.in.dif.secondary.check.lm)[4] 
+var1<-sqrt(diag(robcov(dif.in.dif.primary.check.lm , nic.df$area[nic.df$S<=6], method='huber')$var ))[4]
+var2<-sqrt(diag(robcov(dif.in.dif.secondary.check.lm , nic.df$area[nic.df$S>6], method='huber')$var ))[4]
+1-pnorm(d / sqrt(var1+var2))
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-# TODO: DELETE:
-
-wald.est.primary.check.ivreg <- ivreg(lwage3 ~ factor(area) + C + S | 
-     factor(area) + C + P:C,
-  data=nic.df, subset= S<=6)
-
-summary(wald.est.primary.check.ivreg, diagnostics=TRUE)
-
-cluster.robust.se(wald.est.primary.check.ivreg, nic.df[-wald.est.primary.check.ivreg$na.action, "area"])
-
-
-wald.est.secondary.check.ivreg <- ivreg(lwage3 ~ factor(area) + C + S | 
-     factor(area) + C + P:C,
-  data=nic.df, subset= S>6)
-
-summary(wald.est.secondary.check.ivreg, diagnostics=TRUE)
-
-cluster.robust.se(wald.est.secondary.check.ivreg, nic.df[-wald.est.secondary.check.ivreg$na.action, "area"])
-
-
-
-
-
-# Test test ( TODO: Ok, will not use this. Just split the sample):
-
-nic.dropped.region.2.df <- nic.df 
-
-nic.dropped.region.2.df$area[nic.dropped.region.2.df$area==6] <- 1 
-
-
-wald.est.secondary.check.ivreg <- ivreg(lwage3 ~ (factor(area) + C + S)*I(S<=6) | 
-     (factor(area) + C + P:C)*I(S<=6),
-  data=nic.dropped.region.2.df)
-
-summary(wald.est.secondary.check.ivreg, diagnostics=TRUE)
-
-cluster.robust.se(wald.est.secondary.check.ivreg, nic.df[-wald.est.secondary.check.ivreg$na.action, "area"])
-
-
-
-
-
-wald.est.secondary.check.ivreg <- ivreg(lwage3 ~ factor(area) + C + S*I(S<=6) | 
-     factor(area) + C + P:C*I(S<=6),
-  data=nic.dropped.region.2.df)
-
-summary(wald.est.secondary.check.ivreg, diagnostics=TRUE)
 
 
