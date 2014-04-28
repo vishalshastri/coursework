@@ -5,6 +5,8 @@ library("foreign")
 # install.packages("stargazer")
 library("stargazer")
 
+source("/Users/travismcarthur/git/misc/authored-functions/authored-R-fns.R")
+
 # QUESTION 1.1
 
 mex.df <- read.dta("/Users/travismcarthur/Desktop/Dev - AAE 642/Problem sets/PS 3/hw3data.dta")
@@ -140,14 +142,14 @@ stargazer(as.data.frame(summary(margEff(uncontrolled.tobit))), summary=FALSE, ou
 
 
 
-test<-noquote(uncontrolled.tobit$nObs)
+#test<-noquote(uncontrolled.tobit$nObs)
 
 
 
-  notes=c("Observations:",
-    paste0(names(uncontrolled.tobit$nObs), collapse=" "),
-    paste0(uncontrolled.tobit$nObs, collapse=" ")
-    )
+#  notes=c("Observations:",
+#    paste0(names(uncontrolled.tobit$nObs), collapse=" "),
+#    paste0(uncontrolled.tobit$nObs, collapse=" ")
+#    )
 
 controlled.tobit <- censReg(pctpd0306 ~ treat1 + area + dcarr + avgelev + ejido + 
     region.factor + psemidecid + pselva, data=mex.df, method="BFGS")
@@ -233,7 +235,7 @@ library("Matching")
 # install.packages("MatchIt")
 library("MatchIt")
 
-# 
+set.seed(100)
 
 treat.prop.score.glm <- glm( treat1 ~  area + dcarr + avgelev + ejido + 
     region.factor + psemidecid + pselva, family=binomial, data=mex.df)
@@ -273,7 +275,7 @@ dev.off()
 
 
 
-match.outcome <- Match(Y=mex.df$pctpd0306, Tr=mex.df$treat1, X=treat.prop.score.glm$fitted, M=1, replace=TRUE)
+match.outcome <- Match(Y=mex.df$pctpd0306, Tr=mex.df$treat1, X=treat.prop.score.glm$fitted, M=1, replace=TRUE, ties=FALSE)
 
 summary(match.outcome )
 
@@ -281,6 +283,14 @@ mex.df$prop.score.matched.1 <- ifelse(1:nrow(mex.df) %in% match.outcome$index.co
 
 length(unique(match.outcome$index.control))
 length(unique(match.outcome$index.treat))
+
+
+test.matchit <- matchit(treat1 ~  area + dcarr + avgelev + ejido + 
+    region.factor + psemidecid + pselva, data=mex.df)
+
+
+
+
 
 # install.packages("dgof")
 # library("dgof")
@@ -329,27 +339,31 @@ colnames(t.stat.check.2.df) <- c("Mean, control", "Mean, treatment", "t statisti
 stargazer(t.stat.check.2.df,
   summary=FALSE, out.header = FALSE, out="/Users/travismcarthur/Desktop/Dev - AAE 642/Problem sets/PS 3/table8.tex", 
   rownames=TRUE,
-  title =paste0("Test statistics for matched treatment and control groups, n=", sum(mex.df$prop.score.matched.1), " for each group"),
-  notes=c("Note: The distribution statistic is the test statistic of the Kolmogorov-Smirnov test of equality of two distributions", "in the case of continous variables. For the binary varible (ejido), the distribution statistic is the statistic", "for a test that the proportions for the mean and control are the same. For the regions, the distribution",  "statistic is a Pearson's $\\chi^2$ test that the observations were drawn from the same distribution of categories.")
+  title =paste0("Test statistics for matched treatment (n=",sum(mex.df$prop.score.matched.1), ") and control groups (n=", sum(mex.df$treat1), ") for each group"),
+  notes=c("Note: The distribution statistic is the test statistic of the Kolmogorov-Smirnov test of equality of two distributions", "in the case of continous variables. For the binary variable (ejido), the distribution statistic is the statistic", "for a test that the proportions for the mean and control are the same. For the regions, the distribution",  "statistic is a Pearson's $\\chi^2$ test that the observations were drawn from the same distribution of categories."),
+   font.size="small",
+  column.sep.width = "1pt"
     )
+mex.df$prop.score.matched.1==1], x[mex.df$treat1==1]
 
-
-summary(lm( pctpd0306 ~ treat1, data=mex.df[mex.df$prop.score.matched.1 ==1 | mex.df$treat1==1, ],
-  $ weights))
+summary(lm( pctpd0306 ~ treat1, data=mex.df[mex.df$prop.score.matched.1 ==1 | mex.df$treat1==1, ]))
 
 summary(match.outcome)
 summary(lm( Y ~ Tr, data=match.outcome$mdata, weight=rep(match.outcome$weights,2)))
+
+table(match.outcome$mdata$Tr)
 
 table(duplicated(t(match.outcome$mdata$X)))
 
 
 # QUESTION 3.4
 
+tobit.3.4 <- censReg( match.outcome$mdata$Y[!duplicated(colnames(match.outcome$mdata$X))] ~ 
+    match.outcome$mdata$Tr[!duplicated(colnames(match.outcome$mdata$X))])
 
-tobit.3.4 <- censReg( Y ~ Tr, data=match.outcome$mdata, weight=rep(match.outcome$weights,2)) 
+tobit.3.4 <- censReg(Y ~ Tr, data=match.outcome$mdata)
 
-
-tobit.3.4 <- censReg( pctpd0306 ~ treat1, data=mex.df[mex.df$prop.score.matched.1 ==1 | mex.df$treat1==1, ] )
+# tobit.3.4 <- censReg( pctpd0306 ~ treat1, data=mex.df[mex.df$prop.score.matched.1 ==1 | mex.df$treat1==1, ] )
 
 summary(margEff(tobit.3.4 ))
 
@@ -387,11 +401,14 @@ stargazer(match.outcome.results.df,
 
 match.outcome.mah <- Match(Y=mex.df$pctpd0306, Tr=mex.df$treat1, X=mex.df[, c("area", "dcarr",
   "avgelev", "ejido", "regionCN", "regionCS", "regionS", "psemidecid", "pselva")], 
-  replace=TRUE, Weight = 2)
+  replace=TRUE, Weight = 2, ties=FALSE)
+
+
+tobit.4.1 <- censReg( Y ~ Tr, data=match.outcome.mah$mdata)
 
 
 
-tobit.4.1 <- censReg( pctpd0306 ~ treat1, data=mex.df[c(match.outcome.mah$index.control, match.outcome.mah$index.treated), ] )
+# tobit.4.1 <- censReg( pctpd0306 ~ treat1, data=mex.df[c(match.outcome.mah$index.control, match.outcome.mah$index.treated), ] )
 
 summary(margEff(tobit.4.1 ))
 
@@ -441,6 +458,9 @@ library(optmatch)
 matchon.limited <- match_on(treat1 ~  area + dcarr + avgelev + ejido + 
     region.factor + psemidecid + pselva, data = mex.df)
 
+#test.pairmatch <- pairmatch(treat1 ~  area + dcarr + avgelev + ejido + 
+#    regionCN + regionCS + regionS + psemidecid + pselva, data = mex.df, method= "euclidean")
+
 mex.df$match.dist.mah  <- 999
 
 
@@ -466,7 +486,10 @@ mex.df$match.dist.mah  <- 999
 mex.df$match.dist.mah[c(match.outcome.mah$index.treated, match.outcome.mah$index.control)] <- 
   rep(apply(matchon.limited, 1, FUN=min), 2)
 
+match.outcome.mah$mdata$match.dist <- rep(apply(matchon.limited, 1, FUN=min), 2)
 
+
+#table(duplicated(rownames(match.outcome.mah$mdata$X)))
 
 mex.df$match.dist.mah[c(match.outcome.mah$index.treated, match.outcome.mah$index.control)] <- 
   rep(diag(matchon.limited[, as.character(match.outcome.mah$index.control)]), 2)
@@ -477,6 +500,10 @@ mex.df$match.dist.mah[c(match.outcome.mah$index.treated, match.outcome.mah$index
 mex.df$mah.matched.control <- ifelse(1:nrow(mex.df) %in% match.outcome.mah$index.control & mex.df$match.dist.mah < 1.5, 1, 0)
 
 mex.df$mah.matched.treat <- ifelse(1:nrow(mex.df) %in% match.outcome.mah$index.treated & mex.df$match.dist.mah < 1.5, 1, 0)
+
+match.outcome.mah$mdata$Y <- match.outcome.mah$mdata$Y[match.outcome.mah$mdata$match.dist < 1.5]
+
+match.outcome.mah$mdata$Tr <- match.outcome.mah$mdata$Tr[match.outcome.mah$mdata$match.dist < 1.5]
 
 sum(mex.df$mah.matched.control)
 sum(mex.df$mah.matched.treat)
@@ -534,17 +561,21 @@ t.stat.check.3.df
 stargazer(t.stat.check.3.df,
   summary=FALSE, out.header = FALSE, out="/Users/travismcarthur/Desktop/Dev - AAE 642/Problem sets/PS 3/table11.tex", 
   rownames=TRUE, 
-  title=paste0("Test statistics for subset of Mahalanobis-matched treatment and control groups, n=", sum(mex.df$mah.matched.treat), " for each group"),
-  notes=c("Note: The distribution statistic is the test statistic of the Kolmogorov-Smirnov test of equality of two distributions", "in the case of continous variables. For the binary varible (ejido), the distribution statistic is the statistic", "for a test that the proportions for the mean and control are the same. For the regions, the distribution",  "statistic is a Pearson's $\\chi^2$ test that the observations were drawn from the same distribution of categories.")
+  title=paste0("Test statistics for subset of Mahalanobis-matched treatment (n=",sum(mex.df$mah.matched.control), ") and control groups (n=", sum(mex.df$mah.matched.treat), ") for each group"),
+  notes=c("Note: The distribution statistic is the test statistic of the Kolmogorov-Smirnov test of equality of two distributions", "in the case of continous variables. For the binary variable (ejido), the distribution statistic is the statistic", "for a test that the proportions for the mean and control are the same. For the regions, the distribution",  "statistic is a Pearson's $\\chi^2$ test that the observations were drawn from the same distribution of categories."),
+  font.size="small",
+  column.sep.width = "1pt"
     )
+
 
 
 # QUESTION 4.3
 
 
 
+tobit.4.3 <- censReg(match.outcome.mah$mdata$Y ~ match.outcome.mah$mdata$Tr)
 
-tobit.4.3 <- censReg( pctpd0306 ~ treat1, data=mex.df[mex.df$mah.matched.control==1 | mex.df$mah.matched.treat==1, ] )
+#tobit.4.3 <- censReg( pctpd0306 ~ treat1, data=mex.df[mex.df$mah.matched.control==1 | mex.df$mah.matched.treat==1, ] )
 
 summary(margEff(tobit.4.3 ))
 
@@ -676,7 +707,17 @@ mdist(pr ~ t1 + t2, data = nuclearplants)
 summary(pm1)
 
 fullmatch.test <- fullmatch(treat1 ~  area + dcarr + avgelev + ejido + 
-    regionCN + regionCS + regionS + psemidecid + pselva, min.controls=0, max.controls=1, data = mex.df )
+    regionCN + regionCS + regionS + psemidecid + pselva, min.controls=0, max.controls=1, data = mex.df, method="euclidean" )
+summary(fullmatch.test)
+
+fullmatch.test <- fullmatch(mex.df$treat1 ~  treat.prop.score.glm$fitted, min.controls=1, max.controls=1)
+  summary(fullmatch.test)
+
+
+fullmatch.test <- fullmatch(mex.df$treat1 ~  treat.prop.score.glm$fitted, min.controls=1, max.controls=1  ,  method="euclidean" )
+  summary(fullmatch.test)
+
+summary(attr(fullmatch.test, "contrast.group" ))
 
 
 
