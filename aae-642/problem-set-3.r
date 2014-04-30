@@ -339,7 +339,7 @@ colnames(t.stat.check.2.df) <- c("Mean, control", "Mean, treatment", "t statisti
 stargazer(t.stat.check.2.df,
   summary=FALSE, out.header = FALSE, out="/Users/travismcarthur/Desktop/Dev - AAE 642/Problem sets/PS 3/table8.tex", 
   rownames=TRUE,
-  title =paste0("Test statistics for matched treatment (n=",sum(mex.df$prop.score.matched.1), ") and control groups (n=", sum(mex.df$treat1), ") for each group"),
+  title =paste0("Test statistics for matched treatment (n=",sum(mex.df$treat1), ") and control groups (n=", sum(mex.df$prop.score.matched.1), ") for each group"),
   notes=c("Note: The distribution statistic is the test statistic of the Kolmogorov-Smirnov test of equality of two distributions", "in the case of continous variables. For the binary variable (ejido), the distribution statistic is the statistic", "for a test that the proportions for the mean and control are the same. For the regions, the distribution",  "statistic is a Pearson's $\\chi^2$ test that the observations were drawn from the same distribution of categories."),
    font.size="small",
   column.sep.width = "1pt"
@@ -561,7 +561,7 @@ t.stat.check.3.df
 stargazer(t.stat.check.3.df,
   summary=FALSE, out.header = FALSE, out="/Users/travismcarthur/Desktop/Dev - AAE 642/Problem sets/PS 3/table11.tex", 
   rownames=TRUE, 
-  title=paste0("Test statistics for subset of Mahalanobis-matched treatment (n=",sum(mex.df$mah.matched.control), ") and control groups (n=", sum(mex.df$mah.matched.treat), ") for each group"),
+  title=paste0("Test statistics for subset of Mahalanobis-matched treatment (n=", sum(mex.df$mah.matched.treat), ") and control groups (n=", sum(mex.df$mah.matched.control), ") for each group"),
   notes=c("Note: The distribution statistic is the test statistic of the Kolmogorov-Smirnov test of equality of two distributions", "in the case of continous variables. For the binary variable (ejido), the distribution statistic is the statistic", "for a test that the proportions for the mean and control are the same. For the regions, the distribution",  "statistic is a Pearson's $\\chi^2$ test that the observations were drawn from the same distribution of categories."),
   font.size="small",
   column.sep.width = "1pt"
@@ -634,6 +634,14 @@ stargazer(as.data.frame(summary(margEff(unconfound.tobit ))), summary=FALSE, out
 
 mean(mex.df$pctpd0306)
 mean(mex.df$pctpd0306[mex.df$pctpd0306>0])
+
+
+var.names <- read.csv("/Users/travismcarthur/Desktop/Dev - AAE 642/Problem sets/PS 3/var names.csv", stringsAsFactors=FALSE)
+
+replace.vars(replacement.matrix=var.names, 
+  directory="/Users/travismcarthur/Desktop/Dev - AAE 642/Problem sets/PS 3/", 
+  file.pattern="table.*tex", table.only=TRUE)
+
 
 
 # END
