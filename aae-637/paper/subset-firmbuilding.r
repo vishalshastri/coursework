@@ -58,6 +58,12 @@ x03 = firm.df$abono.quintals * firm.df$crop.coverage
 x04 = firm.df$plaguicida.liters * firm.df$crop.coverage
 x05 = firm.df$labor.hours * firm.df$crop.coverage
 
+x01 <- unname(x01)
+x02 <- unname(x02)
+x03 <- unname(x03)
+x04 <- unname(x04)
+x05 <- unname(x05)
+
 # crops.to.include comes from the setbuilding.r script
 
 lead.zero <- function(x) {formatC(x, width = 2, flag = "0")}

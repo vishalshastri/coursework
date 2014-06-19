@@ -321,7 +321,7 @@ library(systemfit)
 
 # M <- 5
 # M <- 12
-M <- 4
+M <- 1
 N <-5
 J <- 2
 
@@ -552,6 +552,10 @@ names(S.n.H)[length(S.n.H)] <- "cost.fn"
 
 
 test.lm <-lm(terms(S.n.H[[length(S.n.H)]], keep.order=TRUE))
+
+length(attr(terms(S.n.H[[length(S.n.H)]], keep.order=TRUE),"term.labels"))
+
+
 #names(coef( test.lm))
 #names(coef( test.lm)[is.na(coef( test.lm))])
 #kleinOls <- systemfit( S.n.H[1:4], "SUR", maxit = 1  )
@@ -1646,7 +1650,7 @@ names(ln.E.start.vals) <- ln.E.vars
 # This is to handle the fact that some of these drop out with adding-up restrictions:
 ln.E.start.vals <- ln.E.start.vals[!grepl("(alpha.03.01)|(beta01)|(beta....01)|(gamma....01)", 
   names(ln.E.start.vals))]
-alpha.03.01 <- 0
+# alpha.03.01 <- 0
 
 #TODO: for now we will kill alpha.03.01 since it only pertains to one observation and it will screw up gradient
 
@@ -2281,7 +2285,7 @@ firm.df<-firm.df[firm.df$harvest.r.ARROZ!=0 | firm.df$harvest.r.MAIZ!=0 |  firm.
 
 if (TRUE) {
 # Ok, trying the clustering thing:
-firm.df <- firm.df[groups==6, ]
+firm.df <- firm.df[groups==3, ]
  #  
 # Ok, the below is an easier way to do this 
 firm.df <- firm.df[, apply(firm.df, 2, FUN=function(x) sum(x)>0) ]
@@ -2365,16 +2369,16 @@ p12 = firm.df$price.TRIGO
 #y11 = firm.df$harvest.r.QUINUA
 #y12 = firm.df$harvest.r.TRIGO
 
-z1 = firm.df$land.area
+# z1 = firm.df$land.area
 
-profit= p01*y01 + p02*y02 + p03*y03 + p04*y04 + p05*y05 + p06*y06 + p07*y07 + p08*y08 + p09*y09 + 
-  p10*y10 + p11*y11 + p12*y12 - ( w01*x01 + w02*x02 + w03*x03 + w04*x04 + w05*x05 )
+#profit= p01*y01 + p02*y02 + p03*y03 + p04*y04 + p05*y05 + p06*y06 + p07*y07 + p08*y08 + p09*y09 + 
+#  p10*y10 + p11*y11 + p12*y12 - ( w01*x01 + w02*x02 + w03*x03 + w04*x04 + w05*x05 )
   
-profit.test= p01*y01 + p02*y02 + p03*y03 + p04*y04 + p05*y05 + p06*y06 + p07*y07 + p08*y08 + p09*y09 + 
-  p10*y10 + p11*y11 + p12*y12 - ( w01*x01 + w02*x02 + w03*x03 + w04*x04 )
+#profit.test= p01*y01 + p02*y02 + p03*y03 + p04*y04 + p05*y05 + p06*y06 + p07*y07 + p08*y08 + p09*y09 + 
+#  p10*y10 + p11*y11 + p12*y12 - ( w01*x01 + w02*x02 + w03*x03 + w04*x04 )
 
-summary(profit)
-summary(profit.test)
+#summary(profit)
+#summary(profit.test)
 
 
 w01[w01==0] <- mean(w01[w01!=0]) + mean(w01[w01!=0])* rnorm(length(w01[w01==0]), mean = 0, sd = .1)
@@ -2482,7 +2486,7 @@ harvest.r.PAPA     141    0  239  627  492    0
 harvest.r.QUINUA     0    0    0   24  150    0
 harvest.r.TRIGO      0    0    0  434   43    0
 
-
+# var.test(linear.sur.est$eq[[5]], lm(ln.E.data ~ 1)) 
 
 
 

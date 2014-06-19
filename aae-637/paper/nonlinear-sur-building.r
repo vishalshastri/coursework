@@ -732,7 +732,7 @@ ln.E.start.vals <- ln.E.start.vals[!grepl("(beta01)|(beta....01)|(gamma....01)",
 
 theta.starts <- rep(1, times=N-1)
 names(theta.starts) <- paste0("theta", lead.zero(1:(N-1)))
-theta04 <- 1
+theta06 <- 1
 
 # Now making manure numeraire and changing to price translation:
 # theta.starts <- rep(0, times=N-1)

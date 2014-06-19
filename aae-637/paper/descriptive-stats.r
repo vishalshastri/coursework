@@ -80,7 +80,7 @@ colnames(fert.summary) <- c("Crop", "Plots", "Percent with fertilizer",
 
 
 stargazer(fert.summary[1:10,] , summary=FALSE, out.header = FALSE, 
-  out=paste0(work.dir, "tex tables/fertsummary.tex"), 
+  out=paste0(work.dir, "tex building/fertsummary.tex"), 
   rownames=FALSE,  column.separate=c(4,4), column.labels =c("test1", "test2"), float.env = "sidewaystable", font.size="small", title="Summary statistics of fertilizer",
   align=TRUE,
   digits=1
@@ -101,3 +101,15 @@ plot(density(posi.fert))
 plot(density(inputs.df$x19.fertilizante.bs.quintal[inputs.df$x19.fertilizante.bs.quintal>0]), 
 xlim=quantile(inputs.df$x19.fertilizante.bs.quintal[inputs.df$x19.fertilizante.bs.quintal>0], probs=c(.00, .95))
 )
+
+
+
+
+
+prop.table(table(geog.df$x10.cual.su.condicion.juridica ))
+
+
+
+
+
+

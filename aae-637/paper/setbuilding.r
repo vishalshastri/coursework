@@ -534,7 +534,7 @@ firm.df.save <- merge(firm.df.save , crop.wide.df, all.x=TRUE)
 
 for ( target.group in sort(unique(groups))) {
 
-# target.group <- 2
+# target.group <- 1
 
   firm.df <- firm.df.save[firm.df.save$FOLIO %in% 
     groups.w.folio$FOLIO[groups.w.folio$groups==target.group], ]
@@ -551,9 +551,26 @@ for ( target.group in sort(unique(groups))) {
   
 linear.sur.est <- systemfit( S.n.H, "SUR", restrict.matrix = lm.param.restrictions,  maxit = 5000 )
 
+summary(linear.sur.est )
+
+summary(lm(S.n.H[[length(S.n.H)]]))
 
 
 linear.sur.est <- systemfit( S.n.H, "SUR", restrict.matrix = lm.param.restrictions,  maxit = 5000 )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

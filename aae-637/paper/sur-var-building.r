@@ -1,22 +1,42 @@
 
 
+uncensored.cost <- apply(firm.df[, c("x19.fertilizante.cantidad.kg", "x19.sem.comprada.cantidad.kg", 
+  "x19.abono.cantidad.kg", "paid.hours.spread", "x107.hrs.tractor.spread")], 
+  1, FUN=function(x) {sum(x)!=0}
+)
+
+firm.df<- firm.df[uncensored.cost, ]
+# try to see what happens when we eliminate censoring
+
 w01 = firm.df$x19.fertilizante.bs.kg
 w02 = firm.df$x19.sem.comprada.bs.kg
 w03 = firm.df$x19.abono.bs.kg
 w04 = firm.df$x19.plagicidas.bs.kg
+w05 = firm.df$hourly.wage
+w06 = firm.df$hourly.tractor.rental
 # w05 = firm.df$imputed.ag.wage
+
+
+
+
+
 
 
 x01 = firm.df$x19.fertilizante.cantidad.kg
 x02 = firm.df$x19.sem.comprada.cantidad.kg
 x03 = firm.df$x19.abono.cantidad.kg
 x04 = firm.df$x19.plagicidas.cantidad.kg
+x05 = firm.df$paid.hours.spread 
+x06 = firm.df$x107.hrs.tractor.spread
+
 # x05 = firm.df$labor.hours * firm.df$crop.coverage
 
 x01 <- unname(x01)
 x02 <- unname(x02)
 x03 <- unname(x03)
 x04 <- unname(x04)
+x05 <- unname(x05)
+x06 <- unname(x06)
 # x05 <- unname(x05)
 
 # crops.to.include comes from the setbuilding.r script
@@ -119,12 +139,18 @@ for ( i in indust.columns) {
 
 industrialization.index[industrialization.index==0] <- 1
 
-q03 = industrialization.index
+#q03 = industrialization.index
+# SO we will not use indust index for now
+
+q03 = firm.df$ag.fam.labor.equiv.spread
+q03[q03 == 0] = .5
 
 
 
- ln.E.data <- log(w01*x01 + w02*x02 + w03*x03 + w04*x04 + 1  )
+# ln.E.data <- log(w01*x01 + w02*x02 + w03*x03 + w04*x04 + w05*x05 + w06*x06 + 1  )
 #ln.E.data <- log(w01*x01 + w02*x02 + w03*x03 + w04*x04 + w05*x05 + 1 )
+# if uncensored:
+ ln.E.data <- log(w01*x01 + w02*x02 + w03*x03 + w04*x04 + w05*x05 + w06*x06 )
 
 ln.E.data <- unname(ln.E.data )
  

@@ -1,6 +1,8 @@
 
 # DATA PREPARATION
 
+library("foreign")
+
 
 prod01.df<-read.spss(paste0(work.dir, "bd18 (2001).zip Folder/agricola.sav"), to.data.frame = TRUE)
 hogar01.df<-read.spss(paste0(work.dir, "bd18 (2001).zip Folder/hogar.sav"), to.data.frame = TRUE)
@@ -24,6 +26,8 @@ table(miembros01.df$S632)
 
 
 # START GEOG WORK
+
+library("PBSmapping")
 
 hogar01.df$Dept.no<-""
 hogar01.df$Dept.no[hogar01.df$ID01=="Santa cruz"]<-"07"
@@ -88,6 +92,13 @@ hogar01.df$comunidad.id <- hogar01.df.ids
 hogar01.df<-merge(hogar01.df, pob.shp.rev, by="comunidad.id", all.x=TRUE)
 
 #hist(combined.localidades.df$num.of.localidades)
+
+table(pob.shp.rev$CAT_LOC)
+simplified.loc.cat <- as.character(pob.shp.rev$CAT_LOC)
+simplified.loc.cat[simplified.loc.cat == "0-Capital"] <- "1-Urbana"
+simplified.loc.cat[simplified.loc.cat == "3-Dispersa"] <- "3-7Dispersa"  
+aggregate( pob.shp.rev$POB2001, by=list(simplified.loc.cat), FUN=median, na.rm=TRUE)
+
 
 
 

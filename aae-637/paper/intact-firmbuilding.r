@@ -1,6 +1,5 @@
 
 
-#START NEW DATA
 
 library("foreign")
 

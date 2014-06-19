@@ -852,14 +852,15 @@ xi %*% solve(", big.sigma0.mat.char,
 [45] "price.TRIGO"  
 
 
+firm.df<-firm.df[apply(firm.df, 1, FUN=function(x) !any(is.na(x))), ]
 
 firm.df<-firm.df[firm.df$harvest.r.ARROZ!=0 | firm.df$harvest.r.MAIZ!=0 |  firm.df$harvest.r.PLATANO!=0 |  firm.df$harvest.r.YUCA!=0 |   firm.df$harvest.r.ARVEJA!=0 |   firm.df$harvest.r.CEBADA!=0 |   firm.df$harvest.r.CEBOLLA!=0 |   firm.df$harvest.r.HABA!=0 |   firm.df$harvest.r.OCA!=0 |   firm.df$harvest.r.PAPA!=0 |   firm.df$harvest.r.QUINUA!=0 |   firm.df$harvest.r.TRIGO!=0,  ]
 
 # TODO: need to fix
 
-firm.df<-firm.df[-which.max(profit),]
+#firm.df<-firm.df[-which.max(profit),]
 
-firm.df<-firm.df[!is.na(profit) & profit!=0 & firm.df$land.area>0,]
+#firm.df<-firm.df[!is.na(profit) & profit!=0 & firm.df$land.area>0,]
 
 #w1=w1, w2=w2, w3=w3, w4=w4, w5=w5, x1=x1, x2=x2, x3=x3, x4=x4, x5=x5, 
 #p1=p1, p2=p2, p3=p3, p4=p4, p5=p5, p6=p6, p7=p7, p8=p8, p9=p9, p10=p10, 
@@ -908,9 +909,12 @@ z1 = firm.df$land.area
 
 profit= p1*y1 + p2*y2 + p3*y3 + p4*y4 + p5*y5 + p6*y6 + p7*y7 + p8*y8 + p9*y9 + 
   p10*y10 + p11*y11 + p12*y12 - ( w1*x1 + w2*x2 + w3*x3 + w4*x4 + w5*x5 )
-
+  
+profit.test= p1*y1 + p2*y2 + p3*y3 + p4*y4 + p5*y5 + p6*y6 + p7*y7 + p8*y8 + p9*y9 + 
+  p10*y10 + p11*y11 + p12*y12 - ( w1*x1 + w2*x2 + w3*x3 + w4*x4 )
 
 summary(profit)
+summary(profit.test)
 
 
 w1[w1==0] <- mean(w1[w1!=0]) + mean(w1[w1!=0])* rnorm(length(w1[w1==0]), mean = 0, sd = .1)
