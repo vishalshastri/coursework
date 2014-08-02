@@ -27,9 +27,9 @@ inputs.df$x19.abono.bs.quintal[is.na(inputs.df$x19.abono.bs.quintal)] <- 0
 
 
 for ( i in grep("quintal", colnames(inputs.df)) ) {
-  inputs.df[, gsub("quintal", "kg", colnames(inputs.df)[i]) ] <- inputs.df[, i] / 46
+  inputs.df[, gsub("quintal", "kg", colnames(inputs.df)[i]) ] <- inputs.df[, i] * 46
 }
-# Ooops, before I was doing " * 46"
+
 # p. 18 of ftp://ftp.fao.org/docrep/fao/010/ah868e/ah868e00.pdf
 # "One Bolivian arroba is equivalent to 11.5 kg"
 # "One Bolivian quintal is equivalent to 46 kg"
@@ -63,7 +63,7 @@ enableJIT(3)
 
 input.price.columns <- c("x19.fertilizante.bs.kg", "x19.sem.comprada.bs.kg", "x19.abono.bs.kg", "x19.plagicidas.bs.kg")
 
-nation.input.averages <- apply(inputs.df[, input.price.columns], 2, FUN=function(x) median(x[x>0]) )
+nation.input.averages <- apply(inputs.df[, input.price.columns], 2, FUN=function(x) median(x[x>0], na.rm=TRUE) )
 
 for (target.input in input.price.columns ) {
 
@@ -163,11 +163,13 @@ mano.obra.df <- read.spss(paste0(work.dir, "bd68/6-MANO DE OBRA/24.-ENA08_BOLIVI
 
 colnames(mano.obra.df) <- tolower( make.names(gsub("[()]|[.]", "", attr(mano.obra.df, "variable.labels")) ) )
 
+mano.obra.df <- data.frame(mano.obra.df)
+
 mano.obra.df$paid.hours <- mano.obra.df$x1003.hrs.promedio.x.jornal * (
   mano.obra.df$x991.lab.agricolas...hombre...6mes * 9 * 4.345 * 5 +
-  mano.obra.df$x991.lab.agricolas...mujer...6mes * 9 * 4.345 * 5 +
+  mano.obra.df$x991.lab.agricolas...mujer...6mes.1 * 9 * 4.345 * 5 +
   mano.obra.df$x991.lab.agricolas...hombre...6mes * 3 * 4.345 * 5 + 
-  mano.obra.df$x991.lab.agricolas...mujer...6mes * 3 * 4.345 * 5 )
+  mano.obra.df$x991.lab.agricolas...mujer...6mes.1 * 3 * 4.345 * 5 )
 
 # Assumption that less than 6 months means 3 months; greater than 6 months means 9 months,
 # and 5 days in a workweek
@@ -199,7 +201,7 @@ mano.obra.df$hourly.tractor.rental <- mano.obra.df$x101.cual.el.costo.de.la.hra.
 
 input.price.columns <- c("hourly.wage", "hourly.tractor.rental")
 
-nation.input.averages <- apply(inputs.df[, input.price.columns], 2, FUN=function(x) median(x[x>0]) )
+nation.input.averages <- apply(mano.obra.df[, input.price.columns], 2, FUN=function(x) median(x[x>0], na.rm=TRUE) )
 
 for (target.input in input.price.columns ) {
 
@@ -279,7 +281,7 @@ family.df$ag.fam.labor.equiv[is.na(family.df$ag.fam.labor.equiv)] <- 0
 
 labor.aggregate <- aggregate(ag.fam.labor.equiv ~ folio, data=family.df, FUN=sum)
 
-mano.obra.df <- merge( mano.obra.df, labor.aggregate)
+mano.obra.df <- merge( mano.obra.df, labor.aggregate, all=TRUE)
 
 
 
@@ -298,10 +300,15 @@ summary(tractor.aggregate <- aggregate( x107.hrs.tractor ~ folio, data=tractor.d
 # By land area, in Leontief style? I could get more specific with distributing it out since 
 # I know which lands used tractors
 
-mano.obra.df <- merge( mano.obra.df, tractor.aggregate)
+mano.obra.df <- merge( mano.obra.df, tractor.aggregate, all=TRUE)
 
 
-inputs.df <- merge(inputs.df, mano.obra.df, by="folio")
+inputs.df <- merge(inputs.df, mano.obra.df[, !colnames(mano.obra.df) %in% c("zona.agroproductiva", 
+  "factor.de.expansión", "departamento", "provincia.full", "seccion.full",  "canton.full", 
+  "sector.full", "segmento.full")], by="folio", all.x=TRUE)
+
+
+
 
 area.agg <- aggregate(x19.superficie.cultivada.hectareas ~ folio, data=inputs.df, FUN=sum)
 
@@ -321,11 +328,6 @@ inputs.df$paid.hours.spread <- inputs.df$paid.hours * inputs.df$plot.prop.of.fir
 
 # TODO: we have something weird going on with hourly.tractor.rental and NA's
 
-
-
-
-
-
 #[3] "x991.lab.agricolas...hombre...6mes"               
 # [4] "x991.lab.agricolas...mujer...6mes"                
 # [5] "x991.lab.agricolas...hombre...6mes"               
@@ -334,6 +336,334 @@ inputs.df$paid.hours.spread <- inputs.df$paid.hours * inputs.df$plot.prop.of.fir
 #[15] "x1001.con.comida"                                 
 #[16] "x1002.sin.comida"                                 
 #[17] "x1003.hrs.promedio.x.jornal"   
+
+#  inputs.df.save <- inputs.df
+#  inputs.df <- inputs.df.save
+
+
+tractor.df$x107.detalle.recoded <- as.character(tractor.df$x107.detalle)
+
+tractor.df$x107.detalle.recoded[ tractor.df$x107.detalle.recoded %in% 
+  c("Aplicación de abono       ", "Aplicación de fertilizant ", "Aplicación de fungicidas  ",
+  "Aplicación de herbicidas  ", "Aplicación de insecticida ", "Aplicación de Insecticidas", 
+  "Aplicación de riego       ", "Labores culturales        ") ] <- "Labores culturales"
+
+
+tractor.df$x107.detalle.recoded[ tractor.df$x107.detalle.recoded %in% 
+  c("Desmonte                  ", "Lomas artificiales        ", "Picado                    ", 
+  "Preparación del suelo     ", "Rotabatear                ") ] <- "Preparación del suelo"
+
+
+tractor.df$x107.detalle.recoded[ tractor.df$x107.detalle.recoded %in% 
+  c( "Embolsado,empacado, encaj ", "Labor de cosecha          ", "Selección del producto    ", 
+  "Trillado                  ") ] <- "Labor de cosecha"
+
+tractor.df$x107.detalle.recoded[ tractor.df$x107.detalle.recoded %in% 
+  "Siembra                   " ] <- "Siembra"
+
+
+table( tractor.df$x107.detalle.recoded)
+
+tractor.df.big.agg <- aggregate(tractor.df[, "x107.hrs.tractor", drop=FALSE], 
+  by=list(folio=tractor.df$folio, x107.detalle.recoded=tractor.df$x107.detalle.recoded), 
+  FUN=sum, na.rm=TRUE) 
+
+tractor.reshaped <- reshape(tractor.df.big.agg[, c("folio", "x107.detalle.recoded", "x107.hrs.tractor")], idvar="folio", timevar = "x107.detalle.recoded", direction="wide")
+
+colnames(tractor.reshaped) <- gsub(" ", ".", colnames(tractor.reshaped))
+
+tractor.reshaped <- tractor.reshaped[, c("folio", "x107.hrs.tractor.Labor.de.cosecha", 
+  "x107.hrs.tractor.Labores.culturales", "x107.hrs.tractor.Preparación.del.suelo", 
+  "x107.hrs.tractor.Siembra") ]
+  
+tractor.reshaped[is.na(tractor.reshaped)] <- 0
+
+tractor.reshaped <- merge(tractor.reshaped, tractor.df[
+!duplicated(tractor.df[, c("folio", "x104.indique.el.número.de.jornales.u.hrs.tractor")]), c("folio", "x104.indique.el.número.de.jornales.u.hrs.tractor")])
+
+colnames(tractor.reshaped)[colnames(tractor.reshaped)=="x104.indique.el.número.de.jornales.u.hrs.tractor"] <- "nro"
+# ****
+
+tractor.reshaped[is.na(tractor.reshaped)] <- 0
+
+
+
+
+#inputs.df
+#x19.prepara.el.suelo
+#x19.siembra.planta 
+#x19.labores.culturales
+#x19.cosecha
+
+table(inputs.df$x19.prepara.el.suelo )
+table(inputs.df$x19.siembra.planta  )
+table(inputs.df$x19.labores.culturales )
+table(inputs.df$x19.cosecha )
+
+inputs.df <- merge(inputs.df, tractor.reshaped, all.x=TRUE)
+
+
+#inputs.df$x19.prepara.el.suelo.tractor.hrs <- ifelse(inputs.df$x19.prepara.el.suelo=="Maq. Agricola", NA, 0)
+#inputs.df$x19.siembra.planta.tractor.hrs <- ifelse(inputs.df$x19.siembra.planta=="Maq. Agricola", NA, 0)
+#inputs.df$x19.labores.culturales.tractor.hrs <- ifelse(inputs.df$x19.labores.culturales=="Maq. Agricola", NA, 0)
+#inputs.df$x19.cosecha.tractor.hrs <- ifelse(inputs.df$x19.cosecha.tractor.hrs=="Maq. Agricola", NA, 0)
+
+
+
+
+
+# x19.nro.lote == x104.indique.el.número.de.jornales.u.hrs.tractor
+
+
+# It's correct to match on x19.nro.lote based on seeing what happens when there is a
+# discrepancy between x19.nro.lote and nro
+# Still, x19.nro.lote  seems to have some duplicates
+# Hmm, I think I will go with nro due to no duplication
+# The only things to change is the **** up above and below
+
+table(duplicated(inputs.df[,  c("folio", "x19.nro.lote")], ))
+
+table(duplicated(inputs.df[,  c("folio", "nro")], ))
+
+
+tractor.agg<- aggregate(tractor.df$x107.hrs.tractor, by=list(tractor.df$folio, 
+  tractor.df$x104.indique.el.número.de.jornales.u.hrs.tractor), FUN=sum, na.rm=TRUE)
+
+colnames(tractor.agg) <-c("folio", "nro", "exact.plot.tractor.hrs")
+# ****
+
+
+#inputs.df.save <- inputs.df
+#inputs.df <- inputs.df.save
+
+inputs.df <- merge(inputs.df, tractor.agg, all.x=TRUE)
+
+inputs.df$exact.plot.tractor.hrs[is.na(inputs.df$exact.plot.tractor.hrs)] <- 0
+
+
+
+# TODO: an "itself" count of  1379  seems low
+# TODO: it seems we lost a lot of observations
+
+
+#tractor.columns <- c("x19.prepara.el.suelo.tractor.hrs", "x19.siembra.planta.tractor.hrs",
+#  "x19.labores.culturales.tractor.hrs", "x19.cosecha.tractor.hrs")
+
+tractor.columns <- c("x107.hrs.tractor.Labor.de.cosecha" , "x107.hrs.tractor.Labores.culturales",
+  "x107.hrs.tractor.Preparación.del.suelo", "x107.hrs.tractor.Siembra" )
+  
+
+
+corresponding.input <- c("x19.cosecha", "x19.labores.culturales",
+  "x19.prepara.el.suelo", "x19.siembra.planta")
+
+
+
+
+
+
+nation.input.averages <- apply(inputs.df[, tractor.columns], 2, FUN=function(x) {
+  median( (x[x>0])/inputs.df$x19.superficie.cultivada.hectareas[x>0], na.rm=TRUE)
+  } )
+
+
+
+for (target.input in tractor.columns ) {
+
+  inputs.df[, paste0(target.input, ".impute.level")] <- NA
+  
+#  inputs.df[inputs.df[, target.input]!=0, paste0(target.input, ".impute.level")] <- "itself"
+
+impute.levels <- c("household", "segmento.full", "sector.full", "canton.full", 
+  "seccion.full", "provincia.full", "departamento", "nation")
+
+
+imputed.data.ls<- vector(mode = "list", length = nrow(inputs.df))
+
+inputs.df[ , target.input]
+
+obs.to.include <- which(inputs.df$exact.plot.tractor.hrs==0 & 
+  inputs.df[ , corresponding.input[target.input==tractor.columns] ] == "Maq. Agricola" )
+
+inputs.df[inputs.df$exact.plot.tractor.hrs!=0, paste0(target.input, ".impute.level")] <- "itself"
+
+for (i in obs.to.include) {
+# 1:nrow(inputs.df)
+
+# if (inputs.df[i, paste0(inputs.df, ".impute.level")] %in% "itself") {next}
+
+for (impute.level in impute.levels) {
+
+
+  if (impute.level=="nation") { 
+#   stop("reached nation level")
+    imputed.data.ls[[i]] <- c(unname(nation.input.averages[target.input]), impute.level)
+    break
+  }
+  
+#  if (impute.level=="itself") {
+#    if ( inputs.df$x19.nro.lote[i]!= inputs.df[ 1, "x104.indique.el.número.de.jornales.u.hrs.tractor"] )
+#      next
+#    }
+  
+  
+  
+  
+  if(impute.level=="household") {
+    impute.data <- inputs.df[ inputs.df$folio==i & 
+         inputs.df[, paste0(target.input, ".impute.level")] %in% "itself" , target.input]
+    impute.data <- impute.data / inputs.df[ inputs.df$folio==i & 
+         inputs.df[, paste0(target.input, ".impute.level")] %in% "itself" , "x19.superficie.cultivada.hectareas"]
+         
+  } else {
+    impute.data <- inputs.df[ inputs.df[, impute.level] == inputs.df[i, impute.level] & 
+         inputs.df[, paste0(target.input, ".impute.level")] %in% "itself" , target.input]
+    impute.data <- impute.data / inputs.df[ inputs.df[, impute.level] == inputs.df[i, impute.level] & 
+         inputs.df[, paste0(target.input, ".impute.level")] %in% "itself" , "x19.superficie.cultivada.hectareas"]
+  }
+  
+  impute.data <- impute.data[impute.data!=0]
+  
+  if (impute.level=="household" && length(impute.data)>0  ) {
+    
+    imputed.data.ls[[i]] <- c(median( impute.data ), "household")
+     break
+  }
+  if (impute.level=="household") {next}
+
+  
+  if (length(impute.data) >= 3) {
+    imputed.data.ls[[i]] <- c(median( impute.data ), impute.level)
+    break
+  }
+  
+}
+ 
+ cat(i, "\n")
+  
+}
+
+temp.imputed.df <- data.frame(matrix(unlist(imputed.data.ls), ncol=2, byrow=TRUE), stringsAsFactors=FALSE)
+temp.imputed.df[, 1] <- as.numeric(temp.imputed.df[, 1])
+
+inputs.df[sapply(imputed.data.ls, FUN= function(x) length(x)>0 ), target.input] <- 
+  temp.imputed.df[, 1]
+
+inputs.df[sapply(imputed.data.ls, FUN= function(x) length(x)>0 ), 
+  paste0(target.input, ".impute.level") ] <- temp.imputed.df[, 2]
+  
+}
+
+
+for (target.input in tractor.columns ) {
+  inputs.df[! inputs.df$exact.plot.tractor.hrs>0, target.input] <- 
+    inputs.df[! inputs.df$exact.plot.tractor.hrs>0, target.input] * 
+    inputs.df$x19.superficie.cultivada.hectareas[! inputs.df$exact.plot.tractor.hrs>0]
+}
+
+# re-scaling amount used by the number of hectares for
+# all non-itself observations
+
+
+
+for (k in tractor.columns ) {
+  print( table(inputs.df[, paste0(k, ".impute.level")], useNA="always") )
+}
+
+
+
+
+inputs.df$tractor.hrs.final <- rowSums( inputs.df[, tractor.columns], na.rm=TRUE )
+
+inputs.df$tractor.hrs.final[inputs.df$exact.plot.tractor.hrs>0] <- 
+  inputs.df$exact.plot.tractor.hrs[inputs.df$exact.plot.tractor.hrs>0]
+
+
+
+table( 
+inputs.df[ , corresponding.input[1] ] == "Maq. Agricola" |
+inputs.df[ , corresponding.input[2] ] == "Maq. Agricola" |
+inputs.df[ , corresponding.input[3] ] == "Maq. Agricola" |
+inputs.df[ , corresponding.input[4] ] == "Maq. Agricola" 
+)
+
+# inputs.df.save.2 <- inputs.df
+
+
+
+
+
+summary(inputs.df[, c("x19.fertilizante.bs.kg", "x19.sem.comprada.bs.kg", "x19.abono.bs.kg", 
+  "x19.plagicidas.bs.kg", "hourly.wage", "hourly.tractor.rental", 
+  "x19.fertilizante.cantidad.kg", "x19.sem.comprada.cantidad.kg", "x19.abono.cantidad.kg", 
+  "x19.plagicidas.cantidad.kg", "tractor.hrs.final", "x19.produccion.obtenidad.kg", 
+  "x19.superficie.cultivada.hectareas", "x19.uso.riego", "ag.fam.labor.equiv.spread") ]
+)
+
+
+
+min(inputs.df$x19.produccion.obtenidad.kg)
+table(is.na(inputs.df$x19.produccion.obtenidad.kg))
+
+
+nation.input.averages.tractor <- apply(inputs.df[, c("hourly.tractor.rental"), drop=FALSE], 2, FUN=function(x) median(x[x>0], na.rm=TRUE) )
+
+inputs.df$hourly.tractor.rental[is.na(inputs.df$hourly.tractor.rental)] <- nation.input.averages.tractor
+
+
+for ( i in c("x19.fertilizante.cantidad.kg", "x19.sem.comprada.cantidad.kg", 
+  "x19.abono.cantidad.kg", "x19.plagicidas.cantidad.kg", "tractor.hrs.final") ) {
+ 
+  inputs.df[ is.na(inputs.df[, i]) , i] <- 0
+  
+}
+
+inputs.df <- inputs.df[inputs.df$x19.produccion.obtenidad.kg>0 &
+  !is.na(inputs.df$x19.produccion.obtenidad.kg), ] 
+
+
+
+summary(inputs.df[, c("x19.fertilizante.bs.kg", "x19.sem.comprada.bs.kg", "x19.abono.bs.kg", 
+  "x19.plagicidas.bs.kg", "hourly.wage", "hourly.tractor.rental", 
+  "x19.fertilizante.cantidad.kg", "x19.sem.comprada.cantidad.kg", "x19.abono.cantidad.kg", 
+  "x19.plagicidas.cantidad.kg", "tractor.hrs.final", "x19.produccion.obtenidad.kg", 
+  "x19.superficie.cultivada.hectareas", "x19.uso.riego", "ag.fam.labor.equiv.spread") ]
+)
+
+
+
+
+
+
+
+#x107.hrs.tractor.spread
+
+#w01 = firm.df$x19.fertilizante.bs.kg
+#w02 = firm.df$x19.sem.comprada.bs.kg
+#w03 = firm.df$x19.abono.bs.kg
+#w04 = firm.df$x19.plagicidas.bs.kg
+#w05 = firm.df$hourly.wage
+#w06 = firm.df$hourly.tractor.rental
+
+#x01 = firm.df$x19.fertilizante.cantidad.kg
+#x02 = firm.df$x19.sem.comprada.cantidad.kg
+#x03 = firm.df$x19.abono.cantidad.kg
+#x04 = firm.df$x19.plagicidas.cantidad.kg
+#x05 = firm.df$paid.hours.spread 
+#x06 = firm.df$x107.hrs.tractor.spread
+
+#y01 <- log( firm.df$x19.produccion.obtenidad.kg )
+
+#q01 = firm.df$x19.superficie.cultivada.hectareas
+# q01[q01 ==0] = median(q01)
+
+#q02 = ifelse(firm.df$x19.uso.riego!="Si",  1, exp(1))
+
+#q03 = firm.df$ag.fam.labor.equiv.spread
+#q03[q03 == 0] = .5
+
+
+
 
 
 

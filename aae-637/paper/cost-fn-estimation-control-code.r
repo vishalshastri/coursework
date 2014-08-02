@@ -145,8 +145,6 @@ summary(linear.sur.est.region )
 
 
 
-
-
 # S.n.H[[length(S.n.H)]] <- 
 
 
@@ -331,7 +329,7 @@ top.crops <- names(sort(table(inputs.df$x19.codigo), decreasing=TRUE))[1:10]
 
 
 
-target.crop <- top.crops[5]
+target.crop <- top.crops[2]
 
 firm.df <- inputs.df[inputs.df$x19.codigo == target.crop & inputs.df$x19.produccion.obtenidad.kg>0 &
 !is.na(inputs.df$x19.produccion.obtenidad.kg), ]
@@ -341,7 +339,7 @@ firm.df <- inputs.df[inputs.df$x19.codigo == target.crop & inputs.df$x19.producc
 price.to.trim <- c("x19.fertilizante.bs.kg", "x19.sem.comprada.bs.kg", "x19.abono.bs.kg",
    "x19.plagicidas.bs.kg", "hourly.wage",  "hourly.tractor.rental" )
 
-firm.df <- firm.df[!is.na(firm.df$hourly.tractor.rental), ]
+# firm.df <- firm.df[!is.na(firm.df$hourly.tractor.rental), ]
 # only kills 2 obseravtions for maiz and zero for Barley
 
 price.trim.criteria <- apply(firm.df[, price.to.trim], 2, FUN=function(x) x < quantile(x, probs=0.99) )
@@ -359,8 +357,6 @@ source("/Users/travismcarthur/git/coursework/aae-637/paper/nonlinear-sur-buildin
 
 
 region <- toupper(firm.df$zona.agroproductiva)
-# TODO: need to fixed the problem with merging that forces us to do this:
-region <- toupper(firm.df$zona.agroproductiva.y)
 region[region=="VALLES CERRADAS     "] <- "VALLES CERRADOS     "
 
 region <- gsub("Ú", "U", region)
@@ -376,6 +372,8 @@ if (target.crop=="Cebada combined") {
 }
 
 region <- factor(region)
+
+table(region)
 
 # Make region01 be the actual variable, and then the name of the region be the parameter name 
 
@@ -433,6 +431,11 @@ ln.E.start.vals <-c(ln.E.start.vals, theta.starts)
 
 
 
+
+
+
+
+
 ######
 
 
@@ -467,15 +470,22 @@ for (i in 1:ncol(region.matrix)) {
 #rm("region07")
 #rm("region08")
 
+table(x01>0)
+table(x02>0)
+table(x03>0)
+table(x04>0)
+table(x05>0)
+table(x06>0)
 
 
 
 
-try.nlsLM.cost.fn <- nlsLM(nls.formula.ln.E.region, start=ln.E.start.vals+.001, 
-data  = cbind( as.data.frame(args.list), as.data.frame(region.matrix) ),
-trace=TRUE, lower=ifelse(grepl("theta", names(ln.E.start.vals)), 0, -Inf), 
-control = nls.lm.control(maxiter=1000, maxfev = 100000),
-weights=firm.df[, "factor.de.expansión.x"] )
+
+#try.nlsLM.cost.fn <- nlsLM(nls.formula.ln.E.region, start=ln.E.start.vals+.001, 
+#data  = cbind( as.data.frame(args.list), as.data.frame(region.matrix) ),
+#trace=TRUE, lower=ifelse(grepl("theta", names(ln.E.start.vals)), 0, -Inf), 
+#control = nls.lm.control(maxiter=1000, maxfev = 100000),
+#weights=firm.df[, "factor.de.expansión.x"] )
 
 
 try.nlsLM.cost.fn <- nlsLM(nls.formula.ln.E.region, start=ln.E.start.vals+.001, 
@@ -515,6 +525,7 @@ cat(length(nls.fitted.models), " ", num.iters,
 # # TODO: double hurdle stars
 
 
+summary(nls.fitted.models[[length(nls.fitted.models)]])
 
 
 
@@ -664,6 +675,36 @@ linearHypothesis(fitted.lm, hypothesis.matrix=hypothesis)
 cat("\n\n")
 
 }
+
+
+
+
+
+
+S.n.region <- S.n
+
+S.n.region[[length(S.n.region)+1]] <- nls.formula.ln.E.region
+names(S.n.region)[length(S.n.region)] <- "cost.fn"
+
+
+S.n.region[[length(S.n.region)]] <- as.formula(paste0("ln.E.data ~ ", gsub("Ó", "O", 
+  as.character(S.n.region[[length(S.n.region)]])[3])))
+
+
+
+try.nls.group.2.SUR <- nlsystemfit(method="SUR", eqns= S.n.region, startvals=ln.E.start.vals, data=as.data.frame(args.list), print.level=2, maxiter=100000)
+
+try.nls.group.2.SUR <- nlsystemfit(method="SUR", eqns= S.n, startvals=ln.E.start.vals, data=as.data.frame(args.list), print.level=2, maxiter=100000)
+
+
+try.nls.group.2.SUR <- nls(S.n.region[[length(S.n.region)]], data=as.data.frame(args.list), start=ln.E.start.vals+.000001)
+
+# Don't need to do "as.data.frame(args.list[-1])", since we did not do this:  args.list <- c(list(x=ln.E.start.vals), args.list)
+
+
+# data.frame(args.list, region01)
+
+
 
 
 
