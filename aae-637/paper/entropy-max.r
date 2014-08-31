@@ -9,6 +9,7 @@ library("Matrix")
 
 
 
+
 # Let's do single-equation:
 
 # 1) form weights
@@ -127,7 +128,7 @@ eq.constraint <- function( x0, param.supp, err.supp, eqns, data, x0.names) {
 
   y.censored <- unlist(censored.ls)
   
-  w1.vec <- x0[grepl( "err.weights", names(x0))][!y.censored]
+  w1.vec <- x0[grepl( "err.weights", names(x0))][!rep(y.censored, each=length(err.supp[[1]]))]
 # w2.vec <- unlist(err.supp[y.censored])
 
   V1.mat <- t( bdiag(lapply(err.supp[!y.censored], FUN=matrix)) )
@@ -164,7 +165,7 @@ eq.constraint <- function( x0, param.supp, err.supp, eqns, data, x0.names) {
     kronecker(diag(sum(!y.censored)), 
       matrix(1, ncol=length(err.supp[[1]]) )) %*% w1.vec - 1 # (eqn 4.7, Golan et al 1997)
   
-  w2.vec <- x0[grepl( "err.weights", names(x0))][y.censored]
+  w2.vec <- x0[grepl( "err.weights", names(x0))][rep(y.censored, each=length(err.supp[[1]]))]
   
   w2.constraint <- 
     kronecker(diag(sum( y.censored)), 
@@ -198,7 +199,7 @@ ineq.constraint <- function( x0, param.supp, err.supp, eqns, data, x0.names) {
 
   y.censored <- unlist(censored.ls)
   
-  w2.vec <- x0[grepl( "err.weights", names(x0))][y.censored]
+  w2.vec <- x0[grepl( "err.weights", names(x0))][rep(y.censored, each=length(err.supp[[1]]))]
 # w2.vec <- unlist(err.supp[y.censored])
 
   V2.mat <- t( bdiag(lapply(err.supp[ y.censored], FUN=matrix)) )
@@ -250,7 +251,7 @@ objective.fn <- function(x0, param.supp, err.supp, eqns, data, x0.names) {
 #param.supp <- list(a=(-10):10, b=(-10):10, c=(-10):10)
 # param.supp <- list(a= (-10):10, b=1:5, c=1:5, d=10:14, e=1:5, f=10:14,  g=1:5, h=10:14)
 # param.supp <- list(a=c(-10, -5, 0, 5, 10), b=c(-10, -5, 0, 5, 10))
-param.supp <- list(a=c(-10, 0, 10), b=c(-10, 0, 10))
+param.supp <- list(a=c(-50,  0,  50), b=c(-50,  0,  50))
 
 observations.test <- 100
 
@@ -376,6 +377,12 @@ as.data.frame(data)[2, "x1"] * params.point$a + as.data.frame(data)[2, "x2"] * p
 
 error.weight.start.vals[4:6] %*% c(-20, 0, 20)
 
+params.point <- Z.mat %*% param.weights
+
+as.data.frame(data)[1, "x1"] * params.point$a + as.data.frame(data)[1, "x2"] * params.point$b +
+  error.weight.start.vals[1:3] %*% c(-20, 0, 20) - as.data.frame(data)[1, "y"]
+
+
 
 as.data.frame(data)[2, "x1"] * params.point$a + as.data.frame(data)[2, "x2"] * params.point$b +
   error.weight.start.vals[4:6] %*% c(-20, 0, 20) - as.data.frame(data)[2, "y"]
@@ -406,7 +413,7 @@ x0.names <- names(x0)
 #x0.jittered
 
 # NLOPT_LN_COBYLA
-local_opts <- list( "algorithm" = "NLOPT_LN_COBYLA",
+local_opts <- list( "algorithm" = "NLOPT_LN_SBPLX",
   "xtol_rel" = 1.0e-7 )
 opts <- list( "algorithm" = "NLOPT_LN_AUGLAG",
   "xtol_rel" = 1.0e-7,
@@ -445,6 +452,30 @@ cov.estimator(x0=test.auglag$solution,
 
 cov.estimator(x0=x0, 
   eqns=eqns, data=data, param.supp=param.supp, err.supp=err.supp, x0.names=x0.names )
+
+
+
+# NLOPT_GN_ISRES
+optim.test <- nloptr.no.check( x0 = x0,
+  eval_f = objective.fn,
+  eval_g_ineq = ineq.constraint,
+  eval_g_eq = eq.constraint,
+  opts = list("algorithm"="NLOPT_LN_COBYLA", maxeval=5000, print_level=1),
+  ub=rep(1, length(x0)),
+  lb=rep(0, length(x0)),
+  param.supp = param.supp, 
+  err.supp = err.supp, 
+  eqns = eqns, 
+  data = data,
+  x0.names = x0.names
+)
+
+
+
+
+
+
+
 
 
 # + runif(length(x0 ), min= -.2, max=.2)
@@ -772,12 +803,42 @@ gr=objective.fn.gradient,
 hin=ineq.constraint.posi, 
 heq=eq.constraint, 
 control.outer=list(trace=TRUE), 
+control.optim=list(trace=6),
   param.supp = param.supp, 
   err.supp = err.supp, 
   eqns = eqns, 
   data = data,
   x0.names = x0.names
 )
+
+# 23 outer iterations
+
+
+
+
+test.auglag.solution.fixed <- test.auglag$solution
+
+test.auglag.solution.fixed[1:3] <- test.auglag.solution.fixed[1:3]/ sum(test.auglag.solution.fixed[1:3])
+
+test.auglag.solution.fixed[4:6] <- test.auglag.solution.fixed[1:3]/ sum(test.auglag.solution.fixed[4:6])
+
+test.alabama <- auglag(par=test.auglag.solution.fixed, fn=objective.fn, 
+gr=objective.fn.gradient,
+hin=ineq.constraint.posi, 
+heq=eq.constraint, 
+control.outer=list(trace=TRUE), 
+control.optim=list(trace=3),
+  param.supp = param.supp, 
+  err.supp = err.supp, 
+  eqns = eqns, 
+  data = data,
+  x0.names = x0.names
+)
+
+
+
+
+
 
 
 test.auglag <- nloptr( 
@@ -794,6 +855,30 @@ test.auglag <- nloptr(
   data = data,
   x0.names = x0.names
 )
+
+
+
+
+
+test.alabama$par
+
+
+
+get.point.est(x0=test.alabama$par, param.supp=param.supp, x0.names=x0.names)
+get.point.est(x0=x0, param.supp=param.supp, x0.names=x0.names)
+
+# data$y <- data$x1 * 5 + data$x2 * -2 + runif(observations.test)/5 - .5
+
+cov.estimator(x0=test.alabama$par, 
+  eqns=eqns, data=data, param.supp=param.supp, err.supp=err.supp, x0.names=x0.names )
+
+
+ineq.constraint( x0=test.alabama$par, param.supp=param.supp, err.supp=err.supp, eqns=eqns, data=data, x0.names=x0.names)
+eq.constraint( x0=test.alabama$par, param.supp=param.supp, err.supp=err.supp, eqns=eqns, data=data, x0.names=x0.names)
+
+
+colSums(matrix(test.alabama$par[names(test.alabama$par)=="err.weights"], nrow=3))
+
 
 
 
@@ -816,7 +901,7 @@ ineq.constraint.posi <- function( x0, param.supp, err.supp, eqns, data, x0.names
 
   y.censored <- unlist(censored.ls)
   
-  w2.vec <- x0[grepl( "err.weights", names(x0))][y.censored]
+  w2.vec <- x0[grepl( "err.weights", names(x0))][rep(y.censored, each=length(err.supp[[1]]))]
 # w2.vec <- unlist(err.supp[y.censored])
 
   V2.mat <- t( bdiag(lapply(err.supp[ y.censored], FUN=matrix)) )
@@ -857,9 +942,208 @@ objective.fn.gradient  <- function(x0, param.supp, err.supp, eqns, data, x0.name
   names(x0) <- x0.names
   param.weights <- x0[!grepl( "err.weights", names(x0))]
   err.weights <- x0[ grepl( "err.weights", names(x0))]
-  return( -  (- log(param.weights) - 1 - log(err.weights) - 1) )
+  return( -  (- sum(log(param.weights) - 1) - sum(log(err.weights) - 1)) )
   # The above is to be maximized
 }
 # Note that we are using a minimizer, so I have made this the neg
 
+
+
+nloptr.no.check <- function (x0, eval_f, eval_grad_f = NULL, lb = NULL, ub = NULL, 
+    eval_g_ineq = NULL, eval_jac_g_ineq = NULL, eval_g_eq = NULL, 
+    eval_jac_g_eq = NULL, opts = list(), ...) 
+{
+    .checkfunargs = function(fun, arglist, funname) {
+        if (!is.function(fun)) 
+            stop(paste(funname, " must be a function\n", sep = ""))
+        flist = formals(fun)
+        if (length(flist) > 1) {
+            fnms = names(flist)[2:length(flist)]
+            rnms = names(arglist)
+            m1 = match(fnms, rnms)
+            if (any(is.na(m1))) {
+                mx1 = which(is.na(m1))
+                for (i in 1:length(mx1)) {
+                  stop(paste(funname, " requires argument '", 
+                    fnms[mx1[i]], "' but this has not been passed to the 'nloptr' function.\n", 
+                    sep = ""))
+                }
+            }
+            m2 = match(rnms, fnms)
+            if (any(is.na(m2))) {
+                mx2 = which(is.na(m2))
+                for (i in 1:length(mx2)) {
+                  stop(paste(rnms[mx2[i]], "' passed to (...) in 'nloptr' but this is not required in the ", 
+                    funname, " function.\n", sep = ""))
+                }
+            }
+        }
+        return(0)
+    }
+    arglist = list(...)
+    .checkfunargs(eval_f, arglist, "eval_f")
+    if (!is.null(eval_grad_f)) {
+        .checkfunargs(eval_grad_f, arglist, "eval_grad_f")
+    }
+    if (!is.null(eval_g_ineq)) {
+        .checkfunargs(eval_g_ineq, arglist, "eval_g_ineq")
+    }
+    if (!is.null(eval_jac_g_ineq)) {
+        .checkfunargs(eval_jac_g_ineq, arglist, "eval_jac_g_ineq")
+    }
+    if (!is.null(eval_g_eq)) {
+        .checkfunargs(eval_g_eq, arglist, "eval_g_eq")
+    }
+    if (!is.null(eval_jac_g_eq)) {
+        .checkfunargs(eval_jac_g_eq, arglist, "eval_jac_g_eq")
+    }
+    if (is.null(lb)) {
+        lb <- rep(-Inf, length(x0))
+    }
+    if (is.null(ub)) {
+        ub <- rep(Inf, length(x0))
+    }
+    if (is.list(eval_f(x0, ...)) | is.null(eval_grad_f)) {
+        eval_f_wrapper <- function(x) {
+            eval_f(x, ...)
+        }
+    }
+    else {
+        eval_f_wrapper <- function(x) {
+            return(list(objective = eval_f(x, ...), gradient = eval_grad_f(x, 
+                ...)))
+        }
+    }
+    num_constraints_ineq <- 0
+    if (!is.null(eval_g_ineq)) {
+        if (is.list(eval_g_ineq(x0, ...)) | is.null(eval_jac_g_ineq)) {
+            eval_g_ineq_wrapper <- function(x) {
+                eval_g_ineq(x, ...)
+            }
+        }
+        else {
+            eval_g_ineq_wrapper <- function(x) {
+                return(list(constraints = eval_g_ineq(x, ...), 
+                  jacobian = eval_jac_g_ineq(x, ...)))
+            }
+        }
+        tmp_constraints <- eval_g_ineq_wrapper(x0)
+        if (is.list(tmp_constraints)) {
+            num_constraints_ineq <- length(tmp_constraints$constraints)
+        }
+        else {
+            num_constraints_ineq <- length(tmp_constraints)
+        }
+    }
+    else {
+        eval_g_ineq_wrapper <- NULL
+    }
+    num_constraints_eq <- 0
+    if (!is.null(eval_g_eq)) {
+        if (is.list(eval_g_eq(x0, ...)) | is.null(eval_jac_g_eq)) {
+            eval_g_eq_wrapper <- function(x) {
+                eval_g_eq(x, ...)
+            }
+        }
+        else {
+            eval_g_eq_wrapper <- function(x) {
+                return(list(constraints = eval_g_eq(x, ...), 
+                  jacobian = eval_jac_g_eq(x, ...)))
+            }
+        }
+        tmp_constraints <- eval_g_eq_wrapper(x0)
+        if (is.list(tmp_constraints)) {
+            num_constraints_eq <- length(tmp_constraints$constraints)
+        }
+        else {
+            num_constraints_eq <- length(tmp_constraints)
+        }
+    }
+    else {
+        eval_g_eq_wrapper <- NULL
+    }
+    if ("local_opts" %in% names(opts)) {
+        res.opts.add <- nloptr.add.default.options(opts.user = opts$local_opts, 
+            x0 = x0, num_constraints_ineq = num_constraints_ineq, 
+            num_constraints_eq = num_constraints_eq)
+        local_opts <- res.opts.add$opts.user
+        opts$local_opts <- NULL
+    }
+    else {
+        local_opts <- NULL
+    }
+    res.opts.add <- nloptr.add.default.options(opts.user = opts, 
+        x0 = x0, num_constraints_ineq = num_constraints_ineq, 
+        num_constraints_eq = num_constraints_eq)
+    opts <- res.opts.add$opts.user
+    termination_conditions <- res.opts.add$termination_conditions
+    if (opts$print_options_doc) {
+        nloptr.print.options(opts.user = opts)
+    }
+    list_algorithms <- unlist(strsplit(nloptr.default.options[nloptr.default.options$name == 
+        "algorithm", "possible_values"], ", "))
+    if (opts$check_derivatives) {
+        if (opts$algorithm %in% list_algorithms[grep("NLOPT_[G,L]N", 
+            list_algorithms)]) {
+            warning(paste("Skipping derivative checker because algorithm '", 
+                opts$algorithm, "' does not use gradients.", 
+                sep = ""))
+        }
+        else {
+            cat("Checking gradients of objective function.\n")
+            check.derivatives(.x = x0, func = function(x) {
+                eval_f_wrapper(x)$objective
+            }, func_grad = function(x) {
+                eval_f_wrapper(x)$gradient
+            }, check_derivatives_tol = opts$check_derivatives_tol, 
+                check_derivatives_print = opts$check_derivatives_print, 
+                func_grad_name = "eval_grad_f")
+            if (num_constraints_ineq > 0) {
+                cat("Checking gradients of inequality constraints.\n")
+                check.derivatives(.x = x0, func = function(x) {
+                  eval_g_ineq_wrapper(x)$constraints
+                }, func_grad = function(x) {
+                  eval_g_ineq_wrapper(x)$jacobian
+                }, check_derivatives_tol = opts$check_derivatives_tol, 
+                  check_derivatives_print = opts$check_derivatives_print, 
+                  func_grad_name = "eval_jac_g_ineq")
+            }
+            if (num_constraints_eq > 0) {
+                cat("Checking gradients of equality constraints.\n")
+                check.derivatives(.x = x0, func = function(x) {
+                  eval_g_eq_wrapper(x)$constraints
+                }, func_grad = function(x) {
+                  eval_g_eq_wrapper(x)$jacobian
+                }, check_derivatives_tol = opts$check_derivatives_tol, 
+                  check_derivatives_print = opts$check_derivatives_print, 
+                  func_grad_name = "eval_jac_g_eq")
+            }
+        }
+    }
+    ret <- list(x0 = x0, eval_f = eval_f_wrapper, lower_bounds = lb, 
+        upper_bounds = ub, num_constraints_ineq = num_constraints_ineq, 
+        eval_g_ineq = eval_g_ineq_wrapper, num_constraints_eq = num_constraints_eq, 
+        eval_g_eq = eval_g_eq_wrapper, options = opts, local_options = local_opts, 
+        nloptr_environment = new.env())
+    attr(ret, "class") <- "nloptr"
+    ret$call <- match.call()
+    ret$termination_conditions <- termination_conditions
+ #   is.nloptr(ret)
+    solution <- .Call(NLoptR_Optimize, ret)
+    ret$environment <- NULL
+    ret$status <- solution$status
+    ret$message <- solution$message
+    ret$iterations <- solution$iterations
+    ret$objective <- solution$objective
+    ret$solution <- solution$solution
+    ret$version <- paste(c(solution$version_major, solution$version_minor, 
+        solution$version_bugfix), collapse = ".")
+    return(ret)
+}
+
+
+#environment(nloptr.no.check) <- as.environment("package:nloptr")
+environment(nloptr.no.check)<- asNamespace('nloptr')
+# How to have modified function access underlying functions in a package:
+# http://stackoverflow.com/questions/3094232/add-objects-to-package-namespace
 

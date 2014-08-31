@@ -33,6 +33,9 @@ price.trim.criteria <- apply(price.trim.criteria, 1, FUN=all)
 
 firm.df <- firm.df[price.trim.criteria, ]
 
+library("systemfit")
+library("stringr")
+
 # sur-var-building
 # linear-sur-building
 # nonlinear-sur-building.r
@@ -54,8 +57,8 @@ summary(lm(S.n.H[[length(S.n.H)]]))$coefficients[, "Pr(>|t|)"]
 
 
 region <- toupper(firm.df$zona.agroproductiva)
-# TODO: need to fixed the problem with merging that forces us to do this:
-region <- toupper(firm.df$zona.agroproductiva.y)
+# TODO: need to fixed the problem with merging that forces us to do this (this is fixed):
+# region <- toupper(firm.df$zona.agroproductiva.y)
 region[region=="VALLES CERRADAS     "] <- "VALLES CERRADOS     "
 
 region <- gsub("Ú", "U", region)
@@ -303,7 +306,9 @@ theta05      5.301e-01  5.922e-01   0.895  0.37105
 #for ( i in grep("quintal", colnames(inputs.df)) ) {
 #  inputs.df[, gsub("quintal", "kg", colnames(inputs.df)[i]) ] <- inputs.df[, i] / 46
 #}
-                      
+   
+   
+# I believe this is where I start for the "real" GAMS work                   
 
 
 inputs.df$x19.codigo.saved <- inputs.df$x19.codigo
