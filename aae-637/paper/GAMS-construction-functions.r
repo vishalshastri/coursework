@@ -157,6 +157,10 @@ for (i in 1:length(S.n)) {
 }
 
 
+combined.df <- scale(combined.df, center=FALSE)
+
+
+
 top.before.data <- c(
 "sets ",
 paste0("  t number of observations  / 1 * ", nrow(combined.df), " /"),
@@ -334,7 +338,26 @@ add.data.subscripts <- function(x) {
 }
 
 
-S.n.GAMS <- lapply(S.n, FUN=add.data.subscripts)
+S.n.GAMS <- S.n
+
+for (j in 1:length(S.n.GAMS)) {
+for ( i in 1:N) {
+
+  S.n.GAMS[[j]] <- gsub(paste0("w", lead.zero(i), " / [(]w", lead.zero(i), " [*] theta", 
+    lead.zero(i), "[)]"), paste0("1 / theta", lead.zero(i)),  S.n.GAMS[[j]])
+    
+  S.n.GAMS[[j]] <- gsub(paste0("log[(]w", lead.zero(i), " [*] theta", lead.zero(i), "[)]"),
+   paste0("(log(w", lead.zero(i), ") + log(theta", lead.zero(i), "))"),  S.n.GAMS[[j]])
+
+}
+}
+
+
+
+
+
+
+S.n.GAMS <- lapply(S.n.GAMS, FUN=add.data.subscripts)
 
 S.n.GAMS <- lapply(S.n.GAMS, FUN=function(x) gsub(pattern="[.]", replacement="", x=x))
 
@@ -367,9 +390,27 @@ for ( i in 1:length(S.n.GAMS)) {
 
 ln.E.string.GAMS <- ln.E.string
 
+
+for ( i in 1:N) {
+
+  ln.E.string.GAMS <- gsub(paste0("w", lead.zero(i), " / [(]w", lead.zero(i), " [*] theta", 
+    lead.zero(i), "[)]"), paste0("1 / theta", lead.zero(i)), ln.E.string.GAMS)
+    
+  ln.E.string.GAMS <- gsub(paste0("log[(]w", lead.zero(i), " [*] theta", lead.zero(i), "[)]"),
+   paste0("(log(w", lead.zero(i), ") + log(theta", lead.zero(i), "))"),  ln.E.string.GAMS)
+
+}
+
+
+
 ln.E.string.GAMS <- add.data.subscripts(ln.E.string.GAMS)
 
 ln.E.string.GAMS <- gsub(pattern="[.]", replacement="", x=ln.E.string.GAMS)
+
+big.log.posi.constraint<- str_extract( ln.E.string.GAMS, "log[(] [(]1 / theta01[)].*")
+
+big.log.posi.constraint <- sub("log[(]", "", big.log.posi.constraint) 
+big.log.posi.constraint <- sub("[)]$", "", big.log.posi.constraint) 
 
 first.eq.line.a <- "restrcosta(t)$(cost(t) gt 0).."
 first.eq.line.b <- "restrcostb(t)$(cost(t) eq 0).."
@@ -384,6 +425,22 @@ second.eq.line.b <- strwrap( second.eq.line.a, indent=12, exdent=19, width=80)
   
 model.restrictions.cost <- c(first.eq.line.a, second.eq.line.a, first.eq.line.b, second.eq.line.b)
 
+
+# theta01  =g= 0;
+#theta02  =g= 0;
+#theta03  =g= 0;
+#theta04  =g= 0;
+#theta05  =g= 0;
+
+#restrpbeta0..        beta0 =e= sum(m, pbeta0(m) * zbeta0(m));
+
+theta.positivity.restriction <- 
+  paste0("restrthetaposi", lead.zero(1:(N-1)), "..      theta", lead.zero(1:(N-1)), "  =g= 0;")
+
+
+big.log.posi.constraint.lines <- c("restrbiglogposi(t)..   " ,
+   strwrap( paste0("0 =l= ", big.log.posi.constraint, ";"), indent=12, exdent=19, width=80)
+   )
 
 
 #restr2(i,k)..        beta(i,k) =e= sum(m, p(i,k,m) * z(k, m));
@@ -428,6 +485,8 @@ equation.declarations <- c(
   "restrcostb(t)",
   paste0("restr", 1:length(S.n), "sa(t)"),
   paste0("restr", 1:length(S.n), "sb(t)"),
+  paste0("restrthetaposi", lead.zero(1:(N-1))), # Added this for theta posi restrictions
+  "restrbiglogposi(t)",
   ";"
 )
   
@@ -453,7 +512,8 @@ prob.names <- GAMS.linear.results.extracted[!is.na(GAMS.linear.results.extracted
 
 prob.numbers <- GAMS.linear.results[which(!is.na(GAMS.linear.results.extracted)) + 2]
 
-start.vals.lines <- c()
+start.vals.lines <- paste0("theta", lead.zero(1:(N-1)), ".l = 1")
+# added this to have correct (non-zero) starting vals for theta
 
 for ( i in 1:length(prob.names)) {
 
@@ -497,11 +557,26 @@ for ( i in 1:length(all.eqns) ) {
 
 
 
-  ptheta01.l(m) = 1/MM;
-  ptheta02.l(m) = 1/MM;
-  ptheta03.l(m) = 1/MM;
-  ptheta04.l(m) = 1/MM;
-  ptheta05.l(m) = 1/MM;
+#  ptheta01.l(m) = 1/MM;
+#  ptheta02.l(m) = 1/MM;
+#  ptheta03.l(m) = 1/MM;
+#  ptheta04.l(m) = 1/MM;
+#  ptheta05.l(m) = 1/MM;
+  
+  
+#  ptheta01.l("1") = .96
+#  ptheta01.l("2") = .04
+#  ptheta01.l("3") = 1.e-6
+
+theta.weight.lines <-  c( paste0("ptheta", lead.zero(1:(N-1)), ".l(\"1\") = .96;"),
+  paste0("ptheta", lead.zero(1:(N-1)), ".l(\"2\") = .04;"),
+  paste0("ptheta", lead.zero(1:(N-1)), ".l(\"3\") = 1.e-6;")
+  )
+
+# 1.e-6
+# 25
+# 50
+
 
 
 
@@ -513,6 +588,7 @@ c(
 # paste0("  p", all.params, ".l(m) = 1/MM;"),
 # paste0("  w", all.eqns, ".l(t,j) = 1/JJ;"),
 start.vals.lines,
+theta.weight.lines,
 error.weights.lines,
 "* primal approach",
 "model gme /all/;",
@@ -549,6 +625,8 @@ completed.GAMS.file <-  c(
   objective.fn.lines, " ", 
   unlist(model.restrictions), " ", 
   model.restrictions.cost, " ", 
+  theta.positivity.restriction, " ",
+  big.log.posi.constraint.lines, " ",
   prob.weight.param.lines, " ", 
   prob.weight.error.lines, " ", 
   final.lines
@@ -557,7 +635,105 @@ completed.GAMS.file <-  c(
 cat(completed.GAMS.file, 
   file="/Users/travismcarthur/Desktop/Metrics (637)/Final paper/GAMS work/entropytest.gms", sep="\n")
   
+
+
+
+
+
+
+
+GAMS.linear.results<- readLines("/Users/travismcarthur/Desktop/Dropbox/entropytestlinear.lst")
+
+
+GAMS.linear.results.params<- GAMS.linear.results[grep("parameters to be esti$", GAMS.linear.results)]
+
+GAMS.linear.results.params.names <- gsub("[.]L", "", str_extract(GAMS.linear.results.params, "[^ ]*[.]L") )
+
+
+GAMS.linear.results.params.numbers <- as.numeric(gsub("  parameters to be esti", "",
+  str_extract(GAMS.linear.results.params, "[^ ]*  parameters to be esti") ) )
   
+combined.w.params.df <- as.list(as.data.frame(combined.df))
+
+for ( i in 1:length(GAMS.linear.results.params.names)) {
+  combined.w.params.df[[ GAMS.linear.results.params.names[i] ]] <- GAMS.linear.results.params.numbers[i]
+}
+
+for ( i in 1:N) {
+  combined.w.params.df[[ paste0("theta", lead.zero(i)) ]] <- 1
+}
+
+
+
+ln.E.string.GAMS <- ln.E.string
+
+
+for ( i in 1:N) {
+
+  ln.E.string.GAMS <- gsub(paste0("w", lead.zero(i), " / [(]w", lead.zero(i), " [*] theta", 
+    lead.zero(i), "[)]"), paste0("1 / theta", lead.zero(i)), ln.E.string.GAMS)
+    
+  ln.E.string.GAMS <- gsub(paste0("log[(]w", lead.zero(i), " [*] theta", lead.zero(i), "[)]"),
+   paste0("(log(w", lead.zero(i), ") + log(theta", lead.zero(i), "))"),  ln.E.string.GAMS)
+
+}
+
+ln.E.string.GAMS <- gsub(pattern="[.]", replacement="", x=ln.E.string.GAMS)
+
+big.log.posi.constraint.2<- str_extract( ln.E.string.GAMS, "log[(] [(]1 / theta01[)].*")
+
+big.log.posi.constraint.2 <- sub("log[(]", "", big.log.posi.constraint.2) 
+big.log.posi.constraint.2 <- sub("[)]$", "", big.log.posi.constraint.2) 
+
+
+with(combined.w.params.df , eval(parse(text=big.log.posi.constraint.2)))
+
+log(with(combined.w.params.df , eval(parse(text=big.log.posi.constraint.2))))
+
+test.expression <- "(log(w01) + log(theta01)) "
+
+with(combined.w.params.df , eval(parse(text=test.expression)))
+
+
+
+
+for making sure data is a-ok:
+
+
+parameters
+test1(t)
+test2(t)
+test3(t)
+test4(t)
+test5(t)
+test6(t)
+test7(t)
+test8(t)
+test9(t);
+
+test1(t) =  (w01(t)=0)   ;
+test2(t) =  (w02(t)=0)   ;
+test3(t) =  (w03(t)=0)   ;
+test4(t) =  (w04(t)=0)   ;
+test5(t) =  (w05(t)=0)   ;
+test6(t) =  (w06(t)=0)   ;
+test7(t) =  (q01(t)=1)   ;
+* test7(t) =  (q01(t)>1)   ;
+test8(t) =  (q02(t)=0)   ;
+test9(t) =  (q03(t)=0)   ;
+
+display test1;
+display test2;
+display test3;
+display test4;
+display test5;
+display test6;
+display test7;
+display test8;
+display test9;
+display q01;
+
+
 
 
 
@@ -604,6 +780,7 @@ for (i in 1:length(S.n)) {
 
 }
 
+combined.df <- scale(combined.df, center=FALSE)
 
 top.before.data <- c(
 "sets ",
