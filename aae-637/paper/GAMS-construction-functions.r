@@ -512,7 +512,7 @@ prob.names <- GAMS.linear.results.extracted[!is.na(GAMS.linear.results.extracted
 
 prob.numbers <- GAMS.linear.results[which(!is.na(GAMS.linear.results.extracted)) + 2]
 
-start.vals.lines <- paste0("theta", lead.zero(1:(N-1)), ".l = 1")
+start.vals.lines <- paste0("theta", lead.zero(1:(N-1)), ".l = 1;")
 # added this to have correct (non-zero) starting vals for theta
 
 for ( i in 1:length(prob.names)) {
@@ -737,6 +737,65 @@ display q01;
 
 
 
+OPTION NLP=BARON;
+* We only have demo version of this:  PATHNLP
+* We only have demo version of this:  OQNLP
+* Not suitable: NLPEC
+* We only have demo version of this:  MSNLP
+* We only have demo version of this: KNITRO
+* Not avail: COUENNE
+* We only have demo version of this: SNOPT
+* We only have demo version of this:  BARON
+* No license: LINDOGLOBAL
+* No license: LGO
+* No licsnes: MOSEK
+
+* Maybe good: received weird error: AMPL
+
+* This ran for a hot sec before choking: COINIPOPT
+
+
+CONVERT
+EMP
+EXAMINER
+GAMSBAS
+GAMSCHK
+LINDOWRAP
+LINGO
+MINOS55
+MPECDUMP
+MPSWRITE
+PATHGMO
+PATHNLP
+PATHSMAG
+TRAMP
+
+
+# PROMISING!!!!!!:
+OPTION NLP=CONOPTD;  
+
+maybe try:
+OPTION lfstal=10000;
+
+lmmxsf = 1
+lfnicr = 1000
+rvhess = 0
+
+
+4.3736
+
+....559
+
+
+solve gme using nlp maximizing h;
+options decimals = 7;
+
+display theta01.l;
+display theta02.l;
+display theta03.l;
+display theta04.l;
+display theta05.l;
+display theta06;
 
 
 
