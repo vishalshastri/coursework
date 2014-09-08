@@ -75,8 +75,8 @@ library(stringr)
 
 
 
-#replacements <- data.frame(greek=c("alpha", "beta", "gamma"), N=c(M,N,N), M=c(M,N,M))
-#replacements <- replacements[1:2, ]
+#replacements <- data.frame(greek=c("alpha", "beta", "zeta", "gamma"), N=c(M,N,J,N), M=c(M,N,J,M))
+#replacements <- replacements[1:3, ]
 # so do not actually need for gamma
 
 #for ( k in 1:nrow(replacements) ) {
@@ -85,10 +85,10 @@ library(stringr)
 
 #symm <- ln.E.vars[grepl(paste0(replacements$greek[k], "[.]"), ln.E.vars) ]
 
-#symm.mat<-matrix(paste0(replacements$greek[k], ".", apply(X=expand.grid(lead.zero(1:max(N,M)), lead.zero(1:max(N,M))), MARGIN=1, FUN=paste, collapse=".")), nrow=max(N,M), ncol=max(N,M))
+#symm.mat<-matrix(paste0(replacements$greek[k], ".", apply(X=expand.grid(lead.zero(1:max(N,M)), #lead.zero(1:max(N,M))), MARGIN=1, FUN=paste, collapse=".")), nrow=max(N,M), ncol=max(N,M))
 
 # ok the below is trying to reverse it:
-#symm.mat<-matrix(paste0(replacements$greek[k], ".", apply(X=expand.grid(lead.zero(1:max(N,M)), lead.zero(1:max(N,M))), MARGIN=1, FUN=paste, collapse=".")), nrow=max(N,M), ncol=max(N,M))
+#symm.mat<-matrix(paste0(replacements$greek[k], ".", apply(X=expand.grid(lead.zero(1:max(N,M)), #lead.zero(1:max(N,M))), MARGIN=1, FUN=paste, collapse=".")), nrow=max(N,M), ncol=max(N,M))
 
 #symm.mat[upper.tri(symm.mat, diag = FALSE)] <- t(symm.mat)[upper.tri(symm.mat, diag = FALSE)]
 #symm.mat<-symm.mat[1:replacements$N[k], 1:replacements$M[k]]
@@ -106,60 +106,12 @@ library(stringr)
 
 
 
-####################### IMPOSING ADDING-UP RESTRICTIONS
-
-
-
-ln.E.vars <- all.vars(as.formula(paste("ln.E.data ~", ln.E.string.before.symm)))
-ln.E.vars <- ln.E.vars[ !grepl("(w[0-9])|(y[0-9])|(ln.E.data)", ln.E.vars ) ]
-ln.E.vars <- sort(ln.E.vars)
-
-# used to have "if (M>1) {" here, but we need to run this part below because they deal with the w's
-
-betas.single <- sort(ln.E.vars[grepl("beta[0-9][0-9]", ln.E.vars)])
-
-ln.E.string <- str_replace_all(ln.E.string, "beta01", paste0("(-(", paste0(betas.single[-1], collapse=" + "), " - 1))" ) )
-# from p. 4 of http://ageconsearch.umn.edu/bitstream/22027/1/sp03mo02.pdf
-
-beta.input.adding.up <- sort( ln.E.vars[grepl("beta[.][0-9][0-9]", ln.E.vars)] )
-
-beta.adding.up.mat <-matrix(sort(beta.input.adding.up ), ncol=N)
-
-beta.adding.up.mat[, 1] <-
-  paste("(-(",
-    apply(beta.adding.up.mat[, -1], 1, paste, collapse=" + " ),
-  "))" )
-  
-# data.frame(alpha.input.adding.up, c(alpha.adding.up.mat))
-
-for ( i in 1:length(beta.input.adding.up )) {
-  ln.E.string <- str_replace_all(ln.E.string, beta.input.adding.up[i], c(beta.adding.up.mat)[i])
-}
-
-# if (M>1) {
-
-gamma.input.adding.up <- sort( ln.E.vars[grepl("gamma[.][0-9][0-9]", ln.E.vars)] )
-
-gamma.adding.up.mat <-matrix(sort(gamma.input.adding.up ), ncol=M, byrow=FALSE)
-
-gamma.adding.up.mat[1, ] <-
-  paste("(-(",
-    apply(gamma.adding.up.mat[-1, , drop=FALSE], 2, paste, collapse=" + " ),
-  "))" )
-  
-# data.frame(alpha.input.adding.up, c(alpha.adding.up.mat))
-
-for ( i in 1:length(gamma.input.adding.up)) {
-  ln.E.string <- str_replace_all(ln.E.string, gamma.input.adding.up[i], c(gamma.adding.up.mat)[i])
-}
-
-
-# }
 
 
 
 
-####################### IMPOSING SYMMETRY RESTRICTIONS again after adding-up restrictions
+
+####################### IMPOSING SYMMETRY RESTRICTIONS Before adding-up
 
 
 
@@ -212,73 +164,114 @@ for ( i in 1:length(c(symm.mat.2))) {
 }
 
 
-######### NOW ADDING COST SHARE EQUATIONS
-####################################
-####################################
 
 
 
-gamma.special<-c()
-gamma.mat<-matrix(1:(M*N), nrow=M, ncol=N)
-for ( i in 1:N) {
-  gamma.special[i] <- paste0(
-    paste0("gamma", sort(do.call(paste0, M.N.dim[1:2])), " * ", ym.wn[[1]])[gamma.mat[, i]],
-    collapse=" + " )
+
+
+
+
+
+
+
+
+####################### IMPOSING ADDING-UP RESTRICTIONS
+
+
+
+ln.E.vars <- all.vars(as.formula(paste("ln.E.data ~", ln.E.string.before.symm)))
+ln.E.vars <- ln.E.vars[ !grepl("(w[0-9])|(y[0-9])|(ln.E.data)", ln.E.vars ) ]
+ln.E.vars <- sort(ln.E.vars)
+
+# used to have "if (M>1) {" here, but we need to run this part below because they deal with the w's
+
+betas.single <- sort(ln.E.vars[grepl("beta[0-9][0-9]", ln.E.vars)])
+
+ln.E.string <- str_replace_all(ln.E.string, "beta01", paste0("(-(", paste0(betas.single[-1], collapse=" + "), " - 1))" ) )
+# from p. 4 of http://ageconsearch.umn.edu/bitstream/22027/1/sp03mo02.pdf
+
+beta.input.adding.up <- sort( ln.E.vars[grepl("beta[.][0-9][0-9]", ln.E.vars)] )
+
+beta.adding.up.mat <-matrix(sort(beta.input.adding.up ), ncol=N)
+
+beta.adding.up.mat[, 1] <-
+  paste("(-(",
+    apply(beta.adding.up.mat[, -1], 1, paste, collapse=" + " ),
+  "))" )
+
+symm.mat<-beta.adding.up.mat
+
+k <- 2
+
+#symm.mat<-matrix(paste0(replacements$greek[k], ".", apply(X=expand.grid(lead.zero(1:max(N,M)), lead.zero(1:max(N,M))), MARGIN=1, FUN=paste, collapse=".")), nrow=max(N,M), ncol=max(N,M))
+
+# ok the below is trying to reverse it:
+#symm.mat<-matrix(paste0(replacements$greek[k], ".", apply(X=expand.grid(lead.zero(1:max(N,M)), lead.zero(1:max(N,M))), MARGIN=1, FUN=paste, collapse=".")), nrow=max(N,M), ncol=max(N,M))
+
+symm.mat[upper.tri(symm.mat, diag = FALSE)] <- t(symm.mat)[upper.tri(symm.mat, diag = FALSE)]
+symm.mat<-symm.mat[1:replacements$N[k], 1:replacements$M[k]]  
+
+symm.mat[1,1] <- paste0("(-( ", paste0(c(symm.mat[-1, -1]), collapse= " + "), " ))")
+# used to do unique()
+
+beta.adding.up.mat <- symm.mat
+  
+# data.frame(alpha.input.adding.up, c(alpha.adding.up.mat))
+
+for ( i in 1:length(beta.input.adding.up )) {
+  ln.E.string <- str_replace_all(ln.E.string, beta.input.adding.up[i], c(beta.adding.up.mat)[i])
 }
 
-beta.special<-c()
-beta.mat<-matrix(1:(N*N), nrow=N, ncol=N)
-for ( i in 1:N) {
-  beta.special[i] <- paste0(
-    paste0("beta", do.call(paste0, N.2.dim[1:2]) , " * ", gsub("[*] $", "", ln.sh.w.grid[[1]]))[beta.mat[, i]],
-    collapse=" + " )
+# if (M>1) {
+
+gamma.input.adding.up <- sort( ln.E.vars[grepl("gamma[.][0-9][0-9]", ln.E.vars)] )
+
+gamma.adding.up.mat <-matrix(sort(gamma.input.adding.up ), ncol=M, byrow=FALSE)
+
+gamma.adding.up.mat[1, ] <-
+  paste("(-(",
+    apply(gamma.adding.up.mat[-1, , drop=FALSE], 2, paste, collapse=" + " ),
+  "))" )
+  
+# data.frame(alpha.input.adding.up, c(alpha.adding.up.mat))
+
+for ( i in 1:length(gamma.input.adding.up)) {
+  ln.E.string <- str_replace_all(ln.E.string, gamma.input.adding.up[i], c(gamma.adding.up.mat)[i])
 }
 
 
-kappa.special<-c()
-kappa.mat<-matrix(1:(J*N), nrow=J, ncol=N)
-for ( i in 1:N) {
-  kappa.special[i] <- paste0(
-    paste0("kappa", do.call(paste0, J.N.dim), " * ", qj.wn[[1]])[kappa.mat[, i]],
-    collapse=" + " )
-}
+# }
 
 
-S.n.divisor <- paste0( "" , 
-  paste0(
-  paste0(" (w", lead.zero(1:N), " / (w", lead.zero(1:N), " * theta", 
-   lead.zero(1:N), ")) * ", 
-   "(beta", lead.zero(1:N), " + ",
-   gamma.special, " + ",
-   beta.special, " + ",
-   kappa.special, ")"),
-  collapse=" + " ), "" )
-   
-# ln.E <- paste0("test.fn <- function(X) {", ln.c, " + ", ln.E.2nd, "}")
 
-S.n.top <- paste0(" w", lead.zero(1:N), " / (w", lead.zero(1:N), " * theta", 
-   lead.zero(1:N), ")" )
+share.denominator <- str_extract(ln.E.string, "log[(] .*")
 
+share.denominator <- sub("log[(] ", "", share.denominator )
+share.denominator <- sub(")$", "", share.denominator )
 
+share.numerators <- strsplit(share.denominator, "[(]w[0-9][0-9] / [(]w[0-9][0-9] [*] theta[0-9][0-9][)][)] [*]")[[1]][-1]
+
+share.numerators <- gsub("([+] $)|([+]  $)", "", share.numerators)
+
+share.numerators <- paste0(
+paste0( "(w", lead.zero(1:N), " / (w", lead.zero(1:N), " * theta", lead.zero(1:N), ")) *"),
+share.numerators
+)
+
+share.numerators <- paste0("(", share.numerators, ")")
+
+share.denominator <- paste0("(", share.denominator, ")")
 
 
 
 S.n <- list()
 
 for ( n in 1:N) {
-  betas.for.S.n <- paste0("beta.", lead.zero(n), ".", lead.zero(1:N) )
-  gammas.for.S.n <- paste0("gamma.", lead.zero(1:M), ".", lead.zero(n))
-  kappas.for.S.n <- paste0("kappa.", lead.zero(1:J), ".", lead.zero(n))
- 
+
  S.n[[n]] <- 
-   paste0( "I( (x", lead.zero(n), " * ", "w", lead.zero(n), ")/exp(ln.E.data)) ~ (",
-    "beta", lead.zero(n), " + ",
-    paste0( betas.for.S.n, " * " , " log(w", lead.zero(1:N), " * ", "theta", lead.zero(1:N),  ")", collapse=" + "), " + ", 
-    paste0(gammas.for.S.n, " * ", "y", lead.zero(1:M), collapse=" + "), " + ", 
-    # TODO: NOTE: Needed to switch this to lead.zero(1:M) from lead.zero(1:N). This was a definite error from before
-    paste0(kappas.for.S.n, " * ", "log(q", lead.zero(1:J), ")", collapse=" + "),
-    " ) * (",
-    S.n.top[n], ") / (", S.n.divisor, ")"
+   paste0( "I( (x", lead.zero(n), " * ", "w", lead.zero(n), ")/exp(ln.E.data)) ~ ",
+    share.numerators[n], " / ",
+    share.denominator
    )
   
   names(S.n)[n] <- paste0("S.n", lead.zero(n))
@@ -287,25 +280,118 @@ for ( n in 1:N) {
 
 S.n[[1]] <- NULL
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+######### NOW ADDING COST SHARE EQUATIONS
+####################################
+####################################
+
+
+
+#gamma.special<-c()
+#gamma.mat<-matrix(1:(M*N), nrow=M, ncol=N)
+#for ( i in 1:N) {
+#  gamma.special[i] <- paste0(
+#    paste0("gamma", sort(do.call(paste0, M.N.dim[1:2])), " * ", ym.wn[[1]])[gamma.mat[, i]],
+#    collapse=" + " )
+#}
+
+#beta.special<-c()
+#beta.mat<-matrix(1:(N*N), nrow=N, ncol=N)
+#for ( i in 1:N) {
+#  beta.special[i] <- paste0(
+#    paste0("beta", do.call(paste0, N.2.dim[1:2]) , " * ", gsub("[*] $", "", #ln.sh.w.grid[[1]]))[beta.mat[, i]],
+#    collapse=" + " )
+#}
+
+
+#kappa.special<-c()
+#kappa.mat<-matrix(1:(J*N), nrow=J, ncol=N)
+#for ( i in 1:N) {
+#  kappa.special[i] <- paste0(
+#    paste0("kappa", do.call(paste0, J.N.dim), " * ", qj.wn[[1]])[kappa.mat[, i]],
+#    collapse=" + " )
+#}
+
+
+#S.n.divisor <- paste0( "" , 
+#  paste0(
+#  paste0(" (w", lead.zero(1:N), " / (w", lead.zero(1:N), " * theta", 
+#   lead.zero(1:N), ")) * ", 
+#   "(beta", lead.zero(1:N), " + ",
+#   gamma.special, " + ",
+#   beta.special, " + ",
+#   kappa.special, ")"),
+#  collapse=" + " ), "" )
+   
+# ln.E <- paste0("test.fn <- function(X) {", ln.c, " + ", ln.E.2nd, "}")
+
+#S.n.top <- paste0(" w", lead.zero(1:N), " / (w", lead.zero(1:N), " * theta", 
+#   lead.zero(1:N), ")" )
+
+
+
+
+
+#S.n <- list()
+
+#for ( n in 1:N) {
+#  betas.for.S.n <- paste0("beta.", lead.zero(n), ".", lead.zero(1:N) )
+#  gammas.for.S.n <- paste0("gamma.", lead.zero(1:M), ".", lead.zero(n))
+#  kappas.for.S.n <- paste0("kappa.", lead.zero(1:J), ".", lead.zero(n))
+ 
+# S.n[[n]] <- 
+#   paste0( "I( (x", lead.zero(n), " * ", "w", lead.zero(n), ")/exp(ln.E.data)) ~ (",
+#    "beta", lead.zero(n), " + ",
+#    paste0( betas.for.S.n, " * " , " log(w", lead.zero(1:N), " * ", "theta", lead.zero(1:N),  ")", collapse=" + "), " + ", 
+#    paste0(gammas.for.S.n, " * ", "y", lead.zero(1:M), collapse=" + "), " + ", 
+    # TODO: NOTE: Needed to switch this to lead.zero(1:M) from lead.zero(1:N). This was a definite error from before
+#    paste0(kappas.for.S.n, " * ", "log(q", lead.zero(1:J), ")", collapse=" + "),
+#    " ) * (",
+#    S.n.top[n], ") / (", S.n.divisor, ")"
+#   )
+  
+#  names(S.n)[n] <- paste0("S.n", lead.zero(n))
+#}
+
+
+#S.n[[1]] <- NULL
+
 # grepl('gamma.01.05', as.character(S.n[[1]][3]) )
 
 
 
 
-for (j in 1:length(S.n) ) {
+#for (j in 1:length(S.n) ) {
 
-targ.S.n <- S.n[[j]]
+#targ.S.n <- S.n[[j]]
 
 
-targ.S.n.vars <- all.vars(as.formula(targ.S.n))
-targ.S.n.vars <- targ.S.n.vars[ !grepl("(x[0-9])|(q[0-9])|(w[0-9])|(y[0-9])|(ln.E.data)", targ.S.n.vars ) ]
-targ.S.n.vars <- sort(targ.S.n.vars)
+#targ.S.n.vars <- all.vars(as.formula(targ.S.n))
+#targ.S.n.vars <- targ.S.n.vars[ !grepl("(x[0-9])|(q[0-9])|(w[0-9])|(y[0-9])|(ln.E.data)", #targ.S.n.vars ) ]
+#targ.S.n.vars <- sort(targ.S.n.vars)
 
 #if (M>1) {
 
-betas.single <- sort(targ.S.n.vars[grepl("beta[0-9][0-9]", targ.S.n.vars)])
+#betas.single <- sort(targ.S.n.vars[grepl("beta[0-9][0-9]", targ.S.n.vars)])
 
-targ.S.n <- str_replace_all(targ.S.n, "beta01", paste0("(-(", paste0(betas.single[-1], collapse=" + "), " - 1))" ) )
+#targ.S.n <- str_replace_all(targ.S.n, "beta01", paste0("(-(", paste0(betas.single[-1], collapse=" + "), " - 1))" ) )
 # from p. 4 of http://ageconsearch.umn.edu/bitstream/22027/1/sp03mo02.pdf
 
 # beta.input.adding.up <- sort( targ.S.n.vars[grepl("beta[.][0-9][0-9]", targ.S.n.vars)] )
@@ -319,9 +405,9 @@ targ.S.n <- str_replace_all(targ.S.n, "beta01", paste0("(-(", paste0(betas.singl
   
 # data.frame(alpha.input.adding.up, c(alpha.adding.up.mat))
 
-for ( i in 1:length(beta.input.adding.up )) {
-  targ.S.n <- str_replace_all(targ.S.n, beta.input.adding.up[i], c(beta.adding.up.mat)[i])
-}
+#for ( i in 1:length(beta.input.adding.up )) {
+#  targ.S.n <- str_replace_all(targ.S.n, beta.input.adding.up[i], c(beta.adding.up.mat)[i])
+#}
 
 
 # gamma.input.adding.up <- sort( targ.S.n.vars[grepl("gamma[.][0-9][0-9]", targ.S.n.vars)] )
@@ -335,9 +421,9 @@ for ( i in 1:length(beta.input.adding.up )) {
   
 # data.frame(alpha.input.adding.up, c(alpha.adding.up.mat))
 
-for ( i in 1:length(gamma.input.adding.up)) {
-  targ.S.n <- str_replace_all(targ.S.n, gamma.input.adding.up[i], c(gamma.adding.up.mat)[i])
-}
+#for ( i in 1:length(gamma.input.adding.up)) {
+#  targ.S.n <- str_replace_all(targ.S.n, gamma.input.adding.up[i], c(gamma.adding.up.mat)[i])
+#}
 
 
 #}
@@ -349,50 +435,50 @@ for ( i in 1:length(gamma.input.adding.up)) {
 
 
 
-replacements <- data.frame(greek=c("alpha", "beta", "gamma"), N=c(M,N,N), M=c(M,N,M))
-replacements <- replacements[1:2, ]
+#replacements <- data.frame(greek=c("alpha", "beta", "gamma"), N=c(M,N,N), M=c(M,N,M))
+#replacements <- replacements[1:2, ]
 # so do not actually need for gamma
 
-for ( k in 1:nrow(replacements) ) {
+#for ( k in 1:nrow(replacements) ) {
 
-if (replacements$greek[k]=="alpha" & M==1) {next}
+#if (replacements$greek[k]=="alpha" & M==1) {next}
 
 # ok the below is trying to reverse it:
-symm.mat<-matrix(paste0(replacements$greek[k], ".", apply(X=expand.grid(lead.zero(1:max(N,M)), lead.zero(1:max(N,M))), MARGIN=1, FUN=paste, collapse=".")), nrow=max(N,M), ncol=max(N,M))
+#symm.mat<-matrix(paste0(replacements$greek[k], ".", apply(X=expand.grid(lead.zero(1:max(N,M)), lead.zero(1:max(N,M))), MARGIN=1, FUN=paste, collapse=".")), nrow=max(N,M), ncol=max(N,M))
 
-symm.mat[upper.tri(symm.mat, diag = FALSE)] <- t(symm.mat)[upper.tri(symm.mat, diag = FALSE)]
-symm.mat<-symm.mat[1:replacements$N[k], 1:replacements$M[k]]
-
-
-expanded.greeks.grid <- expand.grid(lead.zero(1:max(N,M)), lead.zero(1:max(N,M)))
-expanded.greeks.grid <- data.frame(expanded.greeks.grid$Var2, expanded.greeks.grid$Var1)
-
-symm.mat.2<-matrix(paste0(replacements$greek[k], ".", apply(X=expanded.greeks.grid, MARGIN=1, FUN=paste, collapse=".")), nrow=max(N,M), ncol=max(N,M))
-
-symm.mat.2[upper.tri(symm.mat.2, diag = FALSE)] <- t(symm.mat.2)[upper.tri(symm.mat.2, diag = FALSE)]
-symm.mat.2<-symm.mat.2[1:replacements$N[k], 1:replacements$M[k]]
+#symm.mat[upper.tri(symm.mat, diag = FALSE)] <- t(symm.mat)[upper.tri(symm.mat, diag = FALSE)]
+#symm.mat<-symm.mat[1:replacements$N[k], 1:replacements$M[k]]
 
 
+#expanded.greeks.grid <- expand.grid(lead.zero(1:max(N,M)), lead.zero(1:max(N,M)))
+#expanded.greeks.grid <- data.frame(expanded.greeks.grid$Var2, expanded.greeks.grid$Var1)
 
-if (replacements$greek[k]=="alpha") {
-for ( i in 1:length(c(symm.mat.2))) {
-  targ.S.n <- str_replace_all(targ.S.n, c(symm.mat.2)[i], c(symm.mat)[i])
-}
-}
+#symm.mat.2<-matrix(paste0(replacements$greek[k], ".", apply(X=expanded.greeks.grid, MARGIN=1, FUN=paste, collapse=".")), nrow=max(N,M), ncol=max(N,M))
 
-if (replacements$greek[k]=="beta") {
-for ( i in 1:length(c(symm.mat.2))) {
-  targ.S.n <- str_replace_all(targ.S.n, c(symm.mat)[i], c(symm.mat.2)[i])
-}
-}
+#symm.mat.2[upper.tri(symm.mat.2, diag = FALSE)] <- t(symm.mat.2)[upper.tri(symm.mat.2, diag = FALSE)]
+#symm.mat.2<-symm.mat.2[1:replacements$N[k], 1:replacements$M[k]]
 
 
-}
+
+#if (replacements$greek[k]=="alpha") {
+#for ( i in 1:length(c(symm.mat.2))) {
+#  targ.S.n <- str_replace_all(targ.S.n, c(symm.mat.2)[i], c(symm.mat)[i])
+#}
+#}
+
+#if (replacements$greek[k]=="beta") {
+#for ( i in 1:length(c(symm.mat.2))) {
+#  targ.S.n <- str_replace_all(targ.S.n, c(symm.mat)[i], c(symm.mat.2)[i])
+#}
+#}
 
 
-S.n[[j]] <- targ.S.n
+#}
 
-}
+
+#S.n[[j]] <- targ.S.n
+
+#}
 
 
 
