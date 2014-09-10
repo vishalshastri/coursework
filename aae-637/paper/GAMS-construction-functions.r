@@ -145,9 +145,17 @@ ret
 # N <- 6
 # J <- 3
 
-
-combined.df<- data.frame(mget(c("y01", paste0("x", lead.zero(1:N)), 
+combined.df <- data.frame(mget(c("y01", paste0("x", lead.zero(1:N)), 
   paste0("w", lead.zero(1:N)),  paste0("q", lead.zero(1:J)) )))
+  
+region.matrix.df <-   as.data.frame(region.matrix)
+
+
+colnames(region.matrix.df) <- iconv(colnames(region.matrix.df), to="ASCII//TRANSLIT")
+colnames(region.matrix.df) <- gsub("'", "", colnames(region.matrix.df) )
+colnames(region.matrix.df) <- gsub("[.]", "", colnames(region.matrix.df) )
+  
+combined.df <- cbind(combined.df, region.matrix.df)
 
 
 log10_ceiling <- function(x) {
@@ -256,27 +264,28 @@ param.support.simple.lines <- c(
 #"1  1.e-6",
 #"2  5",
 #"3  10",
-"1  -9",
+"1  -4",
 "2  1",
-"3  11",
+"3  6",
 "/;",
+
 "parameter zother(m)    support points",
 "/",
-paste0("1 ", -round( max(abs(coef(linear.sur.est))) * 5 )),
+paste0("1 ", -round( max(abs(coef(linear.sur.est))) * 3 )),
 "2  0",
-paste0("3  ", round( max(abs(coef(linear.sur.est))) * 5 )),
+paste0("3  ", round( max(abs(coef(linear.sur.est))) * 3 )),
 "/;",
 "parameter vshare(j)    support points ",
 "/",
-"1 -10",
+"1 -1.2",
 "2  0",
-"3  10",
+"3  1.2",
 "/;",
 "parameter vcost(j)    support points ",
 "/",
-paste0("1 ", -round( max(combined.df$cost) * 5 )),
+paste0("1 ", -12), # -round( max(combined.df$cost) * 5 )
 "2  0",
-paste0("3  ", round( max(combined.df$cost) * 5 )),
+paste0("3  ", 12), #round( max(combined.df$cost) * 5 )
 "/;"
 )
 
@@ -299,7 +308,7 @@ for ( i in paste0("s", 1:length(S.n)))  {
 
 
 all.params <- unique(str_extract_all(ln.E.string, 
-"(theta[0-9][0-9])|(beta0)|(alpha[0-9][0-9])|(alpha[.][0-9][0-9][.][0-9][0-9])|(beta[0-9][0-9])|(beta[.][0-9][0-9][.][0-9][0-9])|(gamma[.][0-9][0-9][.][0-9][0-9])|(zeta[.][0-9][0-9][.][0-9][0-9])|(zeta[0-9][0-9])|(kappa[.][0-9][0-9][.][0-9][0-9])|(delta[.][0-9][0-9][.][0-9][0-9])"
+"(theta[0-9][0-9])|(beta0)|(alpha[0-9][0-9])|(alpha[.][0-9][0-9][.][0-9][0-9])|(beta[0-9][0-9])|(beta[.][0-9][0-9][.][0-9][0-9])|(gamma[.][0-9][0-9][.][0-9][0-9])|(zeta[.][0-9][0-9][.][0-9][0-9])|(zeta[0-9][0-9])|(kappa[.][0-9][0-9][.][0-9][0-9])|(delta[.][0-9][0-9][.][0-9][0-9])|(region[0-9][0-9])"
   )[[1]]
 )
 
@@ -387,6 +396,12 @@ add.data.subscripts <- function(x) {
     x <- gsub(paste0("q", ii), paste0("q", ii, "(t)"), x)
     x <- gsub(paste0("x", ii), paste0("x", ii, "(t)"), x)
     x <- gsub(paste0("y", ii), paste0("y", ii, "(t)"), x)
+    
+  }
+  regions.to.fix <- str_extract_all(x, "region[[:alpha:]]+")[[1]]
+  
+  for ( j in seq_along(regions.to.fix) ) {
+    x <- gsub(regions.to.fix[j], paste0(regions.to.fix[j], "(t)"), x)
   }
   x
 }
@@ -454,7 +469,6 @@ for ( i in 1:length(S.n.GAMS)) {
 # TODO: change (w01 / (w01 * theta01)) to ( 1 / theta01). It is in cost share and cost function
 
 
-# TODO: leaving off geography for now...
 
 ln.E.string.GAMS <- ln.E.string
 
@@ -470,14 +484,26 @@ for ( i in 1:N) {
 }
 
 
+ln.E.string.GAMS <- gsub(pattern="[.]", replacement="", x=ln.E.string.GAMS)
 
 ln.E.string.GAMS <- add.data.subscripts(ln.E.string.GAMS)
 
-ln.E.string.GAMS <- gsub(pattern="[.]", replacement="", x=ln.E.string.GAMS)
 
 big.log.posi.constraint<- str_extract( ln.E.string.GAMS, "log[(] [(]1 / theta01[)].*")
 
+big.log.posi.constraint <- gsub(" [+] region.*$", "", big.log.posi.constraint)
+
+
+
+ln.E.string.linear <- gsub("[+]  log[(] [(]w01 [/] [(]w01 [*] theta01[)][)].*$", "", ln.E.string)
+region.tackon.clean <- iconv(region.tackon, to="ASCII//TRANSLIT")
+region.tackon.clean <- gsub("'", "", region.tackon.clean )
+region.tackon.clean <- gsub("[.]", "", region.tackon.clean )
+
+
 ln.E.string.GAMS <- str_replace(ln.E.string.GAMS, "log[(] [(]1 / theta01[)].*", "log(longlogsection(t))")
+
+ln.E.string.GAMS<- paste0( ln.E.string.GAMS, " + ", add.data.subscripts(region.tackon.clean))
 
 big.log.posi.constraint <- sub("log[(]", "", big.log.posi.constraint) 
 big.log.posi.constraint <- sub("[)]$", "", big.log.posi.constraint) 
@@ -730,6 +756,8 @@ for ( i in 1:N) {
 
 
 modified.ln.E.string <- str_extract( ln.E.string, "log[(] [(]w01 / [(]w01 [*] theta01[)][)].*")
+
+modified.ln.E.string <- gsub(" [+] region.*$", "", modified.ln.E.string)
 
 modified.ln.E.string <- gsub(pattern="[.]", replacement="", x=modified.ln.E.string )
 
@@ -1045,9 +1073,13 @@ display theta06;
 
 
 
+
+
+
 ##### START FOR LINEAR::::
 
 
+# as.data.frame(region.matrix) 
 
 
 
@@ -1057,8 +1089,17 @@ display theta06;
 # N <- 6
 # J <- 3
 
-combined.df<- data.frame(mget(c("y01", paste0("x", lead.zero(1:N)), 
+combined.df <- data.frame(mget(c("y01", paste0("x", lead.zero(1:N)), 
   paste0("w", lead.zero(1:N)),  paste0("q", lead.zero(1:J)) )))
+  
+region.matrix.df <-   as.data.frame(region.matrix)
+
+
+colnames(region.matrix.df) <- iconv(colnames(region.matrix.df), to="ASCII//TRANSLIT")
+colnames(region.matrix.df) <- gsub("'", "", colnames(region.matrix.df) )
+colnames(region.matrix.df) <- gsub("[.]", "", colnames(region.matrix.df) )
+  
+combined.df <- cbind(combined.df, region.matrix.df)
 
 
 log10_ceiling <- function(x) {
@@ -1157,21 +1198,21 @@ for (i in 1:ncol(combined.df) ) {
 param.support.simple.lines <- c( # Eliminated theta here
 "parameter zother(m)    support points",
 "/",
-paste0("1 ", -round( max(abs(coef(linear.sur.est))) * 5 )),
+paste0("1 ", -round( max(abs(coef(linear.sur.est))) * 3 )),
 "2  0",
-paste0("3  ", round( max(abs(coef(linear.sur.est))) * 5 )),
+paste0("3  ", round( max(abs(coef(linear.sur.est))) * 3 )),
 "/;",
 "parameter vshare(j)    support points ",
 "/",
-"1 -10",
+"1 -1.2",
 "2  0",
-"3  10",
+"3  1.2",
 "/;",
 "parameter vcost(j)    support points ",
 "/",
-paste0("1 ", -round( max(combined.df$cost) * 5 )),
+paste0("1 ", -12), # -round( max(combined.df$cost) * 5 )
 "2  0",
-paste0("3  ", round( max(combined.df$cost) * 5 )),
+paste0("3  ", 12), #round( max(combined.df$cost) * 5 )
 "/;"
 )
 
@@ -1192,8 +1233,11 @@ for ( i in paste0("s", 1:length(S.n)))  {
 
 # all.params <- gsub("[.]", "", names(ln.E.start.vals)[!grepl("region", names(ln.E.start.vals))] )
 
+ln.E.string <- nls.formula.ln.E.region
+
+
 all.params <- unique(str_extract_all(ln.E.string, 
-"(theta[0-9][0-9])|(beta0)|(alpha[0-9][0-9])|(alpha[.][0-9][0-9][.][0-9][0-9])|(beta[0-9][0-9])|(beta[.][0-9][0-9][.][0-9][0-9])|(gamma[.][0-9][0-9][.][0-9][0-9])|(zeta[.][0-9][0-9][.][0-9][0-9])|(zeta[0-9][0-9])|(kappa[.][0-9][0-9][.][0-9][0-9])|(delta[.][0-9][0-9][.][0-9][0-9])"
+"(theta[0-9][0-9])|(beta0)|(alpha[0-9][0-9])|(alpha[.][0-9][0-9][.][0-9][0-9])|(beta[0-9][0-9])|(beta[.][0-9][0-9][.][0-9][0-9])|(gamma[.][0-9][0-9][.][0-9][0-9])|(zeta[.][0-9][0-9][.][0-9][0-9])|(zeta[0-9][0-9])|(kappa[.][0-9][0-9][.][0-9][0-9])|(delta[.][0-9][0-9][.][0-9][0-9])|(region[0-9][0-9])"
   )[[1]]
 )
 
@@ -1270,16 +1314,16 @@ objective.fn.lines[1] <- paste0( "object..           h =e= ", objective.fn.lines
 
 
 
-add.data.subscripts <- function(x) {
-  for (i in 1:99) {
-    ii <- formatC(i, width = 2, flag = "0")  
-    x <- gsub(paste0("w", ii), paste0("w", ii, "(t)"), x)
-    x <- gsub(paste0("q", ii), paste0("q", ii, "(t)"), x)
-    x <- gsub(paste0("x", ii), paste0("x", ii, "(t)"), x)
-    x <- gsub(paste0("y", ii), paste0("y", ii, "(t)"), x)
-  }
-  x
-}
+#add.data.subscripts <- function(x) {
+#  for (i in 1:99) {
+#    ii <- formatC(i, width = 2, flag = "0")  
+#    x <- gsub(paste0("w", ii), paste0("w", ii, "(t)"), x)
+#    x <- gsub(paste0("q", ii), paste0("q", ii, "(t)"), x)
+#    x <- gsub(paste0("x", ii), paste0("x", ii, "(t)"), x)
+#    x <- gsub(paste0("y", ii), paste0("y", ii, "(t)"), x)
+#  }
+#  x
+#}
 
 
 # S.n.GAMS <- lapply(S.n, FUN=add.data.subscripts)
@@ -1341,6 +1385,12 @@ for ( i in 1:length(S.n.GAMS)) {
 
 
 ln.E.string.linear <- gsub("[+]  log[(] [(]w01 [/] [(]w01 [*] theta01[)][)].*$", "", ln.E.string)
+
+region.tackon.clean <- iconv(region.tackon, to="ASCII//TRANSLIT")
+region.tackon.clean <- gsub("'", "", region.tackon.clean )
+region.tackon.clean <- gsub("[.]", "", region.tackon.clean )
+
+ln.E.string.linear <- paste0( ln.E.string.linear, " + ", region.tackon.clean)
 
 ln.E.string.linear <- add.data.subscripts(ln.E.string.linear)
 
@@ -1736,7 +1786,7 @@ s(t,"5") = datafile(t,"5");
 
 
 
-
+library("numDeriv")
 
 
 GAMS.nonlinear.results<- readLines("/Users/travismcarthur/Desktop/Dropbox/entropytest.lst")
@@ -1816,10 +1866,12 @@ for ( i in all.eqns ) {
 
   if (i=="cost") {
      error.collapsed.eq.ls[[i]] <- as.matrix(error.weight.eq.ls[[i]]) %*% 
-       c(-round( max(ln.E.data) * 5 ), 0, round( max(ln.E.data) * 5 ))
+     c(-12, 0, 12)
+      # c(-round( max(ln.E.data) * 5 ), 0, round( max(ln.E.data) * 5 ))
   } else {
      error.collapsed.eq.ls[[i]] <- as.matrix(error.weight.eq.ls[[i]]) %*% 
-       c(-10, 0, 10) 
+     c(-1.2, 0, 1.2)
+      # c(-10, 0, 10) 
   }
   
 }
@@ -1828,6 +1880,53 @@ for ( i in all.eqns ) {
 big.sigma <- cov(do.call( cbind, error.collapsed.eq.ls))
 
 
+
+
+combined.df <- data.frame(mget(c("y01", paste0("x", lead.zero(1:N)), 
+  paste0("w", lead.zero(1:N)),  paste0("q", lead.zero(1:J)) )))
+  
+region.matrix.df <-   as.data.frame(region.matrix)
+
+
+colnames(region.matrix.df) <- iconv(colnames(region.matrix.df), to="ASCII//TRANSLIT")
+colnames(region.matrix.df) <- gsub("'", "", colnames(region.matrix.df) )
+colnames(region.matrix.df) <- gsub("[.]", "", colnames(region.matrix.df) )
+  
+combined.df <- cbind(combined.df, region.matrix.df)
+
+
+
+for ( i in 1:N) {
+
+  input.scaling  <- log10_ceiling(
+    sqrt(sum((c(combined.df[, paste0("x", lead.zero(i))], 
+    combined.df[, paste0("w", lead.zero(i))])^2)/(nrow(combined.df)-1)))
+  )
+  # Got this idea from scale() function
+  
+  input.scaling <- input.scaling / 100
+  
+  combined.df[, paste0("x", lead.zero(i))] <- combined.df[, paste0("x", lead.zero(i))] / input.scaling
+  combined.df[, paste0("w", lead.zero(i))] <- combined.df[, paste0("w", lead.zero(i))] / input.scaling
+
+}
+
+ln.E.data.scaled <- with(combined.df, 
+  log(w01*x01 + w02*x02 + w03*x03 + w04*x04 + w05*x05 + w06*x06 + 1  )
+  )
+
+combined.df <- cbind(ln.E.data.scaled, combined.df)
+
+
+colnames(combined.df)[colnames(combined.df)=="ln.E.data.scaled" ] <- "ln.E.data"
+ 
+
+
+for (i in 1:length(S.n)) {
+
+  combined.df[, paste0("s", i)] <- with(combined.df, eval( parse(text=gsub("~.*$", "", S.n[[i]]) ) ))
+
+}
 
 
 
@@ -1864,7 +1963,14 @@ GAMS.nonlinear.results.params.full[ paste0("theta", lead.zero(N)) ] <- 1
 
 modified.ln.E.string <- ln.E.string # str_extract( ln.E.string, "log[(] [(]w01 / [(]w01 [*] theta01[)][)].*")
 
+region.tackon.clean <- iconv(region.tackon, to="ASCII//TRANSLIT")
+region.tackon.clean <- gsub("'", "", region.tackon.clean )
+region.tackon.clean <- gsub("[.]", "", region.tackon.clean )
+
+
 modified.ln.E.string <- gsub(pattern="[.]", replacement="", x=modified.ln.E.string )
+
+modified.ln.E.string<- paste0(modified.ln.E.string, " + ", region.tackon.clean)
 
 # modified.ln.E.string <- sub("log[(]", "", modified.ln.E.string)
 # modified.ln.E.string <- sub("[)]$", "", modified.ln.E.string) 
@@ -1878,8 +1984,11 @@ modified.ln.E.string <- gsub(pattern="[.]", replacement="", x=modified.ln.E.stri
 # GAMS.nonlinear.results.params.full[grepl("theta", names(GAMS.nonlinear.results.params.full))] <- 1
   
 temp.deriv.fn <- function(x, data) { 
-    with(as.list(x), eval(parse(text=modified.ln.E.string )) )
+    x <- c(as.list(x), as.list(data))
+    with(x, eval(parse(text=modified.ln.E.string )) )
   }
+  
+temp.deriv.fn(  GAMS.nonlinear.results.params.full, as.data.frame(combined.df))
 
 modified.ln.E.string.evaled.deriv <- jacobian(temp.deriv.fn, 
     x=GAMS.nonlinear.results.params.full, method="complex", 
@@ -1899,7 +2008,8 @@ for ( i in 1:(length(all.eqns)-1) ) {
   modified.S.n.string <- sub("~", "", modified.S.n.string)
   
   temp.deriv.fn <- function(x, data) { 
-    with(as.list(x), eval(parse(text=modified.S.n.string )) )
+    x <- c(as.list(x), as.list(data))
+    with(x, eval(parse(text=modified.ln.E.string )) )
   }
 
   modified.S.n.string.evaled.deriv[[i]] <- jacobian(temp.deriv.fn, 
@@ -2070,16 +2180,20 @@ parameter vcost(j)    support points
 
 
 
+modified.ln.E.string.evaled.deriv.complex <- jacobian(temp.deriv.fn, 
+    x=GAMS.nonlinear.results.params.full, method="complex", 
+    data=as.data.frame(combined.df) )
+
+
+modified.ln.E.string.evaled.deriv.richardson <- jacobian(temp.deriv.fn, 
+    x=GAMS.nonlinear.results.params.full, method="Richardson", 
+    data=as.data.frame(combined.df) )
 
 
 
-
-
-
-
-
-
-
+summary(modified.ln.E.string.evaled.deriv.complex - modified.ln.E.string.evaled.deriv.richardson)
+max(modified.ln.E.string.evaled.deriv.complex - modified.ln.E.string.evaled.deriv.richardson)
+min(modified.ln.E.string.evaled.deriv.complex - modified.ln.E.string.evaled.deriv.richardson)
 
 
 
