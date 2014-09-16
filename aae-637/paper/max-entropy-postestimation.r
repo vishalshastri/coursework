@@ -2,6 +2,37 @@
 
 
 
+#theta.param.support <- c(
+#-4, 
+#1, 
+#6
+#)
+
+
+#other.param.support <- c(
+#-round( max(abs(coef(linear.sur.est))) * 3 ), 
+#0, 
+#round( max(abs(coef(linear.sur.est))) * 3 )
+#)
+
+
+cost.err.support <- c(
+-12,
+0,
+12)
+# -round( max(combined.df$cost) * 5 )
+
+share.err.support <- c(
+-1.2,
+0,
+1.2
+)
+
+
+
+
+
+
 
 library("numDeriv")
 
@@ -41,19 +72,39 @@ for ( i in 1:length(prob.names)) {
 GAMS.nonlinear.results<- readLines("/Users/travismcarthur/Desktop/Dropbox/entropytest.lst")
 
 
-GAMS.nonlinear.results.params<- GAMS.nonlinear.results[grep("parameters to be esti$", GAMS.nonlinear.results)]
+GAMS.nonlinear.results.params<- GAMS.nonlinear.results[grep("parameters to be estimated$", GAMS.nonlinear.results)]
+
+GAMS.nonlinear.results.params <- GAMS.nonlinear.results.params[grep("VARIABLE", GAMS.nonlinear.results.params)]
 
 GAMS.nonlinear.results.params.names <- gsub("[.]L", "", str_extract(GAMS.nonlinear.results.params, "[^ ]*[.]L") )
 
 
-GAMS.nonlinear.results.params.numbers <- as.numeric(gsub("  parameters to be esti", "",
-  str_extract(GAMS.nonlinear.results.params, "[^ ]*  parameters to be esti") ) )
+GAMS.nonlinear.results.params.numbers <- as.numeric(gsub("  parameters to be estimated", "",
+  str_extract(GAMS.nonlinear.results.params, "[^ ]*  parameters to be estimated") ) )
 
 
 
 
 
 GAMS.nonlinear.results<- readLines("/Users/travismcarthur/Desktop/Dropbox/entropytest.lst")
+
+#home.mac <- TRUE
+
+#if (home.mac) {
+
+#  annoying.lines<- grep(
+#    "GAMS 24.1.3  r41464 Released Jul 26, 2013 XXX-DEG Mac x86_64/Darwin", 
+#    GAMS.nonlinear.results)
+  
+#  annoying.lines <- eval(parse(text=paste0("c(", paste0(annoying.lines, ":", annoying.lines+8, collapse=", "), ")")))
+  
+#  cat(GAMS.nonlinear.results[-annoying.lines], 
+#    file="/Users/travismcarthur/Desktop/Dropbox/entropytesttemp.lst",
+#    sep="\n")
+  
+  
+  
+#}
 
 #GAMS.nonlinear.results <- GAMS.nonlinear.results[
 #  -(1:grep("S O L V E      S U M M A R Y", GAMS.nonlinear.results)) ]
@@ -83,11 +134,11 @@ for ( i in all.eqns ) {
 
   if (i=="cost") {
      error.collapsed.eq.ls[[i]] <- as.matrix(error.weight.eq.ls[[i]]) %*% 
-     c(-12, 0, 12)
+     cost.err.support
       # c(-round( max(ln.E.data) * 5 ), 0, round( max(ln.E.data) * 5 ))
   } else {
      error.collapsed.eq.ls[[i]] <- as.matrix(error.weight.eq.ls[[i]]) %*% 
-     c(-1.2, 0, 1.2)
+     share.err.support
       # c(-10, 0, 10) 
   }
   
@@ -128,9 +179,15 @@ for ( i in 1:N) {
 
 }
 
-ln.E.data.scaled <- with(combined.df, 
-  log(w01*x01 + w02*x02 + w03*x03 + w04*x04 + w05*x05 + w06*x06 + 1  )
+if (log.plus.one.cost) {
+  ln.E.data.scaled <- with(combined.df, 
+    log(w01*x01 + w02*x02 + w03*x03 + w04*x04 + w05*x05 + w06*x06 + 1  )
   )
+} else {
+  ln.E.data.scaled <- with(combined.df, 
+    log(w01*x01 + w02*x02 + w03*x03 + w04*x04 + w05*x05 + w06*x06  )
+  )
+}
 
 combined.df <- cbind(ln.E.data.scaled, combined.df)
 
@@ -251,20 +308,71 @@ stacked.jacobian <- rbind(  modified.ln.E.string.evaled.deriv,
 library("matrixcalc")
 
 is.positive.definite(big.sigma)
-is.positive.definite(test.matrix)
+#is.positive.definite(test.matrix)
 
 
-test.matrix <-  solve(
+param.covar.mat <-  solve(
   t( stacked.jacobian ) %*% 
     kronecker( solve(big.sigma), diag(nrow(combined.df)) ) %*% 
     stacked.jacobian
   )
 
 
-diag(test.matrix)
+diag(param.covar.mat)
 
 
 
 
-GAMS.nonlinear.results.params.full /  diag(test.matrix)
+GAMS.nonlinear.results.params.full /  diag(param.covar.mat)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+GAMS.nonlinear.results<- readLines("/Users/travismcarthur/Desktop/Dropbox/entropytest.lst")
+
+# GAMS.linear.results<- readLines("/Users/travismcarthur/Desktop/Dropbox/entropytestlinear.lst")
+
+GAMS.nonlinear.results <- GAMS.nonlinear.results[
+  -(1:grep("S O L V E      S U M M A R Y", GAMS.nonlinear.results)) ]
+  
+GAMS.nonlinear.results <- gsub("(^1)|(   2 )|(   3 )", "", GAMS.nonlinear.results)
+
+GAMS.nonlinear.results.extracted <- str_extract(GAMS.nonlinear.results, " p.*[.]L")
+
+prob.names <- GAMS.nonlinear.results.extracted[!is.na(GAMS.nonlinear.results.extracted)]
+
+prob.numbers <- GAMS.nonlinear.results[which(!is.na(GAMS.nonlinear.results.extracted)) + 2]
+
+
+# TODO: Do we need to add Theta06 to this goodness-of-fit measure?
+
+resultant.param.probs.v <- eval(parse(text=paste0("c(", paste0(prob.numbers, collapse=", "), ")")))
+
+
+(-resultant.param.probs.v %*% log(resultant.param.probs.v)) / 
+  (length(prob.numbers) * log(3))
+# Goodness-of-fit measure from GJM (1996) p. 93, eqn 6.4.26
+
+
+
+
+# rvhess = maxdouble
+
+# max(abs(do.call( cbind, error.collapsed.eq.ls)))
+
+
+
+
+
 

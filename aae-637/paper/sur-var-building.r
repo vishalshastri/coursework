@@ -1,7 +1,11 @@
 
 
-uncensored.cost <- apply(firm.df[, c("x19.fertilizante.cantidad.kg", "x19.sem.comprada.cantidad.kg", 
-  "x19.abono.cantidad.kg", "paid.hours.spread", "tractor.hrs.final")], 
+uncensored.cost <- apply(firm.df[, c(
+  "x19.fertilizante.cantidad.kg",    
+  "x19.sem.comprada.cantidad.kg", 
+  "x19.abono.cantidad.kg", 
+  "x19.plagicidas.cantidad.kg",
+  "paid.hours.spread", "tractor.hrs.final")], 
   # x107.hrs.tractor.spread
   1, FUN=function(x) {sum(x)!=0}
 )
@@ -149,8 +153,11 @@ q03 = firm.df$ag.fam.labor.equiv.spread
 q03[q03 == 0] = .5
 
 
-
- ln.E.data <- log(w01*x01 + w02*x02 + w03*x03 + w04*x04 + w05*x05 + w06*x06 + 1  )
+if (log.plus.one.cost) {
+  ln.E.data <- log(w01*x01 + w02*x02 + w03*x03 + w04*x04 + w05*x05 + w06*x06 + 1  )
+} else {
+  ln.E.data <- log(w01*x01 + w02*x02 + w03*x03 + w04*x04 + w05*x05 + w06*x06 )
+}
 #ln.E.data <- log(w01*x01 + w02*x02 + w03*x03 + w04*x04 + w05*x05 + 1 )
 # if uncensored:
 # ln.E.data <- log(w01*x01 + w02*x02 + w03*x03 + w04*x04 + w05*x05 + w06*x06 )

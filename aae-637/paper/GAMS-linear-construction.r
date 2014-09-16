@@ -1,6 +1,9 @@
 
 
 
+
+
+
 ##### START FOR LINEAR::::
 
 
@@ -48,9 +51,17 @@ for ( i in 1:N) {
 
 }
 
-ln.E.data.scaled <- with(combined.df, 
-  log(w01*x01 + w02*x02 + w03*x03 + w04*x04 + w05*x05 + w06*x06 + 1  )
+if (log.plus.one.cost) {
+  ln.E.data.scaled <- with(combined.df, 
+    log(w01*x01 + w02*x02 + w03*x03 + w04*x04 + w05*x05 + w06*x06 + 1  )
   )
+} else {
+  ln.E.data.scaled <- with(combined.df, 
+    log(w01*x01 + w02*x02 + w03*x03 + w04*x04 + w05*x05 + w06*x06  )
+  )
+}
+
+
 
 combined.df <- cbind(ln.E.data.scaled, combined.df)
 
@@ -72,7 +83,7 @@ top.before.data <- c(
 "sets ",
 paste0("  t number of observations  / 1 * ", nrow(combined.df), " /"),
 paste0("  d number of variables in datafile  / 1 * ", ncol(combined.df), " /"),
-"  m number of points in interval z / 1 * 3/",
+"  m number of points in interval z / 1 * ", length(other.param.support), "/",
 "  j number of points in interval v / 1 * 3 /;",
 "",
 "parameter",
@@ -94,7 +105,7 @@ data.declaration.lines <-  c( paste0(colnames(combined.df), "(t)"))
 
 
 
-# TODO: do I need   indic(k)        copy of set k?
+# TODO: do I need   indic(k)        copy of set k? Seems no.
 
 top.before.data <- c(top.before.data,
   data.declaration.lines,
@@ -102,7 +113,7 @@ top.before.data <- c(top.before.data,
   "  JJ              number of points in support",
   ";",
   "",
-  "MM=3;",
+  "MM=", length(other.param.support), ";",
   "JJ=3;", # Eliminated theta here
   "", 
   "table datafile(t,d)"
@@ -120,24 +131,20 @@ for (i in 1:ncol(combined.df) ) {
 }
 
 
+#other.param.support cost.err.support share.err.support
+
 param.support.simple.lines <- c( # Eliminated theta here
 "parameter zother(m)    support points",
 "/",
-paste0("1 ", -round( max(abs(coef(linear.sur.est))) * 3 )),
-"2  0",
-paste0("3  ", round( max(abs(coef(linear.sur.est))) * 3 )),
+paste0(1:length(other.param.support), "  ", other.param.support),
 "/;",
 "parameter vshare(j)    support points ",
 "/",
-"1 -1.2",
-"2  0",
-"3  1.2",
+paste0(1:length(share.err.support), "  ", share.err.support),
 "/;",
 "parameter vcost(j)    support points ",
 "/",
-paste0("1 ", -12), # -round( max(combined.df$cost) * 5 )
-"2  0",
-paste0("3  ", 12), #round( max(combined.df$cost) * 5 )
+paste0(1:length(cost.err.support), "  ", cost.err.support),
 "/;"
 )
 
@@ -211,8 +218,22 @@ for ( i in all.params[!grepl("theta", all.params)] ) {
 
 all.eqns <- c("cost", paste0("s", 1:length(S.n)))
 
+cov.var.declarations <- paste0( "surdelta", expand.grid(1:length(all.eqns), 1:length(all.eqns))[, 1],
+  expand.grid(1:length(all.eqns), 1:length(all.eqns))[, 2] )
+
+cov.var.declarations.mat <- matrix(cov.var.declarations, nrow=length(all.eqns))
+
+diag(cov.var.declarations.mat) <- ""
+cov.var.declarations <- cov.var.declarations.mat
+cov.var.declarations  <- cov.var.declarations[cov.var.declarations!= ""]  
+  
+cov.var.declarations <- paste0("  ", cov.var.declarations,  "    SUR covar parameter")
+
+  
+
 variable.declaration.lines <- c("variables",
   paste0("  ", all.params, "   parameters to be estimated"),
+  cov.var.declarations,
   paste0("  p", all.params, "(m)    probability corresponding param"),
   paste0("  w", all.eqns, "(t,j)    probability corresponding error term"),
   "  h           gme objective value",
@@ -370,6 +391,42 @@ for ( i in all.eqns) {
 
 
 
+
+covar.SUR.mat<- matrix("", ncol=length(all.eqns), nrow=length(all.eqns))
+
+for ( i in 1:length(all.eqns)) {
+  for ( j in 1:length(all.eqns)) {
+    covar.SUR.mat[i,j] <- paste0( "restrcov", i, j, "..        ",
+      "0 =e= surdelta", i, j, " * sqrt( ( sum(t, sum(j, v", all.eqns[i], "(j) * w", all.eqns[i], 
+      "(t, j))) * sum(t, sum(j, v", all.eqns[i], "(j) * w", all.eqns[i], "(t, j))) / ", nrow(combined.df), ") * ",
+      " ( sum(t, sum(j, v", all.eqns[j], "(j) * w", all.eqns[j], 
+      "(t, j))) * sum(t, sum(j, v", all.eqns[j], "(j) * w", all.eqns[j], "(t, j))) / ", nrow(combined.df), ") ) - ",
+      "sum(t, sum(j, v", all.eqns[i], "(j) * w", all.eqns[i], "(t, j)) )",
+      " * sum(t, sum(j, v", all.eqns[j], "(j) * w", all.eqns[j], "(t, j))) / ", nrow(combined.df), ";"
+    )
+    
+  }
+}
+
+diag(covar.SUR.mat) <- ""
+
+covar.SUR.v <- c(covar.SUR.mat)
+
+covar.SUR.v <- strwrap( covar.SUR.v, indent=1, exdent=19, width=80)
+
+covar.SUR.lines <- covar.SUR.v
+
+
+cov.rest.declarations <- paste0( "restrcov", expand.grid(1:length(all.eqns), 1:length(all.eqns))[, 1],
+  expand.grid(1:length(all.eqns), 1:length(all.eqns))[, 2] )
+  
+cov.rest.declarations.mat <- matrix(cov.rest.declarations, nrow=length(all.eqns))
+
+diag(cov.rest.declarations.mat) <- ""
+cov.rest.declarations <- cov.rest.declarations.mat
+cov.rest.declarations  <- cov.rest.declarations[cov.rest.declarations != ""]
+
+
 equation.declarations <- c(
   "equations",
   "  object             primal GME objective function",
@@ -379,13 +436,27 @@ equation.declarations <- c(
   "restrcostb(t)",
   paste0("restr", 1:length(S.n), "sa(t)"),
   paste0("restr", 1:length(S.n), "sb(t)"),
+  cov.rest.declarations,
   ";"
 )
-  
+
+
+
+cov.var.display <- paste0( "surdelta", expand.grid(1:length(all.eqns), 1:length(all.eqns))[, 1],
+  expand.grid(1:length(all.eqns), 1:length(all.eqns))[, 2] )
+
+cov.var.display.mat <- matrix(cov.var.display, nrow=length(all.eqns))
+
+diag(cov.var.display.mat) <- ""
+cov.var.display <- cov.var.display.mat
+cov.var.display  <- cov.var.display[cov.var.display!= ""]  
+
+
   
 parameter.display.lines <- c( paste0("display ", all.params, ".l;"),
   paste0("display p", all.params, ".l;"),
-  paste0("display w", all.eqns, ".l;")
+  paste0("display w", all.eqns, ".l;"),
+  paste0("display ", cov.var.display, ".l;")
   )
 
 
@@ -410,11 +481,26 @@ paste0("  w", all.eqns, ".l(t,j) = 1/JJ;"),
 "options solprint=off;",
 "GME.OPTFILE=1; ",
 "* OPTION NLP=MINOS5;",
+" OPTION NLP=CONOPTD;",
+"$inlinecom /* */",
+"",
+"/* Turn off the listing of the input file */",
+"$offlisting",
+"",
+"/* Turn off the listing and cross-reference of the symbols used */",
+"$offsymxref offsymlist",
+"",
+"option",
+"    limrow = 0,     /* equations listed per block */",
+"    limcol = 0,     /* variables listed per block */",
+"    solprint = off,     /* solver's solution output printed */",
+"    sysout = off;       /* solver's system output printed */",
 " ",
 "solve gme using nlp maximizing h; ",
 "options decimals = 7;"
 )
-
+# Help from http://support.gams.com/doku.php?id=gams:how_do_i_reduce_the_size_of_my_listing_.lst_file
+# on reducing size of list file
 
 
 completed.GAMS.file <-  c(
@@ -431,6 +517,7 @@ completed.GAMS.file <-  c(
   model.restrictions.cost, " ", 
   prob.weight.param.lines, " ", 
   prob.weight.error.lines, " ", 
+  covar.SUR.lines,
   final.lines, " ",
   parameter.display.lines 
 )
@@ -439,6 +526,14 @@ cat(completed.GAMS.file,
   file="/Users/travismcarthur/Desktop/Metrics (637)/Final paper/GAMS work/entropytestlinear.gms", sep="\n")
   
   
+# "(recall that uninitialized parameters take on value zero)."
+# http://www.me.utexas.edu/~bard/LP/LP%20Handouts/gams_intro.pdf
+
+# ** Warning **  Memory Limit for Hessians exceeded.
+# You can use the Conopt option "rvhess"
+
+# rvhess = maxdouble
+
 
 
 

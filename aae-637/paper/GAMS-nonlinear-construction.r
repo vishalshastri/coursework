@@ -3,6 +3,11 @@
 
 
 
+
+
+
+
+
 ##### START FOR NONLINEAR::::
 
 
@@ -49,9 +54,15 @@ for ( i in 1:N) {
 
 }
 
-ln.E.data.scaled <- with(combined.df, 
-  log(w01*x01 + w02*x02 + w03*x03 + w04*x04 + w05*x05 + w06*x06 + 1  )
+if (log.plus.one.cost) {
+  ln.E.data.scaled <- with(combined.df, 
+    log(w01*x01 + w02*x02 + w03*x03 + w04*x04 + w05*x05 + w06*x06 + 1  )
   )
+} else {
+  ln.E.data.scaled <- with(combined.df, 
+    log(w01*x01 + w02*x02 + w03*x03 + w04*x04 + w05*x05 + w06*x06  )
+  )
+}
 
 combined.df <- cbind(ln.E.data.scaled, combined.df)
 
@@ -76,7 +87,8 @@ top.before.data <- c(
 "sets ",
 paste0("  t number of observations  / 1 * ", nrow(combined.df), " /"),
 paste0("  d number of variables in datafile  / 1 * ", ncol(combined.df), " /"),
-"  m number of points in interval z / 1 * 3/",
+"  m number of points in interval z / 1 * ", length(other.param.support), "/",
+"  h number of points in interval z / 1 * ", length(theta.param.support), "/",
 "  j number of points in interval v / 1 * 3 /;",
 "",
 "parameter",
@@ -103,9 +115,11 @@ top.before.data <- c(top.before.data,
   data.declaration.lines,
   "  MM              number of points in support",
   "  JJ              number of points in support",
+  "  HH              number of points in theta support",
   ";",
   "",
-  "MM=3;",
+  "MM=", length(other.param.support), ";",
+  "HH=", length(theta.param.support), ";",
   "JJ=3;",
   paste0("theta", lead.zero(N), "=1;"),
   "", 
@@ -125,39 +139,37 @@ for (i in 1:ncol(combined.df) ) {
 
 
  
- 
+
+
 
 
 param.support.simple.lines <- c(
-"parameter ztheta(m)    support points",
+"parameter ztheta(h)    support points",
 "/",
 #"1  1.e-6",
 #"2  5",
 #"3  10",
-"1  -4",
-"2  1",
-"3  6",
+paste0(1:length(theta.param.support), "  ", theta.param.support),
 "/;",
-
 "parameter zother(m)    support points",
 "/",
-paste0("1 ", -round( max(abs(coef(linear.sur.est))) * 3 )),
-"2  0",
-paste0("3  ", round( max(abs(coef(linear.sur.est))) * 3 )),
+paste0(1:length(other.param.support), "  ", other.param.support),
 "/;",
 "parameter vshare(j)    support points ",
 "/",
-"1 -1.2",
-"2  0",
-"3  1.2",
+paste0(1:length(share.err.support), "  ", share.err.support),
 "/;",
 "parameter vcost(j)    support points ",
 "/",
-paste0("1 ", -12), # -round( max(combined.df$cost) * 5 )
-"2  0",
-paste0("3  ", 12), #round( max(combined.df$cost) * 5 )
+paste0(1:length(cost.err.support), "  ", cost.err.support),
 "/;"
 )
+
+
+
+
+
+
 
 
 vsupport.lines <- c() 
@@ -203,8 +215,8 @@ theta.param.support.lines <- c()
 for ( i in all.params[grepl("theta", all.params)] ) {
 
   theta.param.support.lines <- c(theta.param.support.lines, 
-  paste0("parameter z", i, "(m)  support space for params;"),
-  paste0("z", i, "(m) = ztheta(m);")
+  paste0("parameter z", i, "(h)  support space for params;"),
+  paste0("z", i, "(h) = ztheta(h);")
   )
   
 }
@@ -225,18 +237,39 @@ for ( i in all.params[grepl("theta", all.params)] ) {
 
 
 
+
+
 all.eqns <- c("cost", paste0("s", 1:length(S.n)))
+
+
+
+cov.var.declarations <- paste0( "surdelta", expand.grid(1:length(all.eqns), 1:length(all.eqns))[, 1],
+  expand.grid(1:length(all.eqns), 1:length(all.eqns))[, 2] )
+
+cov.var.declarations.mat <- matrix(cov.var.declarations, nrow=length(all.eqns))
+
+diag(cov.var.declarations.mat) <- ""
+cov.var.declarations <- cov.var.declarations.mat
+cov.var.declarations  <- cov.var.declarations[cov.var.declarations!= ""]  
+  
+cov.var.declarations <- paste0("  ", cov.var.declarations,  "    SUR covar parameter")
+
+
+
 
 variable.declaration.lines <- c("variables",
   paste0("  ", all.params, "   parameters to be estimated"),
-  paste0("  p", all.params, "(m)    probability corresponding param"),
+  cov.var.declarations,
+  paste0("  p", all.params[!grepl("theta", all.params)], "(m)    probability corresponding param"),
+  paste0("  p", all.params[grepl("theta", all.params)], "(h)    probability corresponding param"),
   paste0("  w", all.eqns, "(t,j)    probability corresponding error term"),
   "longlogsection(t)",
 #  "sharedenom(t)",
-  "  h           gme objective value",
+  "  g           gme objective value",
   "",
   "positive variable",
-  paste0("  p", all.params, "(m)"),
+  paste0("  p", all.params[!grepl("theta", all.params)], "(m)"),
+  paste0("  p", all.params[grepl("theta", all.params)], "(h)"),
   paste0("  w", all.eqns, "(t,j)"),
   paste0("  ", all.params[grepl("theta", all.params)], "   parameters to be estimated"),
   "longlogsection(t)",
@@ -247,34 +280,16 @@ variable.declaration.lines <- c("variables",
 
 
 objective.fn.lines <- c(
-paste0("-sum(m, p", all.params, "(m)*log(p", all.params, "(m)+1.e-8) )"),
+paste0("-sum(m, p", all.params[!grepl("theta", all.params)], "(m)*log(p", all.params[!grepl("theta", all.params)], "(m)+1.e-8) )"),
+paste0("-sum(h, p", all.params[grepl("theta", all.params)], "(h)*log(p", all.params[grepl("theta", all.params)], "(h)+1.e-8) )"),
 paste0("-sum((t,j), w", all.eqns, "(t,j)*log(w", all.eqns, "(t,j)+1.e-8) )"),
 ";"
 )
 
 
-objective.fn.lines[1] <- paste0( "object..           h =e= ", objective.fn.lines[1])
+objective.fn.lines[1] <- paste0( "object..           g =e= ", objective.fn.lines[1])
   
 
-
-
-
-add.data.subscripts <- function(x) {
-  for (i in 1:99) {
-    ii <- formatC(i, width = 2, flag = "0")  
-    x <- gsub(paste0("w", ii), paste0("w", ii, "(t)"), x)
-    x <- gsub(paste0("q", ii), paste0("q", ii, "(t)"), x)
-    x <- gsub(paste0("x", ii), paste0("x", ii, "(t)"), x)
-    x <- gsub(paste0("y", ii), paste0("y", ii, "(t)"), x)
-    
-  }
-  regions.to.fix <- str_extract_all(x, "region[[:alpha:]]+")[[1]]
-  
-  for ( j in seq_along(regions.to.fix) ) {
-    x <- gsub(regions.to.fix[j], paste0(regions.to.fix[j], "(t)"), x)
-  }
-  x
-}
 
 
 S.n.GAMS <- S.n
@@ -433,11 +448,19 @@ big.log.posi.constraint.lines <- c("restrbiglogposi(t)..   " ,
 
 prob.weight.param.lines <- c()
 
-for ( i in all.params) {
+for ( i in all.params[!grepl("theta", all.params)]) {
   prob.weight.param.lines <- c(prob.weight.param.lines,  paste0(
     "restrp", i, "..        ", i," =e= sum(m, p", i, "(m) * z", i, "(m));" ),
     paste0(
     "restrpproper", i, "..            1 =e= sum(m, p", i, "(m));" )
+  )
+}
+
+for ( i in all.params[grepl("theta", all.params)]) {
+  prob.weight.param.lines <- c(prob.weight.param.lines,  paste0(
+    "restrp", i, "..        ", i," =e= sum(h, p", i, "(h) * z", i, "(h));" ),
+    paste0(
+    "restrpproper", i, "..            1 =e= sum(h, p", i, "(h));" )
   )
 }
 
@@ -456,6 +479,49 @@ for ( i in all.eqns) {
 
 
 
+
+
+
+
+
+covar.SUR.mat<- matrix("", ncol=length(all.eqns), nrow=length(all.eqns))
+
+for ( i in 1:length(all.eqns)) {
+  for ( j in 1:length(all.eqns)) {
+    covar.SUR.mat[i,j] <- paste0( "restrcov", i, j, "..        ",
+      "0 =e= surdelta", i, j, " * sqrt( ( sum(t, sum(j, v", all.eqns[i], "(j) * w", all.eqns[i], 
+      "(t, j))) * sum(t, sum(j, v", all.eqns[i], "(j) * w", all.eqns[i], "(t, j))) / ", nrow(combined.df), ") * ",
+      " ( sum(t, sum(j, v", all.eqns[j], "(j) * w", all.eqns[j], 
+      "(t, j))) * sum(t, sum(j, v", all.eqns[j], "(j) * w", all.eqns[j], "(t, j))) / ", nrow(combined.df), ") ) - ",
+      "sum(t, sum(j, v", all.eqns[i], "(j) * w", all.eqns[i], "(t, j)) )",
+      " * sum(t, sum(j, v", all.eqns[j], "(j) * w", all.eqns[j], "(t, j))) / ", nrow(combined.df), ";"
+    )
+    
+  }
+}
+
+diag(covar.SUR.mat) <- ""
+
+covar.SUR.v <- c(covar.SUR.mat)
+
+covar.SUR.v <- strwrap( covar.SUR.v, indent=1, exdent=19, width=80)
+
+covar.SUR.lines <- covar.SUR.v
+
+
+cov.rest.declarations <- paste0( "restrcov", expand.grid(1:length(all.eqns), 1:length(all.eqns))[, 1],
+  expand.grid(1:length(all.eqns), 1:length(all.eqns))[, 2] )
+  
+cov.rest.declarations.mat <- matrix(cov.rest.declarations, nrow=length(all.eqns))
+
+diag(cov.rest.declarations.mat) <- ""
+cov.rest.declarations <- cov.rest.declarations.mat
+cov.rest.declarations  <- cov.rest.declarations[cov.rest.declarations != ""]
+
+
+
+
+
 equation.declarations <- c(
   "equations",
   "  object             primal GME objective function",
@@ -467,6 +533,7 @@ equation.declarations <- c(
   paste0("restr", 1:length(S.n), "sb(t)"),
   paste0("restrthetaposi", lead.zero(1:(N-1))), # Added this for theta posi restrictions
   "restrbiglogposi(t)",
+  cov.rest.declarations,
 #  "restrsharedenom(t)",
   ";"
 )
@@ -485,7 +552,11 @@ GAMS.linear.results<- readLines("/Users/travismcarthur/Desktop/Dropbox/entropyte
 GAMS.linear.results <- GAMS.linear.results[
   -(1:grep("S O L V E      S U M M A R Y", GAMS.linear.results)) ]
   
-GAMS.linear.results <- gsub("(^1)|(   2 )|(   3 )", "", GAMS.linear.results)
+# GAMS.linear.results <- gsub("(^1)|(   2 )|(   3 )", "", GAMS.linear.results)
+
+param.gather.regex<- paste0("(^1)|", paste0("(   ", 2:length(other.param.support), " )", collapse="|"))
+
+GAMS.linear.results <- gsub(param.gather.regex, "", GAMS.linear.results)
 
 GAMS.linear.results.extracted <- str_extract(GAMS.linear.results, " p.*[.]L")
 
@@ -499,7 +570,8 @@ start.vals.lines <- paste0("theta", lead.zero(1:(N-1)), ".l = 1;")
 for ( i in 1:length(prob.names)) {
 
   start.vals.lines <- c( start.vals.lines, 
-    paste0( prob.names[i], "(\"", 1:3, "\") = ",  strsplit(prob.numbers[i], ",")[[1]], ";")
+    paste0( prob.names[i], "(\"", 1:length(other.param.support), "\") = ",  
+      strsplit(prob.numbers[i], ",")[[1]], ";")
   )
 
 }
@@ -554,11 +626,10 @@ for ( i in 1:length(all.eqns) ) {
 #  paste0("ptheta", lead.zero(1:(N-1)), ".l(\"3\") = 1.e-6;")
 #  )
 
+theta.weight.grid<- expand.grid(1:(N-1), 1:length(theta.param.support))
 
-theta.weight.lines <-  c( paste0("ptheta", lead.zero(1:(N-1)), ".l(\"1\") = 1/3;"),
-  paste0("ptheta", lead.zero(1:(N-1)), ".l(\"2\") = 1/3;"),
-  paste0("ptheta", lead.zero(1:(N-1)), ".l(\"3\") = 1/3;")
-  )
+theta.weight.lines <-  paste0("ptheta", lead.zero(theta.weight.grid[,1]), ".l(\"", theta.weight.grid[,2], 
+  "\") = 1/", length(theta.param.support),";")
 
 theta.weight.lines 
 
@@ -574,7 +645,7 @@ theta.weight.lines
 
 
 
-
+# parameters to
 
 
 
@@ -583,13 +654,16 @@ theta.weight.lines
 GAMS.linear.results<- readLines("/Users/travismcarthur/Desktop/Dropbox/entropytestlinear.lst")
 
 
-GAMS.linear.results.params<- GAMS.linear.results[grep("parameters to be esti$", GAMS.linear.results)]
+GAMS.linear.results.params<- GAMS.linear.results[grep("(parameters to be estimated$)|(SUR covar parameter$)", GAMS.linear.results)]
+
+GAMS.linear.results.params <- GAMS.linear.results.params[grep("VARIABLE", GAMS.linear.results.params)]
 
 GAMS.linear.results.params.names <- gsub("[.]L", "", str_extract(GAMS.linear.results.params, "[^ ]*[.]L") )
 
 
-GAMS.linear.results.params.numbers <- as.numeric(gsub("  parameters to be esti", "",
-  str_extract(GAMS.linear.results.params, "[^ ]*  parameters to be esti") ) )
+GAMS.linear.results.params.numbers <- as.numeric(gsub("(  parameters to be estimated)|(  SUR covar parameter)", "",
+  str_extract(GAMS.linear.results.params, "([^ ]*  parameters to be estimated)|([^ ]*  SUR covar parameter)") ) )
+  
   
 combined.w.params.df <- as.list(as.data.frame(combined.df))
 
@@ -700,13 +774,45 @@ longlogsection.initial,
 "* OPTION NLP=MINOS5;",
 "OPTION NLP=CONOPTD;",
 " ",
-"solve gme using nlp maximizing h; ",
+"$inlinecom /* */",
+"",
+"/* Turn off the listing of the input file */",
+"$offlisting",
+"",
+"/* Turn off the listing and cross-reference of the symbols used */",
+"$offsymxref offsymlist",
+"",
+"option",
+"    limrow = 0,     /* equations listed per block */",
+"    limcol = 0,     /* variables listed per block */",
+"    solprint = off,     /* solver's solution output printed */",
+"    sysout = off;       /* solver's system output printed */",
+" ",
+"solve gme using nlp maximizing g; ",
 "options decimals = 7;"
 )
 
+
+
+
+
+cov.var.display <- paste0( "surdelta", expand.grid(1:length(all.eqns), 1:length(all.eqns))[, 1],
+  expand.grid(1:length(all.eqns), 1:length(all.eqns))[, 2] )
+
+cov.var.display.mat <- matrix(cov.var.display, nrow=length(all.eqns))
+
+diag(cov.var.display.mat) <- ""
+cov.var.display <- cov.var.display.mat
+cov.var.display  <- cov.var.display[cov.var.display!= ""]  
+
+
+
+
+
 parameter.display.lines <- c( paste0("display ", all.params, ".l;"),
   paste0("display p", all.params, ".l;"),
-  paste0("display w", all.eqns, ".l;")
+  paste0("display w", all.eqns, ".l;"),
+  paste0("display ", cov.var.display, ".l;")
   )
 
 
@@ -730,6 +836,7 @@ completed.GAMS.file <-  c(
 #  share.denom.constraint.lines, " ",
   prob.weight.param.lines, " ", 
   prob.weight.error.lines, " ", 
+  covar.SUR.lines,
   final.lines, " ",
   parameter.display.lines
 )
@@ -737,6 +844,6 @@ completed.GAMS.file <-  c(
 cat(completed.GAMS.file, 
   file="/Users/travismcarthur/Desktop/Metrics (637)/Final paper/GAMS work/entropytest.gms", sep="\n")
   
-
+# rvhess = maxdouble
 
 
