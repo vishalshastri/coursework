@@ -398,11 +398,11 @@ for ( i in 1:length(all.eqns)) {
   for ( j in 1:length(all.eqns)) {
     covar.SUR.mat[i,j] <- paste0( "restrcov", i, j, "..        ",
       "0 =e= surdelta", i, j, " * sqrt( ( sum(t, sum(j, v", all.eqns[i], "(j) * w", all.eqns[i], 
-      "(t, j))) * sum(t, sum(j, v", all.eqns[i], "(j) * w", all.eqns[i], "(t, j))) / ", nrow(combined.df), ") * ",
+      "(t, j)) * sum(j, v", all.eqns[i], "(j) * w", all.eqns[i], "(t, j))) / ", nrow(combined.df), ") * ",
       " ( sum(t, sum(j, v", all.eqns[j], "(j) * w", all.eqns[j], 
-      "(t, j))) * sum(t, sum(j, v", all.eqns[j], "(j) * w", all.eqns[j], "(t, j))) / ", nrow(combined.df), ") ) - ",
-      "sum(t, sum(j, v", all.eqns[i], "(j) * w", all.eqns[i], "(t, j)) )",
-      " * sum(t, sum(j, v", all.eqns[j], "(j) * w", all.eqns[j], "(t, j))) / ", nrow(combined.df), ";"
+      "(t, j)) * sum(j, v", all.eqns[j], "(j) * w", all.eqns[j], "(t, j))) / ", nrow(combined.df), ") ) - ",
+      "sum(t, sum(j, v", all.eqns[i], "(j) * w", all.eqns[i], "(t, j)) ",
+      " * sum(j, v", all.eqns[j], "(j) * w", all.eqns[j], "(t, j))) / ", nrow(combined.df), ";"
     )
     
   }
@@ -442,6 +442,56 @@ equation.declarations <- c(
 
 
 
+
+
+
+
+# Trying to deal with issue where SUR does crazy things
+
+error.weights.lines <- c()
+
+for ( i in 1:length(all.eqns) ) {
+  
+  err.weight.temp.df <- data.frame(A=jitter(rep(1/3, nrow(combined.df))),
+                                   B=jitter(rep(1/3, nrow(combined.df))),
+                                   C=jitter(rep(1/3, nrow(combined.df))))
+
+#  err.weight.temp.df <- err.weight.temp.df[, -1 ]
+  
+  err.grid <- expand.grid( 1:3, 1:nrow(combined.df))
+  
+  for ( j in 1:nrow(err.grid)) {
+  
+    error.weights.lines  <- c(error.weights.lines, paste0(" w", all.eqns[i], ".l(\"", err.grid[j, 2], "\",\"",  
+      err.grid[j, 1], "\") = ", err.weight.temp.df[err.grid[j, 2] , err.grid[j, 1]], ";")
+    )
+    
+  }
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 cov.var.display <- paste0( "surdelta", expand.grid(1:length(all.eqns), 1:length(all.eqns))[, 1],
   expand.grid(1:length(all.eqns), 1:length(all.eqns))[, 2] )
 
@@ -466,6 +516,7 @@ c(
 "*Initial conditions",
 paste0("  p", all.params, ".l(m) = 1/MM;"),
 paste0("  w", all.eqns, ".l(t,j) = 1/JJ;"),
+error.weights.lines,
 "* primal approach",
 "model gme /all/;",
 "options domlim=5000;",
@@ -522,8 +573,13 @@ completed.GAMS.file <-  c(
   parameter.display.lines 
 )
 
+
+ 
+
 cat(completed.GAMS.file, 
-  file="/Users/travismcarthur/Desktop/Metrics (637)/Final paper/GAMS work/entropytestlinear.gms", sep="\n")
+  file=paste0(GAMS.projdir, "GMElinear", strsplit(target.crop, " ")[[1]][1], 
+   formatC(bootstrap.iter, width = 5, flag = "0"), ".gms"), 
+  sep="\n")
   
   
 # "(recall that uninitialized parameters take on value zero)."

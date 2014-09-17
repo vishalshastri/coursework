@@ -16,17 +16,17 @@
 #)
 
 
-cost.err.support <- c(
--12,
-0,
-12)
+#cost.err.support <- c(
+#-12,
+#0,
+#12)
 # -round( max(combined.df$cost) * 5 )
 
-share.err.support <- c(
--1.2,
-0,
-1.2
-)
+#share.err.support <- c(
+#-1.2,
+#0,
+#1.2
+#)
 
 
 
@@ -37,12 +37,22 @@ share.err.support <- c(
 library("numDeriv")
 
 
-GAMS.nonlinear.results<- readLines("/Users/travismcarthur/Desktop/Dropbox/entropytest.lst")
+# GAMS.nonlinear.results<- readLines("/Users/travismcarthur/Desktop/Dropbox/entropytest.lst")
+
+GAMS.nonlinear.results<- readLines(paste0(GAMS.projdir, "GMEnonlinear", strsplit(target.crop, " ")[[1]][1], 
+   formatC(bootstrap.iter, width = 5, flag = "0"), ".lst"))
+
+
+
 
 GAMS.nonlinear.results <- GAMS.nonlinear.results[
   -(1:grep("S O L V E      S U M M A R Y", GAMS.nonlinear.results)) ]
   
-GAMS.nonlinear.results <- gsub("(^1)|(   2 )|(   3 )", "", GAMS.nonlinear.results)
+param.gather.regex<- paste0("(^1)|", paste0("(   ", 2:length(other.param.support), " )", collapse="|"))
+
+GAMS.nonlinear.results <- gsub(param.gather.regex, "", GAMS.nonlinear.results)
+  
+#GAMS.nonlinear.results <- gsub("(^1)|(   2 )|(   3 )", "", GAMS.nonlinear.results)
 
 GAMS.nonlinear.results.extracted <- str_extract(GAMS.nonlinear.results, " p.*[.]L")
 
@@ -50,18 +60,16 @@ prob.names <- GAMS.nonlinear.results.extracted[!is.na(GAMS.nonlinear.results.ext
 
 prob.numbers <- GAMS.nonlinear.results[which(!is.na(GAMS.nonlinear.results.extracted)) + 2]
 
-start.vals.lines <- paste0("theta", lead.zero(1:(N-1)), ".l = 1;")
+#start.vals.lines <- paste0("theta", lead.zero(1:(N-1)), ".l = 1;")
 # added this to have correct (non-zero) starting vals for theta
 
-for ( i in 1:length(prob.names)) {
+#for ( i in 1:length(prob.names)) {
 
-  start.vals.lines <- c( start.vals.lines, 
-    paste0( prob.names[1], "(\"", 1:3, "\") = ",  strsplit(prob.numbers[i], ",")[[1]], ";")
-  )
+#  start.vals.lines <- c( start.vals.lines, 
+#    paste0( prob.names[1], "(\"", 1:3, "\") = ",  strsplit(prob.numbers[i], ",")[[1]], ";")
+#  )
 
-}
-
-
+#}
 
 
 
@@ -69,7 +77,12 @@ for ( i in 1:length(prob.names)) {
 
 
 
-GAMS.nonlinear.results<- readLines("/Users/travismcarthur/Desktop/Dropbox/entropytest.lst")
+
+
+# GAMS.nonlinear.results<- readLines("/Users/travismcarthur/Desktop/Dropbox/entropytest.lst")
+
+GAMS.nonlinear.results<- readLines(paste0(GAMS.projdir, "GMEnonlinear", strsplit(target.crop, " ")[[1]][1], 
+   formatC(bootstrap.iter, width = 5, flag = "0"), ".lst"))
 
 
 GAMS.nonlinear.results.params<- GAMS.nonlinear.results[grep("parameters to be estimated$", GAMS.nonlinear.results)]
@@ -86,7 +99,10 @@ GAMS.nonlinear.results.params.numbers <- as.numeric(gsub("  parameters to be est
 
 
 
-GAMS.nonlinear.results<- readLines("/Users/travismcarthur/Desktop/Dropbox/entropytest.lst")
+# GAMS.nonlinear.results<- readLines("/Users/travismcarthur/Desktop/Dropbox/entropytest.lst")
+
+GAMS.nonlinear.results<- readLines(paste0(GAMS.projdir, "GMEnonlinear", strsplit(target.crop, " ")[[1]][1], 
+   formatC(bootstrap.iter, width = 5, flag = "0"), ".lst"))
 
 #home.mac <- TRUE
 
@@ -116,8 +132,10 @@ error.weight.eq.ls<-list()
 
 for ( i in 1:length(all.eqns) ) {
   
-  err.weight.temp.df <- read.table("/Users/travismcarthur/Desktop/Dropbox/entropytest.lst", 
+  err.weight.temp.df <- read.table(paste0(GAMS.projdir, "GMEnonlinear", strsplit(target.crop, " ")[[1]][1], 
+   formatC(bootstrap.iter, width = 5, flag = "0"), ".lst"), 
     skip = begin.err.weight[i] + 3,  nrows= nrow(combined.df))
+    # "/Users/travismcarthur/Desktop/Dropbox/entropytest.lst"
 
   error.weight.eq.ls[[i]] <- err.weight.temp.df[, -1 ]
 
@@ -147,6 +165,10 @@ for ( i in all.eqns ) {
 
 big.sigma <- cov(do.call( cbind, error.collapsed.eq.ls))
 
+error.collapsed.eq.df <- do.call( cbind, error.collapsed.eq.ls)
+
+summary(error.collapsed.eq.df)
+hist(error.collapsed.eq.df)
 
 
 
@@ -311,19 +333,34 @@ is.positive.definite(big.sigma)
 #is.positive.definite(test.matrix)
 
 
-param.covar.mat <-  solve(
-  t( stacked.jacobian ) %*% 
-    kronecker( solve(big.sigma), diag(nrow(combined.df)) ) %*% 
-    stacked.jacobian
-  )
+#param.covar.mat <-  solve(
+#  t( stacked.jacobian ) %*% 
+#    kronecker( solve(big.sigma), diag(nrow(combined.df)) ) %*% 
+#    stacked.jacobian
+#  )
 
+
+stacked.jacobian.last.theta.dropped <- stacked.jacobian[, -ncol(stacked.jacobian)]
+
+
+param.covar.mat <-  solve(
+  t( stacked.jacobian.last.theta.dropped ) %*% 
+    kronecker( solve(big.sigma), diag(nrow(combined.df)) ) %*% 
+    stacked.jacobian.last.theta.dropped
+  )
 
 diag(param.covar.mat)
 
 
 
 
-GAMS.nonlinear.results.params.full /  diag(param.covar.mat)
+GAMS.nonlinear.results.params.full[-length(GAMS.nonlinear.results.params.full)] /  diag(param.covar.mat)
+
+t(t(GAMS.nonlinear.results.params.full ))
+
+cat(diag(param.covar.mat), sep="\n")
+
+
 
 
 
@@ -346,7 +383,12 @@ GAMS.nonlinear.results<- readLines("/Users/travismcarthur/Desktop/Dropbox/entrop
 GAMS.nonlinear.results <- GAMS.nonlinear.results[
   -(1:grep("S O L V E      S U M M A R Y", GAMS.nonlinear.results)) ]
   
-GAMS.nonlinear.results <- gsub("(^1)|(   2 )|(   3 )", "", GAMS.nonlinear.results)
+  
+param.gather.regex<- paste0("(^1)|", paste0("(   ", 2:length(other.param.support), " )", collapse="|"))
+
+GAMS.nonlinear.results <- gsub(param.gather.regex, "", GAMS.nonlinear.results)
+
+#GAMS.nonlinear.results <- gsub("(^1)|(   2 )|(   3 )", "", GAMS.nonlinear.results)
 
 GAMS.nonlinear.results.extracted <- str_extract(GAMS.nonlinear.results, " p.*[.]L")
 

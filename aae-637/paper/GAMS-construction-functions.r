@@ -74,7 +74,7 @@ for ( i in 1:num.body.dataframes) {
 
 if ( ncol(x) > 4*(num.body.dataframes+1) ) {
 
-  raw.last.df <- x[, (4*(num.body.dataframes+1)+1):ncol(x) ]
+  raw.last.df <- x[, (4*(num.body.dataframes+1)+1):ncol(x), drop=FALSE ]
   
   colnames(raw.last.df) <- sprintf("%10s", (4*(num.body.dataframes+1)+1):ncol(x))
 

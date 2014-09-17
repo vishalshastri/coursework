@@ -490,11 +490,11 @@ for ( i in 1:length(all.eqns)) {
   for ( j in 1:length(all.eqns)) {
     covar.SUR.mat[i,j] <- paste0( "restrcov", i, j, "..        ",
       "0 =e= surdelta", i, j, " * sqrt( ( sum(t, sum(j, v", all.eqns[i], "(j) * w", all.eqns[i], 
-      "(t, j))) * sum(t, sum(j, v", all.eqns[i], "(j) * w", all.eqns[i], "(t, j))) / ", nrow(combined.df), ") * ",
+      "(t, j)) * sum(j, v", all.eqns[i], "(j) * w", all.eqns[i], "(t, j))) / ", nrow(combined.df), ") * ",
       " ( sum(t, sum(j, v", all.eqns[j], "(j) * w", all.eqns[j], 
-      "(t, j))) * sum(t, sum(j, v", all.eqns[j], "(j) * w", all.eqns[j], "(t, j))) / ", nrow(combined.df), ") ) - ",
-      "sum(t, sum(j, v", all.eqns[i], "(j) * w", all.eqns[i], "(t, j)) )",
-      " * sum(t, sum(j, v", all.eqns[j], "(j) * w", all.eqns[j], "(t, j))) / ", nrow(combined.df), ";"
+      "(t, j)) * sum(j, v", all.eqns[j], "(j) * w", all.eqns[j], "(t, j))) / ", nrow(combined.df), ") ) - ",
+      "sum(t, sum(j, v", all.eqns[i], "(j) * w", all.eqns[i], "(t, j)) ",
+      " * sum(j, v", all.eqns[j], "(j) * w", all.eqns[j], "(t, j))) / ", nrow(combined.df), ";"
     )
     
   }
@@ -547,7 +547,9 @@ equation.declarations <- c(
 library("stringr")
 
 
-GAMS.linear.results<- readLines("/Users/travismcarthur/Desktop/Dropbox/entropytestlinear.lst")
+GAMS.linear.results<- readLines(paste0(GAMS.projdir, "GMElinear", strsplit(target.crop, " ")[[1]][1], 
+   formatC(bootstrap.iter, width = 5, flag = "0"), ".lst"))
+
 
 GAMS.linear.results <- GAMS.linear.results[
   -(1:grep("S O L V E      S U M M A R Y", GAMS.linear.results)) ]
@@ -577,7 +579,10 @@ for ( i in 1:length(prob.names)) {
 }
 
 
-GAMS.linear.results<- readLines("/Users/travismcarthur/Desktop/Dropbox/entropytestlinear.lst")
+GAMS.linear.results<- readLines(paste0(GAMS.projdir, "GMElinear", strsplit(target.crop, " ")[[1]][1], 
+   formatC(bootstrap.iter, width = 5, flag = "0"), ".lst"))
+
+# GAMS.linear.results<-readLines("/Users/travismcarthur/Desktop/Dropbox/entropytestlinear.lst")
 
 #GAMS.linear.results <- GAMS.linear.results[
 #  -(1:grep("S O L V E      S U M M A R Y", GAMS.linear.results)) ]
@@ -589,7 +594,8 @@ error.weights.lines <- c()
 
 for ( i in 1:length(all.eqns) ) {
   
-  err.weight.temp.df <- read.table("/Users/travismcarthur/Desktop/Dropbox/entropytestlinear.lst", 
+  err.weight.temp.df <- read.table( paste0(GAMS.projdir, "GMElinear", strsplit(target.crop, " ")[[1]][1], 
+   formatC(bootstrap.iter, width = 5, flag = "0"), ".lst"), 
     skip = begin.err.weight[i] + 3,  nrows= nrow(combined.df))
 
   err.weight.temp.df <- err.weight.temp.df[, -1 ]
@@ -605,6 +611,12 @@ for ( i in 1:length(all.eqns) ) {
   }
 
 }
+
+
+#error.weights.lines  <- paste0(" w", all.eqns[i], ".l(\"", err.grid[, 2], "\",\"",  
+#      err.grid[, 1], "\") = ", err.weight.temp.df[err.grid[, 2] , err.grid[, 1]], ";")
+
+
 
 
 
@@ -651,7 +663,8 @@ theta.weight.lines
 
 
 
-GAMS.linear.results<- readLines("/Users/travismcarthur/Desktop/Dropbox/entropytestlinear.lst")
+GAMS.linear.results<- readLines(paste0(GAMS.projdir, "GMElinear", strsplit(target.crop, " ")[[1]][1], 
+   formatC(bootstrap.iter, width = 5, flag = "0"), ".lst"))
 
 
 GAMS.linear.results.params<- GAMS.linear.results[grep("(parameters to be estimated$)|(SUR covar parameter$)", GAMS.linear.results)]
@@ -841,8 +854,12 @@ completed.GAMS.file <-  c(
   parameter.display.lines
 )
 
+
+  
 cat(completed.GAMS.file, 
-  file="/Users/travismcarthur/Desktop/Metrics (637)/Final paper/GAMS work/entropytest.gms", sep="\n")
+  file=paste0(GAMS.projdir, "GMEnonlinear", strsplit(target.crop, " ")[[1]][1], 
+   formatC(bootstrap.iter, width = 5, flag = "0"), ".gms"), 
+  sep="\n")
   
 # rvhess = maxdouble
 

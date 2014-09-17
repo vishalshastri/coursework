@@ -9,22 +9,30 @@ saved.workspace.path <- "/Users/travismcarthur/Desktop/Metrics (637)/Final paper
 
 GAMS.projdir <-  "/Users/travismcarthur/Desktop/gamsdir/projdir/"
 
-GAMS.exe.path <- 
+GAMS.exe.path <- "/Applications/GAMS/gams24.1_osx_x64_64_sfx/gams"
 
+# GAMS.projdir.subdir <-  "/Users/travismcarthur/Desktop/gamsdir/projdir/bootstrap/"
 
-
-
-
-# load(saved.workspace.path)
 
 
 
 
 
 
-target.top.crop.number <- 1
+load(saved.workspace.path)
+
+
+target.top.crop.number <- 4
+
 
 log.plus.one.cost <- FALSE
+
+bootstrap.iter <- 1
+
+#for (target.top.crop.number in c(2,4,5)) {
+
+
+
 
 
 
@@ -38,31 +46,19 @@ source("/Users/travismcarthur/git/coursework/aae-637/paper/GAMS-construction-fun
 
 
 
-
-
-other.param.support <- c(
--round( max(abs(coef(linear.sur.est.region))) * 3 ), 
-0, 
-round( max(abs(coef(linear.sur.est.region))) * 3 )
-)
-
-
 cost.err.endpoint <- round(max(abs(resid(linear.sur.est.region)[grepl("cost", 
-  names(resid(linear.sur.est.region)))])) * 1.5, digits=1)
+  names(resid(linear.sur.est.region)))])) * 1.4, digits=1)
 
 
 share.err.endpoint <- round(max(abs(resid(linear.sur.est.region)[!grepl("cost", 
-  names(resid(linear.sur.est.region)))])) * 1.5, digits=1)
+  names(resid(linear.sur.est.region)))])) * 1.4, digits=1)
   
-seq(from = -cost.err.endpoint, to = cost.err.endpoint, length.out=3)
-
 
 cost.err.support <- seq(from = -cost.err.endpoint, to = cost.err.endpoint, length.out=3)
 
 # -round( max(combined.df$cost) * 5 )
 
 share.err.support <- seq(from = -share.err.endpoint, to = share.err.endpoint, length.out=3)
-
 
 other.param.endpoint <- round( max(abs(coef(linear.sur.est.region))) * 3 , digits=1)
 
@@ -72,6 +68,19 @@ other.param.support <- seq(from = -other.param.endpoint, to = other.param.endpoi
 
 
 source("/Users/travismcarthur/git/coursework/aae-637/paper/GAMS-linear-construction.r")
+
+
+# system(paste0("cd ", GAMS.projdir, "\n", "ls" ) )
+
+run.linear.from.shell <-paste0("cd ", GAMS.projdir, "\n", 
+   GAMS.exe.path, " ", 
+   "GMElinear", strsplit(target.crop, " ")[[1]][1], 
+   formatC(bootstrap.iter, width = 5, flag = "0"), ".gms", 
+   " Ps=0 suppress=1")
+
+system(run.linear.from.shell)
+
+
 
 # elapsed 0:08:19.548
 # elapsed 0:08:26.802
@@ -84,9 +93,32 @@ theta.param.support <- theta.param.support/mean(theta.param.support)
 # rug(theta.param.support, col="red")
 
 
-
 source("/Users/travismcarthur/git/coursework/aae-637/paper/GAMS-nonlinear-construction.r")
 
-source("/Users/travismcarthur/git/coursework/aae-637/paper/max-entropy-postestimation.r")
+
+run.nonlinear.from.shell <-paste0("cd ", GAMS.projdir, "\n", 
+   GAMS.exe.path, " ", 
+   "GMEnonlinear", strsplit(target.crop, " ")[[1]][1], 
+   formatC(bootstrap.iter, width = 5, flag = "0"), ".gms", 
+   " Ps=0 suppress=1")
+
+system(run.nonlinear.from.shell)
+
+
+}
+
+
+# }
+
+
+
+
+
+# source("/Users/travismcarthur/git/coursework/aae-637/paper/max-entropy-postestimation.r")
+
+# old: rvhess = 100
+# old: rvstlm = 1.1
+
+
 
 
