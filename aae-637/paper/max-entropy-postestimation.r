@@ -31,7 +31,7 @@
 
 
 
-
+#  bootstrap.iter <- 0
 
 
 library("numDeriv")

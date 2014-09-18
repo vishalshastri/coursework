@@ -574,14 +574,18 @@ completed.GAMS.file <-  c(
 )
 
 
- 
 
-cat(completed.GAMS.file, 
-  file=paste0(GAMS.projdir, "GMElinear", strsplit(target.crop, " ")[[1]][1], 
-   formatC(bootstrap.iter, width = 5, flag = "0"), ".gms"), 
-  sep="\n")
+if (linear.GAMS.output ) { 
+
+  cat(completed.GAMS.file, 
+    file=paste0(GAMS.projdir, "GMElinear", strsplit(target.crop, " ")[[1]][1], 
+     formatC(bootstrap.iter, width = 5, flag = "0"), ".gms"), 
+    sep="\n")
   
-  
+}
+
+
+
 # "(recall that uninitialized parameters take on value zero)."
 # http://www.me.utexas.edu/~bard/LP/LP%20Handouts/gams_intro.pdf
 

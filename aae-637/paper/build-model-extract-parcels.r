@@ -40,6 +40,30 @@ price.trim.criteria <- apply(firm.df[, price.to.trim], 2, FUN=function(x) x < qu
 price.trim.criteria <- apply(price.trim.criteria, 1, FUN=all)
 firm.df <- firm.df[price.trim.criteria, ]
 
+
+
+
+uncensored.cost <- apply(firm.df[, c(
+  "x19.fertilizante.cantidad.kg",    
+  "x19.sem.comprada.cantidad.kg", 
+  "x19.abono.cantidad.kg", 
+  "x19.plagicidas.cantidad.kg",
+  "paid.hours.spread", "tractor.hrs.final")], 
+  # x107.hrs.tractor.spread
+  1, FUN=function(x) {sum(x)!=0}
+)
+
+firm.df<- firm.df[uncensored.cost, ]
+# try to see what happens when we eliminate censoring
+
+
+
+
+# NOTE: BELOW IS WHERE BOOTSTRAPPING HAPPENS
+
+firm.df <- firm.df[bootstrap.selection.v, ]
+
+
 # sur-var-building
 # linear-sur-building
 source("/Users/travismcarthur/git/coursework/aae-637/paper/sur-var-building.r")

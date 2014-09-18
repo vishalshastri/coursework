@@ -1,25 +1,11 @@
 
 
-uncensored.cost <- apply(firm.df[, c(
-  "x19.fertilizante.cantidad.kg",    
-  "x19.sem.comprada.cantidad.kg", 
-  "x19.abono.cantidad.kg", 
-  "x19.plagicidas.cantidad.kg",
-  "paid.hours.spread", "tractor.hrs.final")], 
-  # x107.hrs.tractor.spread
-  1, FUN=function(x) {sum(x)!=0}
-)
-
-firm.df<- firm.df[uncensored.cost, ]
-# try to see what happens when we eliminate censoring
-
-
 w01 = firm.df$x19.fertilizante.bs.kg
 w02 = firm.df$x19.sem.comprada.bs.kg
-w03 = firm.df$x19.abono.bs.kg
+w03 = firm.df$hourly.tractor.rental
 w04 = firm.df$x19.plagicidas.bs.kg
 w05 = firm.df$hourly.wage
-w06 = firm.df$hourly.tractor.rental
+w06 = firm.df$x19.abono.bs.kg
 # w05 = firm.df$imputed.ag.wage
 
 
@@ -30,10 +16,10 @@ w06 = firm.df$hourly.tractor.rental
 
 x01 = firm.df$x19.fertilizante.cantidad.kg
 x02 = firm.df$x19.sem.comprada.cantidad.kg
-x03 = firm.df$x19.abono.cantidad.kg
+x03 = firm.df$tractor.hrs.final
 x04 = firm.df$x19.plagicidas.cantidad.kg
 x05 = firm.df$paid.hours.spread 
-x06 = firm.df$tractor.hrs.final
+x06 = firm.df$x19.abono.cantidad.kg
 # x107.hrs.tractor.spread
 
 # x05 = firm.df$labor.hours * firm.df$crop.coverage

@@ -1,7 +1,5 @@
 
-# 
 
-## source("/Users/travismcarthur/git/coursework/aae-637/paper/initial-data-setup.r")
 
 
 
@@ -36,17 +34,32 @@ source("/Users/travismcarthur/git/coursework/aae-637/paper/build-model-extract-p
 
 set.seed(100)
 
-bootstrap.replications <- 1500
+#bootstrap.replications <- 1500
 nrow(firm.df)
 
 
-bootstrap.selection.mat<- matrix(sample( x=nrow(firm.df), size=nrow(firm.df)*bootstrap.replications, 
-  replace=TRUE), nrow=nrow(firm.df))
+bootstrap.selection.mat<- matrix(rep(1:nrow(firm.df), nrow(firm.df)), 
+  nrow=nrow(firm.df))
+  
+#bootstrap.selection.mat<- matrix(rep(1:13, 13), 
+#  nrow=13)
+
+n <- nrow(firm.df)
+
+bootstrap.selection.mat <- matrix(bootstrap.selection.mat[-seq(1,n^2,n+1)], n-1, n)
+
+rm(n)
+
+
+# Thanks to http://stackoverflow.com/questions/18839090/removing-diagonal-elements-from-matrix-in-r
+
 
 time.counter <- c()
 
+
+
 # 1:bootstrap.replications
-for ( bootstrap.iter in 110:bootstrap.replications) {
+for ( bootstrap.iter in 19:ncol(bootstrap.selection.mat)) {
 
 if( bootstrap.iter==0 ) {
   bootstrap.selection.v <- TRUE
@@ -87,22 +100,10 @@ other.param.endpoint <- round( max(abs(coef(linear.sur.est.region))) * 3 , digit
 other.param.support <- seq(from = -other.param.endpoint, to = other.param.endpoint, length.out=5)
 
 
-linear.GAMS.output <- TRUE
+linear.GAMS.output <- FALSE
+
 
 source("/Users/travismcarthur/git/coursework/aae-637/paper/GAMS-linear-construction.r")
-
-
-# system(paste0("cd ", GAMS.projdir, "\n", "ls" ) )
-
-run.linear.from.shell <-paste0("cd ", GAMS.projdir, "\n", 
-   GAMS.exe.path, " ", 
-   "GMElinear", strsplit(target.crop, " ")[[1]][1], 
-   formatC(bootstrap.iter, width = 5, flag = "0"), ".gms", 
-   " Ps=0 suppress=1")
-
-system(run.linear.from.shell)
-
-
 
 # elapsed 0:08:19.548
 # elapsed 0:08:26.802
@@ -115,12 +116,12 @@ theta.param.support <- theta.param.support/mean(theta.param.support)
 # rug(theta.param.support, col="red")
 
 
-source("/Users/travismcarthur/git/coursework/aae-637/paper/GAMS-nonlinear-construction.r")
-
+source("/Users/travismcarthur/git/coursework/aae-637/paper/jackknife-GAMS-nonlin-constr.r")
+# /Users/travismcarthur/git/coursework/aae-637/paper/GAMS-nonlinear-construction.r
 
 run.nonlinear.from.shell <-paste0("cd ", GAMS.projdir, "\n", 
    GAMS.exe.path, " ", 
-   "GMEnonlinear", strsplit(target.crop, " ")[[1]][1], 
+   "GMEnonlinearjackknife", strsplit(target.crop, " ")[[1]][1], 
    formatC(bootstrap.iter, width = 5, flag = "0"), ".gms", 
    " Ps=0 suppress=1")
 
@@ -128,7 +129,7 @@ system(run.nonlinear.from.shell)
 
 time.counter <- c(time.counter, Sys.time())
 save(time.counter, file=paste0(GAMS.projdir, strsplit(target.crop, " ")[[1]][1], 
-  "bootstrapcounter.Rdata"))
+  "jackknifestrapcounter.Rdata"))
 
 
 }
@@ -138,17 +139,11 @@ save(time.counter, file=paste0(GAMS.projdir, strsplit(target.crop, " ")[[1]][1],
 
 
 
-
-
-# source("/Users/travismcarthur/git/coursework/aae-637/paper/max-entropy-postestimation.r")
-
-# old: rvhess = 100
-# old: rvstlm = 1.1
-
-load("/Users/travismcarthur/Desktop/gamsdir/projdir/Trigobootstrapcounter.Rdata")
+load(paste0(GAMS.projdir, strsplit(target.crop, " ")[[1]][1], 
+  "jackknifestrapcounter.Rdata"))
 diff(time.counter)
 hist(diff(time.counter))
 
-
-
+  
+  
 
