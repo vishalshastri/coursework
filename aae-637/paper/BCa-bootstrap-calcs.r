@@ -1,5 +1,5 @@
 
-last.bootstrap <- 123
+last.bootstrap <- 467
 
 
 bootstrapped.thetas.ls <- vector(mode="list", length=0) # last.bootstrap+1
@@ -38,7 +38,7 @@ bootstrapped.thetas.ls[[bootstrap.iter]] <-
 
 
 
-last.jackknife <- 28
+last.jackknife <- 475
 
 
 jackknifed.thetas.ls <- vector(mode="list", length=0) # last.bootstrap+1
@@ -115,6 +115,9 @@ histogram( ~ theta01 + theta02 + theta03 + theta04 + theta05, data = bootstrappe
 
 # install.packages("corrgram")
 library("corrgram")
+
+round(cor(bootstrapped.thetas.df), digits=4)
+
 corrgram(bootstrapped.thetas.df, order=FALSE, lower.panel=panel.shade,
   upper.panel=panel.pie)
 
@@ -182,6 +185,91 @@ for ( j in 1:length(theta.hats)) {
 
 theta.ci.df
 theta.false.ci.df
+
+
+
+
+
+
+# BELOW IDS FOR DIFFERENCES:
+
+comparison.theta <- "theta01"
+
+
+#alpha <- .05
+alpha <- .025
+
+theta.dif.ci.df <- data.frame( theta01=c(0,0), theta02=c(0,0), theta03=c(0,0), theta04=c(0,0), theta05=c(0,0))
+
+theta.dif.ci.df <- theta.dif.ci.df[, colnames(theta.dif.ci.df)!=comparison.theta ]
+
+# But really, we want to form intervals for the difference between, not just the values
+
+theta.hats.comp <- theta.hats[names(theta.hats)!=comparison.theta]
+
+target.theta.est <- theta.hats[names(theta.hats)==comparison.theta]
+
+for ( j in names(theta.hats.comp)) {
+
+  bias.measure <- qnorm(sum(
+    (bootstrapped.thetas.df[, j] - bootstrapped.thetas.df[, comparison.theta])  < 
+      (theta.hats.comp[j] - target.theta.est)
+    ) / last.bootstrap)
+  # i.e. z_hat_0
+  # 2nd answer here: http://stackoverflow.com/questions/19589191/the-reverse-inverse-of-the-normal-distribution-function-in-r
+  
+  mean.jackknife <- mean(jackknifed.thetas.df[, j] - jackknifed.thetas.df[, comparison.theta])
+  
+  jackknife.dif.vector <- jackknifed.thetas.df[, j] - jackknifed.thetas.df[, comparison.theta]
+  
+  acceleration.measure <- sum( (mean.jackknife - jackknife.dif.vector)^3) /
+    (6 * (sum( (mean.jackknife - jackknife.dif.vector)^2)^(2/3))  )
+  # Eqn 14.15 in An Introduction to the Bootstrap
+  # i.e. a_hat
+  
+  alpha.1 <- pnorm(
+    bias.measure + (bias.measure + qnorm(alpha) ) /
+      (1 - acceleration.measure * (bias.measure + qnorm(alpha) ))
+  )
+  # Eqn 14.10 in An Introduction to the Bootstrap
+  
+  alpha.2 <- pnorm(
+    bias.measure + (bias.measure + qnorm(1-alpha) ) /
+      (1 - acceleration.measure * (bias.measure + qnorm(1-alpha) ))
+  )
+  # Eqn 14.10 in An Introduction to the Bootstrap
+  
+  theta.dif.ci.df[ 1,j ] <- quantile(bootstrapped.thetas.df[, j] - 
+    bootstrapped.thetas.df[, comparison.theta] ,  probs=alpha.1)
+  theta.dif.ci.df[ 2,j ] <- quantile(bootstrapped.thetas.df[, j] - 
+    bootstrapped.thetas.df[, comparison.theta] ,  probs=alpha.2)
+  
+  print(c(bias=bias.measure, acc=acceleration.measure ))
+
+
+}
+
+theta.dif.ci.df
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
