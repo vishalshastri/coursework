@@ -1,5 +1,5 @@
 
-last.bootstrap <- 467
+last.bootstrap <- 598
 
 
 bootstrapped.thetas.ls <- vector(mode="list", length=0) # last.bootstrap+1
@@ -148,7 +148,7 @@ for ( j in 1:length(theta.hats)) {
   mean.jackknife <- mean(jackknifed.thetas.df[, j])
   
   acceleration.measure <- sum( (mean.jackknife - jackknifed.thetas.df[, j])^3) /
-    (6 * (sum( (mean.jackknife - jackknifed.thetas.df[, j])^2)^(2/3))  )
+    (6 * (sum( (mean.jackknife - jackknifed.thetas.df[, j])^2)^(3/2))  )
   # Eqn 14.15 in An Introduction to the Bootstrap
   # i.e. a_hat
   
@@ -198,6 +198,7 @@ comparison.theta <- "theta01"
 
 #alpha <- .05
 alpha <- .025
+#alpha <- .005
 
 theta.dif.ci.df <- data.frame( theta01=c(0,0), theta02=c(0,0), theta03=c(0,0), theta04=c(0,0), theta05=c(0,0))
 
@@ -223,7 +224,7 @@ for ( j in names(theta.hats.comp)) {
   jackknife.dif.vector <- jackknifed.thetas.df[, j] - jackknifed.thetas.df[, comparison.theta]
   
   acceleration.measure <- sum( (mean.jackknife - jackknife.dif.vector)^3) /
-    (6 * (sum( (mean.jackknife - jackknife.dif.vector)^2)^(2/3))  )
+    (6 * (sum( (mean.jackknife - jackknife.dif.vector)^2)^(3/2))  )
   # Eqn 14.15 in An Introduction to the Bootstrap
   # i.e. a_hat
   

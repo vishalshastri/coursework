@@ -9,9 +9,46 @@ GAMS.projdir <-  "/Users/travismcarthur/Desktop/gamsdir/projdir/"
 
 GAMS.exe.path <- "/Applications/GAMS/gams24.1_osx_x64_64_sfx/gams"
 
+code.dir <- "/Users/travismcarthur/git/coursework/aae-637/paper/"
+
 # GAMS.projdir.subdir <-  "/Users/travismcarthur/Desktop/gamsdir/projdir/bootstrap/"
 
+if (Sys.info()['sysname']=="Linux") {
 
+saved.workspace.path <- "/home/c/cschmidt/TravisImInYourInternets/bootstrap-output/saved workspace.Rdata"
+
+GAMS.projdir <-  "/home/c/cschmidt/TravisImInYourInternets/gamsdir/projdir/"
+
+GAMS.exe.path <- "/home/c/cschmidt/TravisImInYourInternets/gams24.1_linux_x64_64_sfx/gams"
+
+code.dir <- "/home/c/cschmidt/TravisImInYourInternets/bootstrap-R-code/"
+
+.libPaths("/home/c/cschmidt/TravisImInYourInternets/Rlib")
+
+#detach("package:Matrix", unload = TRUE, force=TRUE)
+#detach("package:lattice", unload = TRUE, force=TRUE)
+
+#unloadNamespace("lattice")
+
+#install.packages("lattice", repos="http://cran.us.r-project.org", 
+#        lib="/home/c/cschmidt/TravisImInYourInternets/Rlib")
+
+library(lattice, lib.loc ="/home/c/cschmidt/TravisImInYourInternets/Rlib")
+
+library(Matrix)
+
+  for ( i in c("gdata", "stringr", "systemfit") ) {
+    if(!require(i, character.only=TRUE, lib.loc ="/home/c/cschmidt/TravisImInYourInternets/Rlib")) {
+      install.packages(i, repos="http://cran.us.r-project.org", 
+        lib="/home/c/cschmidt/TravisImInYourInternets/Rlib")
+      while(!require(i, character.only=TRUE, lib.loc ="/home/c/cschmidt/TravisImInYourInternets/Rlib")) {
+        Sys.sleep(1)
+  	    require(i, character.only=TRUE, lib.loc ="/home/c/cschmidt/TravisImInYourInternets/Rlib")
+  	  }
+    }
+  }
+
+}
 
 
 
@@ -20,7 +57,7 @@ GAMS.exe.path <- "/Applications/GAMS/gams24.1_osx_x64_64_sfx/gams"
 load(saved.workspace.path)
 
 
-target.top.crop.number <- 4
+target.top.crop.number <- 2
 
 
 log.plus.one.cost <- FALSE
@@ -28,7 +65,7 @@ log.plus.one.cost <- FALSE
 bootstrap.iter <- 1
 # NOTE: Bootstrap iter = 0 means actual estimate
 bootstrap.selection.v <- TRUE
-source("/Users/travismcarthur/git/coursework/aae-637/paper/build-model-extract-parcels.r")
+source(paste0(code.dir, "build-model-extract-parcels.r"))
 # Above is a bit hacky
 
 
@@ -58,8 +95,12 @@ time.counter <- c()
 
 
 
+bootstrap.replications.v <- 1:600
+
+
+
 # 1:bootstrap.replications
-for ( bootstrap.iter in 19:ncol(bootstrap.selection.mat)) {
+for ( bootstrap.iter in bootstrap.replications.v) {
 
 if( bootstrap.iter==0 ) {
   bootstrap.selection.v <- TRUE
@@ -71,13 +112,13 @@ if( bootstrap.iter==0 ) {
 #for (target.top.crop.number in c(2,4,5)) {
 
 
-source("/Users/travismcarthur/git/coursework/aae-637/paper/build-model-extract-parcels.r")
+source(paste0(code.dir, "build-model-extract-parcels.r"))
 
 # If want to make censoring plots:
 # source("/Users/travismcarthur/git/coursework/aae-637/paper/analyze-summary-stats.r")
 
 
-source("/Users/travismcarthur/git/coursework/aae-637/paper/GAMS-construction-functions.r")
+source(paste0(code.dir, "GAMS-construction-functions.r"))
 
 
 
@@ -103,7 +144,7 @@ other.param.support <- seq(from = -other.param.endpoint, to = other.param.endpoi
 linear.GAMS.output <- FALSE
 
 
-source("/Users/travismcarthur/git/coursework/aae-637/paper/GAMS-linear-construction.r")
+source(paste0(code.dir, "GAMS-linear-construction.r"))
 
 # elapsed 0:08:19.548
 # elapsed 0:08:26.802
@@ -116,7 +157,7 @@ theta.param.support <- theta.param.support/mean(theta.param.support)
 # rug(theta.param.support, col="red")
 
 
-source("/Users/travismcarthur/git/coursework/aae-637/paper/jackknife-GAMS-nonlin-constr.r")
+source(paste0(code.dir, "jackknife-GAMS-nonlin-constr.r"))
 # /Users/travismcarthur/git/coursework/aae-637/paper/GAMS-nonlinear-construction.r
 
 run.nonlinear.from.shell <-paste0("cd ", GAMS.projdir, "\n", 
@@ -139,10 +180,10 @@ save(time.counter, file=paste0(GAMS.projdir, strsplit(target.crop, " ")[[1]][1],
 
 
 
-load(paste0(GAMS.projdir, strsplit(target.crop, " ")[[1]][1], 
-  "jackknifestrapcounter.Rdata"))
-diff(time.counter)
-hist(diff(time.counter))
+#load(paste0(GAMS.projdir, strsplit(target.crop, " ")[[1]][1], 
+#  "jackknifestrapcounter.Rdata"))
+#diff(time.counter)
+#hist(diff(time.counter))
 
   
   

@@ -150,9 +150,24 @@ crop.wide.df$received.credit <- abs(as.numeric(crop.wide.df$received.credit)-2 )
 # OK, NOW START HERE FOR 718 PS:
 
 
+# QUESTION 1.a
 
-summary(lm(log(fert.exp +1) ~ indig.prop + drive.time.urban + T.CASO4 + received.credit, data=crop.wide.df))
+# install.packages("stargazer")
+library("stargazer")
 
+
+
+summary( fert.big.lm <- lm(log(fert.exp +1) ~ indig.prop + drive.time.urban + T.CASO4 + received.credit, data=crop.wide.df))
+
+
+stargazer(fert.big.lm, out.header = FALSE, 
+  out="/Users/travismcarthur/Desktop/Econ 718 Metrics/problem sets/table1.tex", no.space=TRUE, single.row=TRUE)
+  
+# align=FALSE,  rownames=TRUE,  column.separate=c(4,4), column.labels =c("test1", "test2"), float.env = "sidewaystable", font.size="small", title="Summary statistics of treatment and control groups"
+    
+
+
+# QUESTION 1.b
 
 summary(partitioned.1.lm <- lm( log(fert.exp +1) ~ T.CASO4 + received.credit, data=crop.wide.df))
 
@@ -170,9 +185,16 @@ M.2 <- diag(nrow(X.2)) - X.2 %*% solve(t(X.2) %*% X.2) %*% t(X.2)
 
 summary(partitioned.3.lm <- lm( resid(partitioned.1.lm) ~ I(M.2 %*% X.1) - 1 ))
 
+stargazer(partitioned.3.lm, out.header = FALSE, 
+  out="/Users/travismcarthur/Desktop/Econ 718 Metrics/problem sets/table2.tex", no.space=TRUE, single.row=TRUE)
+
 
 
 summary(partitioned.4.lm <- lm( log(fert.exp +1) ~ I(M.2 %*% X.1) - 1 , data=crop.wide.df))
+
+stargazer(partitioned.4.lm, out.header = FALSE, 
+  out="/Users/travismcarthur/Desktop/Econ 718 Metrics/problem sets/table3.tex", no.space=TRUE, single.row=TRUE)
+
 
 
 coef(partitioned.3.lm) - coef(partitioned.4.lm)
@@ -185,39 +207,50 @@ with(crop.wide.df, cor(resid(partitioned.1.lm) , log(fert.exp +1) ))
 
 cor()
 
-# Question 2
+# Question 2.a
 
 
 # install.packages("AER")
 library("AER")
 
 
-summary(lm( REMPAIS ~ hhh.age + num.pers.agropecuaria , data=crop.wide.df))
+#summary(lm( REMPAIS ~ hhh.age + num.pers.agropecuaria , data=crop.wide.df))
 
 
-summary(lm( fert.exp ~ REMPAIS + num.pers.agropecuaria , data=crop.wide.df))
+#summary(lm( fert.exp ~ REMPAIS + num.pers.agropecuaria , data=crop.wide.df))
 
-summary(lm( log(fert.exp+1) ~ log(REMPAIS+1)  , data=crop.wide.df))
+#summary(lm( log(fert.exp+1) ~ log(REMPAIS+1)  , data=crop.wide.df))
 
-ivreg(y ~ x1 + x2 | z1 + z2 + z3
+#ivreg(y ~ x1 + x2 | z1 + z2 + z3
 
-summary(ivreg(fert.exp ~ REMPAIS | REMPAIS + hhh.sex, data=crop.wide.df))
+#summary(ivreg(fert.exp ~ REMPAIS | REMPAIS + hhh.sex, data=crop.wide.df))
 
 
 # Ok, let's go with this:
 
-summary(lm( log(fert.exp+1) ~ log(REMPAIS+1)  , data=crop.wide.df))
+# summary(lm( log(fert.exp+1) ~ log(REMPAIS+1)  , data=crop.wide.df))
 
 
 summary(fert.ivreg <- ivreg( log(fert.exp+1) ~ log(REMPAIS+1) + total.area | hhh.sex + total.area, data=crop.wide.df))
 
+
+stargazer(fert.ivreg, out.header = FALSE, 
+  out="/Users/travismcarthur/Desktop/Econ 718 Metrics/problem sets/table4.tex", no.space=TRUE, single.row=TRUE)
+
 # with(crop.wide.df, cor(cbind(log(fert.exp + 1) , log(REMPAIS + 1),  hhh.sex))
 
-# QUESTION 2.2
+# QUESTION 2.b
 
 summary( first.stage.lm <- lm(log(REMPAIS+1) ~ hhh.sex + total.area, data=crop.wide.df))
   
 summary( second.stage.lm <- lm( log(fert.exp+1) ~ predict(first.stage.lm) + total.area, data=crop.wide.df))
+
+stargazer(first.stage.lm, out.header = FALSE, 
+  out="/Users/travismcarthur/Desktop/Econ 718 Metrics/problem sets/table5.tex", no.space=TRUE, single.row=TRUE)
+
+stargazer(second.stage.lm, out.header = FALSE, 
+  out="/Users/travismcarthur/Desktop/Econ 718 Metrics/problem sets/table6.tex", no.space=TRUE, single.row=TRUE)
+
 
 # QUESTION 2.3
   
@@ -230,6 +263,9 @@ coef(red.form.1.lm)["hhh.sexmujer"] / coef(red.form.2.lm)["hhh.sexmujer"]
 
 coef(fert.ivreg)
 
+# TODO: just write it in the text without a table
+
+
 # Question 2.4
   
 cov.Y.lm<- lm( log(fert.exp+1) ~  total.area, data=crop.wide.df)
@@ -240,6 +276,9 @@ cov.Z.lm<- lm( as.numeric(hhh.sex) ~  total.area, data=crop.wide.df)
 
 cov(resid(cov.Z.lm), resid(cov.Y.lm)) /
   cov(resid(cov.Z.lm), resid(cov.T.lm))
+
+# TODO: just write it in the text without a table
+
 
 # -1.956320937 
 
@@ -264,16 +303,26 @@ tau.2.i <- T.i + rnorm(num.obs, sd=10)
 
 summary(Q.a.lm <-  lm(Y.i ~ T.i))
 
+stargazer(Q.a.lm, out.header = FALSE, 
+  out="/Users/travismcarthur/Desktop/Econ 718 Metrics/problem sets/table7.tex", no.space=TRUE, single.row=TRUE)
+
+
 # QUESTION 3.b
 
 summary(Q.b.lm <-  lm(Y.i ~ tau.1.i))
   
 beta.1 * var(T.i) / (var(T.i) + 5^2)
 
+stargazer(Q.b.lm, out.header = FALSE, 
+  out="/Users/travismcarthur/Desktop/Econ 718 Metrics/problem sets/table8.tex", no.space=TRUE, single.row=TRUE)
+
 
 # QUESTION 3.c 
 
-summary(ivreg(Y.i ~ tau.1.i |  tau.2.i))
+summary( meas.err.ivreg  <- ivreg(Y.i ~ tau.1.i |  tau.2.i))
+
+stargazer(meas.err.ivreg, out.header = FALSE, 
+  out="/Users/travismcarthur/Desktop/Econ 718 Metrics/problem sets/table9.tex", no.space=TRUE, single.row=TRUE)
 
 
 

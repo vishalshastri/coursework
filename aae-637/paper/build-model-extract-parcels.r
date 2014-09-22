@@ -66,9 +66,9 @@ firm.df <- firm.df[bootstrap.selection.v, ]
 
 # sur-var-building
 # linear-sur-building
-source("/Users/travismcarthur/git/coursework/aae-637/paper/sur-var-building.r")
-source("/Users/travismcarthur/git/coursework/aae-637/paper/linear-sur-building.r")
-source("/Users/travismcarthur/git/coursework/aae-637/paper/nonlinear-sur-building.r")
+source(paste0(code.dir, "sur-var-building.r"))
+source(paste0(code.dir, "linear-sur-building.r"))
+source(paste0(code.dir, "nonlinear-sur-building.r"))
 
 
 
