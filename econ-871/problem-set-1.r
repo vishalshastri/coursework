@@ -418,11 +418,19 @@ no.trade.costs.wages<- optim(par=rep(1,3), fn=simplified.EK.fn, tau_n_i = matrix
 
 simplified.EK.fn(no.trade.costs.wages, matrix(0, nrow=3, ncol=3), ret.share.mat=TRUE)
 
-all.0.1.trade.costs.wages <- optim(par=rep(1,3), fn=simplified.EK.fn, tau_n_i = matrix(0.1, nrow=3, ncol=3))$par
+low.tau.mat <-  matrix(0.1, nrow=3, ncol=3)
 
-simplified.EK.fn(all.0.1.trade.costs.wages , matrix(0, nrow=3, ncol=3), ret.share.mat=TRUE)
+diag(low.tau.mat) <- 0
 
-optim(par=rep(1,3), fn=simplified.EK.fn, tau_n_i = matrix(runif(9), nrow=3, ncol=3))
+all.0.1.trade.costs.wages <- optim(par=rep(1,3), fn=simplified.EK.fn, tau_n_i = low.tau.mat)$par
+
+simplified.EK.fn(all.0.1.trade.costs.wages , low.tau.mat, ret.share.mat=TRUE)
+
+stochastic.tau.mat <- matrix(runif(9), nrow=3, ncol=3)
+
+stochastic.trade.costs.wages <-optim(par=rep(1,3), fn=simplified.EK.fn, tau_n_i = stochastic.tau.mat )$par
+
+simplified.EK.fn(stochastic.trade.costs.wages, stochastic.tau.mat, ret.share.mat=TRUE)
 
 # Ok, cannot get different trade shares from all-same tau vs. no tau
 
