@@ -9,6 +9,8 @@ sort(table(inputs.df$x19.codigo), decreasing=TRUE)[1:10]
 # for (target.crop in top.crops) {
 
 censored.cols.ls <- list()
+fert.intensity.unconditional.ls <- list()
+fert.intensity.conditional.ls <- list()
 
 
 
@@ -57,6 +59,14 @@ sum(firm.df$tractor.hrs.final!=0)/nrow(firm.df)
 
 censored.cols.ls[[i]] <- censored.cols
 
+fert.intensity.unconditional.ls[[i]] <- 
+  mean(firm.df$x19.fertilizante.cantidad.kg/firm.df$x19.superficie.cultivada.hectareas, na.rm=TRUE)
+
+fert.intensity.conditional.ls[[i]] <- 
+  median(firm.df$x19.fertilizante.cantidad.kg[firm.df$x19.fertilizante.cantidad.kg>0] / 
+    firm.df$x19.superficie.cultivada.hectareas[firm.df$x19.fertilizante.cantidad.kg>0], na.rm=TRUE)
+
+
 }
 
 censored.df <- do.call(rbind, censored.cols.ls)
@@ -69,6 +79,14 @@ barplot(as.matrix(censored.df), beside=TRUE, col=terrain.colors(num.of.top.crops
 legend("top", top.crops[1:num.of.top.crops], cex=1, 
        fill=terrain.colors(num.of.top.crops))
 #cex=0.6
+
+names(fert.intensity.unconditional.ls) <- top.crops[1:num.of.top.crops]
+names(fert.intensity.conditional.ls) <- top.crops[1:num.of.top.crops]
+
+# NOTE: Below is mean
+unlist(fert.intensity.unconditional.ls)
+# NOTE: Below is median
+unlist(fert.intensity.conditional.ls)
 
 
        
