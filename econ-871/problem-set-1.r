@@ -66,7 +66,7 @@ usa.nz.mex.df <- get.Comtrade(r="842", p="484,554", ps=2010, px="H1", cc="AG6",f
 
 usa.nz.mex.df <- usa.nz.mex.df$data
 
-length(unique(usa.nz.mex.df$Commodity.Code))
+#length(unique(usa.nz.mex.df$Commodity.Code))
 
 # QUESTION 1(a)
 
@@ -81,7 +81,8 @@ nonzero.flows
 # QUESTION 1(b)
 
 # install.packages("e1071")
-library("e1071")                  
+library("e1071")    
+library("stargazer") 
 
 summary.stats.fn <- function(x) {
   data.frame(mean=mean(x), median=median(x), sd=sd(x), skew=skewness(x))
@@ -93,7 +94,14 @@ summary.stats.ls <- with(usa.nz.mex.df[usa.nz.mex.df$Trade.Flow=="Export", ],
 
 summary.stats.df <- do.call(rbind, summary.stats.ls)
 
-summary.stats.df$Country <- rownames(summary.stats.df)
+#summary.stats.df$Country <- rownames(summary.stats.df)
+
+summary.stats.df <- round(summary.stats.df)
+
+colnames(summary.stats.df) <- c("Mean", "Median", "Standard deviation", "Skewness")
+
+stargazer(summary.stats.df , summary=FALSE, out.header = FALSE, out="/Users/travismcarthur/Desktop/Econ 871 Trade/Problem sets/PS 1/table1.tex", 
+  rownames=TRUE, title="Summary statistics of 2010 US exports to Mexico and New Zealand, in USD")
 
 
 # QUESTION 1(c)
@@ -104,12 +112,29 @@ usa.nz.mex.AG1.df <- get.Comtrade(r="842", p="484,554", ps=2010, px="H1", cc="AG
 usa.nz.mex.AG1.df <- usa.nz.mex.AG1.df$data
 
 
-by(data=usa.nz.mex.AG1.df, 
+high.commodities.ls <- by(data=usa.nz.mex.AG1.df, 
     INDICES=list(usa.nz.mex.AG1.df$Partner, usa.nz.mex.AG1.df$Trade.Flow), 
   FUN=function(x) {
     x[order(x$Trade.Value..US.., decreasing=TRUE), ][1:5, c("Commodity", "Trade.Value..US..")]
   }
 )
+
+names(high.commodities.ls) <- c("Most important exports to Mexico",
+"Most important exports to New Zealand",
+"Most important imports from Mexico",
+"Most important imports from New Zealand")
+
+
+
+for ( i in 1:4) {
+  stargazer(high.commodities.ls[[i]] , summary=FALSE, out.header = FALSE, out=paste0("/Users/travismcarthur/Desktop/Econ 871 Trade/Problem sets/PS 1/table", i+1, ".tex"), 
+  rownames=FALSE, title=names(high.commodities.ls)[i])  
+}
+
+
+
+
+
 
 # QUESTION 2(a)
 
@@ -275,16 +300,29 @@ top.40.df$TradeValue <- as.numeric(as.character(top.40.df$TradeValue))
 top.40.df$gdp.r <- as.numeric(as.character(top.40.df$gdp.r))
 top.40.df$gdp.p <- as.numeric(as.character(top.40.df$gdp.p))
 
-summary(naive.gravity.lm <- lm( 
-  log( TradeValue/(gdp.r * gdp.p) ) ~ log(dist) + rtTitle + ptTitle,  
-  data=top.40.df)
-)
+#summary(naive.gravity.lm <- lm( 
+#  log( TradeValue/(gdp.r * gdp.p) ) ~ log(dist) + rtTitle + ptTitle,  
+#  data=top.40.df)
+#)
 
 
 summary(naive.gravity.lm <- lm( 
   log( TradeValue ) ~ log(gdp.r) + log(gdp.p) + I( - log(dist)) + rtTitle + ptTitle,  
   data=top.40.df)
 )
+
+# install.packages("rms")
+# library("rms")
+library("lmtest")
+library("sandwich")
+
+
+
+
+stargazer(naive.gravity.lm, out.header = FALSE, out="/Users/travismcarthur/Desktop/Econ 871 Trade/Problem sets/PS 1/table6.tex", omit=c("pt", "rt"), no.space=FALSE, single.row=TRUE,
+    se=list(sqrt(diag(vcovHC(naive.gravity.lm )))),
+  notes="White-corrected standard errors in parentheses",
+  title="Gravity model of top 40 trading countries with country fixed effects")
 
 
 
@@ -294,23 +332,23 @@ summary(naive.gravity.lm <- lm(
 # install.packages("evd")
 library("evd")
 
-set.seed(100)
+#set.seed(100)
 
-wages=rep(1,N.countries)
+#wages=rep(1,N.countries)
 
 #wages=c(5,9,10)
 
-(test.mat<-matrix(1:9, ncol=3))
-c(test.mat)
+#(test.mat<-matrix(1:9, ncol=3))
+#c(test.mat)
 
 
 
-assume norma
+
 
 library("Matrix")
 
 
-simplified.EK.fn <- function(wages, tau_n_i, N.countries=3, K.goods=100, T_i = 1.5, distn_theta=4, L_n=rep(1,3), sigma=5, ret.share.mat=FALSE) {
+simplified.EK.fn <- function(wages, tau_n_i, N.countries=3, K.goods=10000, T_i = 1.5, distn_theta=4, L_n=rep(1,3), sigma=5, ret.share.mat=FALSE) {
   
   set.seed(100)
   
@@ -351,7 +389,6 @@ simplified.EK.fn <- function(wages, tau_n_i, N.countries=3, K.goods=100, T_i = 1
   p_n_k.v <- apply(p_n_i_k.mat, 1, min) 
   
   p_n_k.mat <- matrix(p_n_k.v, ncol=N.countries)
-  # TODO: not sure if the matrix is filling properly yet. I think it is, now that I look at it
   # The lowest price is the same for all countries since no trade costs
   
   
@@ -383,6 +420,10 @@ simplified.EK.fn <- function(wages, tau_n_i, N.countries=3, K.goods=100, T_i = 1
     exp.share.ls[[i]]<- 
       C_n.fn(price.vec=min.price.mat[, i], targ.price=1:nrow(min.price.mat), 
         sigma=sigma, y=L_N[i] * wages[i])   
+    
+    exp.share.ls[[i]] <- exp.share.ls[[i]] * min.price.mat[, i]
+    # ok, this is the actual amount we are spending on the good, not just the quantity
+    
   }
   
   trade.share.ls <- list()
@@ -390,6 +431,8 @@ simplified.EK.fn <- function(wages, tau_n_i, N.countries=3, K.goods=100, T_i = 1
   for ( i in 1:N.countries) {
     
     left.matrix <- sparseMatrix(i = p_n_k.which.mat[, i], j=1:nrow(p_n_k.which.mat)  ) 
+    # NOTE: this will produce a bug if a country never has the lowest price for any good
+    stopifnot(nrow(left.matrix) == N.countries )
     
     right.matrix <- matrix(exp.share.ls[[i]], ncol=1)
     
@@ -401,7 +444,13 @@ simplified.EK.fn <- function(wages, tau_n_i, N.countries=3, K.goods=100, T_i = 1
   # Ok, so here the rows are trading partners, so a sum of a column adds to
   # a country's total expenditure
   
-  if (ret.share.mat) {return(trade.share.mat)}
+  
+  
+  
+  if (ret.share.mat) {
+    return(trade.share.mat / matrix(rep(wages, each=N.countries), ncol=N.countries) )
+    # Note this is an element-by element division
+  }
   
   sum( abs( colSums(trade.share.mat) - rowSums(trade.share.mat) ) )
   
@@ -411,12 +460,27 @@ simplified.EK.fn <- function(wages, tau_n_i, N.countries=3, K.goods=100, T_i = 1
 set.seed(100)
 
 system.time(
-simplified.EK.fn(wages=rep(1,3), N.countries=3, K.goods=100, T_i = 1.5, distn_theta=4, L_n=rep(1,3), sigma=5)
+simplified.EK.fn(wages=rep(1,3), tau_n_i=matrix(0, nrow=3, ncol=3))
 )
 
-no.trade.costs.wages<- optim(par=rep(1,3), fn=simplified.EK.fn, tau_n_i = matrix(0, nrow=3, ncol=3))$par
 
-simplified.EK.fn(no.trade.costs.wages, matrix(0, nrow=3, ncol=3), ret.share.mat=TRUE)
+
+
+
+
+no.trade.costs.wages<- optim(par=rep(1,3), fn=simplified.EK.fn, tau_n_i = matrix(0, nrow=3, ncol=3), control=list(trace=5))$par
+
+# K.goods=100000,
+no.trade.costs.wages
+no.trade.costs.share.mat <- simplified.EK.fn(no.trade.costs.wages, matrix(0, nrow=3, ncol=3), ret.share.mat=TRUE)
+
+rownames(no.trade.costs.share.mat ) <- c("Portlandia", "Levittown", "Potemkin")
+colnames(no.trade.costs.share.mat ) <- c("Portlandia", "Levittown", "Potemkin")
+
+
+stargazer(no.trade.costs.share.mat, summary=FALSE, out.header = FALSE, out="/Users/travismcarthur/Desktop/Econ 871 Trade/Problem sets/PS 1/table7.tex", 
+  rownames=TRUE, title="Bilateral trade share matrix, $\\tau_{ni} = 0$")
+
 
 low.tau.mat <-  matrix(0.1, nrow=3, ncol=3)
 
@@ -424,17 +488,55 @@ diag(low.tau.mat) <- 0
 
 all.0.1.trade.costs.wages <- optim(par=rep(1,3), fn=simplified.EK.fn, tau_n_i = low.tau.mat)$par
 
-simplified.EK.fn(all.0.1.trade.costs.wages , low.tau.mat, ret.share.mat=TRUE)
+all.0.1.trade.costs.wages 
+all.0.1.trade.costs.share.mat <- simplified.EK.fn(all.0.1.trade.costs.wages , low.tau.mat, ret.share.mat=TRUE)
+
+rownames(all.0.1.trade.costs.share.mat) <- c("Portlandia", "Levittown", "Potemkin")
+colnames(all.0.1.trade.costs.share.mat) <- c("Portlandia", "Levittown", "Potemkin")
+
+stargazer(all.0.1.trade.costs.share.mat, summary=FALSE, out.header = FALSE, out="/Users/travismcarthur/Desktop/Econ 871 Trade/Problem sets/PS 1/table8.tex", 
+  rownames=TRUE, title="Bilateral trade share matrix, $\\tau_{ni} = 0.1$")
+
+
+
+
+
+
+
+
+
 
 stochastic.tau.mat <- matrix(runif(9), nrow=3, ncol=3)
 
-stochastic.trade.costs.wages <-optim(par=rep(1,3), fn=simplified.EK.fn, tau_n_i = stochastic.tau.mat )$par
+stochastic.trade.costs.wages <-optim(par=rep(1,3), fn=simplified.EK.fn, tau_n_i = stochastic.tau.mat)$par
+
+stochastic.trade.costs.wages 
 
 simplified.EK.fn(stochastic.trade.costs.wages, stochastic.tau.mat, ret.share.mat=TRUE)
 
-# Ok, cannot get different trade shares from all-same tau vs. no tau
+# FIXED: Ok, cannot get different trade shares from all-same tau vs. no tau
 
   
+
+
+
+
+no.trade.costs.wages.mat <- simplified.EK.fn(no.trade.costs.wages, matrix(0, nrow=3, ncol=3), ret.share.mat=TRUE)
+
+colSums(no.trade.costs.wages.mat)
+
+
+colSums(no.trade.costs.wages.mat) * 1.5*(no.trade.costs.wages)^(-4)/sum(1.5*no.trade.costs.wages^(-4))
+
+
+
+for ( i in 1:3) {print(summary(p_n_i_k.args.ls[[i]][[1]]))}
+
+
+
+
+
+
   
   
   apply(min.price.mat, 1, FUN=C_n.fn, targ.price=1:nrow(min.price.mat), sigma=sigma, y=)
@@ -472,23 +574,6 @@ simplified.EK.fn(stochastic.trade.costs.wages, stochastic.tau.mat, ret.share.mat
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 any(duplicated(top.40.df))
 
 top.40.df <- get.Comtrade(r=paste0(top.40.countries.code[1:5], collapse=","), 
@@ -513,6 +598,6 @@ sparseMatrix(i = c(1,1,2,3,1), j=1:length(c(1,1,2,3,1))  ) %*% matrix(1:5, ncol=
 
 
 
-
+rowSums(as.matrix(left.matrix))
 
 
