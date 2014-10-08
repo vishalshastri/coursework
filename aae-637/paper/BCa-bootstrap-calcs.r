@@ -6,8 +6,9 @@ condor.gams.dir <- "/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Cond
 
 listed.files <- list.files(condor.gams.dir )
 
-target.estimation <- "GMEnonlinearMaiz"
+#target.estimation <- "GMEnonlinearMaiz"
 # target.estimation <- "GMEnonlinearHaba"
+ target.estimation <- "GMEnonlinearTrigo"
 
 target.files <- listed.files[grepl( paste0(target.estimation, "[0-9]{5}[.]lst") , listed.files)]
 
@@ -57,7 +58,9 @@ bootstrapped.thetas.ls[[bootstrap.iter]] <-
 
 listed.files <- list.files(condor.gams.dir )
 
-target.estimation <- "GMEnonlinearjackknifeMaiz"
+#target.estimation <- "GMEnonlinearjackknifeMaiz"
+#target.estimation <- "GMEnonlinearjackknifeHaba"
+target.estimation <- "GMEnonlinearjackknifeTrigo"
 
 target.files <- listed.files[grepl( paste0(target.estimation, "[0-9]{5}[.]lst") , listed.files)]
 
@@ -348,6 +351,25 @@ ggplot(theta.dif.ci.df[nrow(theta.dif.ci.df):1,], aes(x = param)) +
 #, limits=c(0, max(as.numeric(unlist(theta.dif.ci.df)), na.rm=TRUE)*1.2)
   
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 library(scales)     # Need the scales package
 sp + scale_y_continuous(trans=log2_trans())
 
@@ -436,8 +458,6 @@ wald.test(Sigma=sigma, b=b, L = L)
 
 sigma <- matrix(c(.5, -4, -4, .5), ncol=2)
 wald.test(Sigma=sigma, b=b, L = L)
-
-
 
 
 
