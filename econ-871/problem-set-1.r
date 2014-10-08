@@ -348,13 +348,12 @@ library("evd")
 library("Matrix")
 
 
-simplified.EK.fn <- function(wages, tau_n_i, N.countries=3, K.goods=10000, T_i = 1.5, distn_theta=4, L_n=rep(1,3), sigma=5, ret.share.mat=FALSE) {
+simplified.EK.fn <- function(wages, tau_n_i, N.countries=3, K.goods=10000, T_i = 1.5, distn_theta=4, L_n=rep(1,3), sigma=2, ret.share.mat=FALSE) {
   
   set.seed(100)
   
   p_n_i_k.args.ls <- lapply(as.list(rep(T_i, N.countries)), FUN=function(T_i) {
-    list(z_i_k=rfrechet(n=K.goods, loc = 0, scale = T_i^(-distn_theta), shape=distn_theta),
-      w_i=0)
+    list(z_i_k=rfrechet(n=K.goods, loc = 0, scale = T_i^(-distn_theta), shape=distn_theta))
   }
   )
   
@@ -419,7 +418,7 @@ simplified.EK.fn <- function(wages, tau_n_i, N.countries=3, K.goods=10000, T_i =
   for ( i in 1:ncol(min.price.mat)) {
     exp.share.ls[[i]]<- 
       C_n.fn(price.vec=min.price.mat[, i], targ.price=1:nrow(min.price.mat), 
-        sigma=sigma, y=L_N[i] * wages[i])   
+        sigma=sigma, y=L_n[i] * wages[i])   
     
     exp.share.ls[[i]] <- exp.share.ls[[i]] * min.price.mat[, i]
     # ok, this is the actual amount we are spending on the good, not just the quantity
@@ -466,9 +465,9 @@ simplified.EK.fn(wages=rep(1,3), tau_n_i=matrix(0, nrow=3, ncol=3))
 
 
 
+# , L_n=rep(10000,3)
 
-
-no.trade.costs.wages<- optim(par=rep(1,3), fn=simplified.EK.fn, tau_n_i = matrix(0, nrow=3, ncol=3), control=list(trace=5))$par
+no.trade.costs.wages<- optim(par=rep(1,3), fn=simplified.EK.fn, tau_n_i = matrix(0, nrow=3, ncol=3), K.goods=10000,  control=list(trace=5))$par
 
 # K.goods=100000,
 no.trade.costs.wages
@@ -476,17 +475,18 @@ no.trade.costs.share.mat <- simplified.EK.fn(no.trade.costs.wages, matrix(0, nro
 
 rownames(no.trade.costs.share.mat ) <- c("Portlandia", "Levittown", "Potemkin")
 colnames(no.trade.costs.share.mat ) <- c("Portlandia", "Levittown", "Potemkin")
+no.trade.costs.share.mat
 
 
 stargazer(no.trade.costs.share.mat, summary=FALSE, out.header = FALSE, out="/Users/travismcarthur/Desktop/Econ 871 Trade/Problem sets/PS 1/table7.tex", 
-  rownames=TRUE, title="Bilateral trade share matrix, $\\tau_{ni} = 0$")
+  rownames=TRUE, title="Bilateral trade share matrix, $\\tau_{ni} = 0, \\forall n,i$")
 
 
 low.tau.mat <-  matrix(0.1, nrow=3, ncol=3)
 
 diag(low.tau.mat) <- 0
 
-all.0.1.trade.costs.wages <- optim(par=rep(1,3), fn=simplified.EK.fn, tau_n_i = low.tau.mat)$par
+all.0.1.trade.costs.wages <- optim(par=rep(1,3), fn=simplified.EK.fn, tau_n_i = low.tau.mat, K.goods=10000, control=list(trace=5))$par
 
 all.0.1.trade.costs.wages 
 all.0.1.trade.costs.share.mat <- simplified.EK.fn(all.0.1.trade.costs.wages , low.tau.mat, ret.share.mat=TRUE)
@@ -494,8 +494,10 @@ all.0.1.trade.costs.share.mat <- simplified.EK.fn(all.0.1.trade.costs.wages , lo
 rownames(all.0.1.trade.costs.share.mat) <- c("Portlandia", "Levittown", "Potemkin")
 colnames(all.0.1.trade.costs.share.mat) <- c("Portlandia", "Levittown", "Potemkin")
 
+all.0.1.trade.costs.share.mat
+
 stargazer(all.0.1.trade.costs.share.mat, summary=FALSE, out.header = FALSE, out="/Users/travismcarthur/Desktop/Econ 871 Trade/Problem sets/PS 1/table8.tex", 
-  rownames=TRUE, title="Bilateral trade share matrix, $\\tau_{ni} = 0.1$")
+  rownames=TRUE, title="Bilateral trade share matrix, $\\tau_{ni} = 0.1, \\forall n \\neq i$")
 
 
 

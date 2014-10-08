@@ -1,5 +1,36 @@
 
 
+saved.workspace.path <- "/Users/travismcarthur/Desktop/Metrics (637)/Final paper/GAMS work/saved workspace.Rdata"
+
+
+
+
+
+load(saved.workspace.path)
+
+
+inputs.df$x19.codigo.saved <- inputs.df$x19.codigo
+#inputs.df$x19.codigo <- as.character(inputs.df$x19.codigo.saved)
+
+inputs.df$x19.codigo <- as.character(inputs.df$x19.codigo)
+
+inputs.df$x19.codigo[inputs.df$x19.codigo %in% 
+  c("Maiz Choclo", "Maiz blando (dulce, blanco, chuspillo)", 
+  "Maiz duro (cristalino, cubano)        ")] <- "Maiz combined"
+
+
+inputs.df$x19.codigo[inputs.df$x19.codigo %in% 
+  c("Cebada (berza) ", "Cebada en grano         " )] <- "Cebada combined"
+
+inputs.df$x19.codigo <- factor(inputs.df$x19.codigo)
+
+top.crops <- names(sort(table(inputs.df$x19.codigo), decreasing=TRUE))[1:10]
+sort(table(inputs.df$x19.codigo), decreasing=TRUE)[1:10]
+
+# for (target.crop in top.crops) {
+
+
+
 
 num.of.top.crops <- 5
 
