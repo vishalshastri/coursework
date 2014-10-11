@@ -1,8 +1,4 @@
 
-# usa.nz.mex.df <- read.csv("/Users/travismcarthur/Desktop/Econ 871 Trade/Problem sets/PS 1/USA - N Zea and USA  - Mex - 2010.csv", stringsAsFactors=FALSE)
-
-
-
 
 # Thanks to http://comtrade.un.org/data/Doc/api/ex/r
 
@@ -229,11 +225,6 @@ top.40.df$TradeValue
 
 sum(is.na(as.numeric(as.character(top.40.df$TradeValue))))
 
-# want 1,516 nonzeros
-# had 1,554 when imports
-# 40* 39 = 1560 possible
-
-
 if(!require(XML)) {
   install.packages("XML" )
 	while(!require(XML)) {
@@ -282,12 +273,7 @@ top.40.df <- merge(top.40.df, gdp.p.df[, c("pt3ISO", "gdp.p")],  all.x=TRUE)
 
 # r is reporter is exporter
 
-
-
-
 dist.df <- read.csv("/Users/travismcarthur/Desktop/Econ 871 Trade/Problem sets/PS 1/dist_cepii.csv", stringsAsFactors=FALSE)
-
-# dist.df$dist
 
 #probably origin and destination: iso_o iso_d
 
@@ -300,12 +286,6 @@ top.40.df$TradeValue <- as.numeric(as.character(top.40.df$TradeValue))
 top.40.df$gdp.r <- as.numeric(as.character(top.40.df$gdp.r))
 top.40.df$gdp.p <- as.numeric(as.character(top.40.df$gdp.p))
 
-#summary(naive.gravity.lm <- lm( 
-#  log( TradeValue/(gdp.r * gdp.p) ) ~ log(dist) + rtTitle + ptTitle,  
-#  data=top.40.df)
-#)
-
-
 summary(naive.gravity.lm <- lm( 
   log( TradeValue ) ~ log(gdp.r) + log(gdp.p) + I( - log(dist)) + rtTitle + ptTitle,  
   data=top.40.df)
@@ -315,8 +295,6 @@ summary(naive.gravity.lm <- lm(
 # library("rms")
 library("lmtest")
 library("sandwich")
-
-
 
 
 stargazer(naive.gravity.lm, out.header = FALSE, out="/Users/travismcarthur/Desktop/Econ 871 Trade/Problem sets/PS 1/table6.tex", omit=c("pt", "rt"), no.space=FALSE, single.row=TRUE,
@@ -331,20 +309,6 @@ stargazer(naive.gravity.lm, out.header = FALSE, out="/Users/travismcarthur/Deskt
 
 # install.packages("evd")
 library("evd")
-
-#set.seed(100)
-
-#wages=rep(1,N.countries)
-
-#wages=c(5,9,10)
-
-#(test.mat<-matrix(1:9, ncol=3))
-#c(test.mat)
-
-
-
-
-
 library("Matrix")
 
 
@@ -364,7 +328,6 @@ simplified.EK.fn <- function(wages, tau_n_i, N.countries=3, K.goods=10000, T_i =
   for ( i in 1:length(p_n_i_k.args.ls)) {
     p_n_i_k.args.ls[[i]]$tau_n_i <- tau_n_i
   }
-  # Ok this is assuming matrix is the same for all, whcih is not true. I think maybe true, though
    
   p_n_i_k.ls <- list()
   for ( i in 1:length(p_n_i_k.args.ls)) {
@@ -377,41 +340,20 @@ simplified.EK.fn <- function(wages, tau_n_i, N.countries=3, K.goods=10000, T_i =
   
   p_n_i_k.mat<- do.call(cbind, p_n_i_k.ls)
   
-  # max.col() possibly useful
-  
   p_n_k.which.v <- apply(p_n_i_k.mat, 1, which.min) 
   
   p_n_k.which.mat <- matrix(p_n_k.which.v, ncol=N.countries)
   
-  #use by()?
-  
   p_n_k.v <- apply(p_n_i_k.mat, 1, min) 
   
   p_n_k.mat <- matrix(p_n_k.v, ncol=N.countries)
-  # The lowest price is the same for all countries since no trade costs
-  
-  
-  # http://www.columbia.edu/~jid2106/td/dixitstiglitzbasics.pdf 
-  # Marshallian: http://dept.econ.yorku.ca/~sam/5010/consumer/s04.pdf
-  # r = 1-sigma  
-  
-#  p_n_i_k.ls <- lapply(p_n_i_k.args.ls, FUN=function(x) {
-#    (x$w_i / x$z_i_k) * c(x$tau_n_i)
-    # Must add the tau for future function
-    # We are relying heavily on vector replication here
-#  })
-  
-#  min.price.mat<- do.call(cbind, p_n_i_k.ls)
+
   min.price.mat<-p_n_k.mat
   
   C_n.fn <- function(price.vec, targ.price, sigma, y) {
     (price.vec[targ.price]^-sigma * y) /
       sum(price.vec^(1-sigma))
   }
-  
-#  test.price <- runif(5)
-#  C_n.fn(1:5, test.price, 5, 1)
- # Seems to work OK in a vectorized way 
   
   exp.share.ls <- list()
   
@@ -443,9 +385,6 @@ simplified.EK.fn <- function(wages, tau_n_i, N.countries=3, K.goods=10000, T_i =
   # Ok, so here the rows are trading partners, so a sum of a column adds to
   # a country's total expenditure
   
-  
-  
-  
   if (ret.share.mat) {
     return(trade.share.mat / matrix(rep(wages, each=N.countries), ncol=N.countries) )
     # Note this is an element-by element division
@@ -463,13 +402,9 @@ simplified.EK.fn(wages=rep(1,3), tau_n_i=matrix(0, nrow=3, ncol=3))
 )
 
 
-
-
-# , L_n=rep(10000,3)
-
 no.trade.costs.wages<- optim(par=rep(1,3), fn=simplified.EK.fn, tau_n_i = matrix(0, nrow=3, ncol=3), K.goods=10000,  control=list(trace=5))$par
 
-# K.goods=100000,
+
 no.trade.costs.wages
 no.trade.costs.share.mat <- simplified.EK.fn(no.trade.costs.wages, matrix(0, nrow=3, ncol=3), ret.share.mat=TRUE)
 
@@ -499,107 +434,5 @@ all.0.1.trade.costs.share.mat
 stargazer(all.0.1.trade.costs.share.mat, summary=FALSE, out.header = FALSE, out="/Users/travismcarthur/Desktop/Econ 871 Trade/Problem sets/PS 1/table8.tex", 
   rownames=TRUE, title="Bilateral trade share matrix, $\\tau_{ni} = 0.1, \\forall n \\neq i$")
 
-
-
-
-
-
-
-
-
-
-stochastic.tau.mat <- matrix(runif(9), nrow=3, ncol=3)
-
-stochastic.trade.costs.wages <-optim(par=rep(1,3), fn=simplified.EK.fn, tau_n_i = stochastic.tau.mat)$par
-
-stochastic.trade.costs.wages 
-
-simplified.EK.fn(stochastic.trade.costs.wages, stochastic.tau.mat, ret.share.mat=TRUE)
-
-# FIXED: Ok, cannot get different trade shares from all-same tau vs. no tau
-
-  
-
-
-
-
-no.trade.costs.wages.mat <- simplified.EK.fn(no.trade.costs.wages, matrix(0, nrow=3, ncol=3), ret.share.mat=TRUE)
-
-colSums(no.trade.costs.wages.mat)
-
-
-colSums(no.trade.costs.wages.mat) * 1.5*(no.trade.costs.wages)^(-4)/sum(1.5*no.trade.costs.wages^(-4))
-
-
-
-for ( i in 1:3) {print(summary(p_n_i_k.args.ls[[i]][[1]]))}
-
-
-
-
-
-
-  
-  
-  apply(min.price.mat, 1, FUN=C_n.fn, targ.price=1:nrow(min.price.mat), sigma=sigma, y=)
-  
-  C_n.fn(1:nrow(min.price.mat), min.price.mat, sigma, y)
-  
-  for ( i in )
-  
-  
-  
-  wages*L_n
-  
-  max.
-  
-  
-  
-  z_i_k.df.aug <- 
-  
-  lapply()
-  
-  z_i_k <- rfrechet(n.countries, location = 0, scale = T_i^(-distn_theta), shape=distn_theta)
-  
-  p_ni <- wages/
-  
-  
-  
-  
-}
-
-
-
-
-
-
-
-
-
-any(duplicated(top.40.df))
-
-top.40.df <- get.Comtrade(r=paste0(top.40.countries.code[1:5], collapse=","), 
-  p=paste0(top.40.countries.code[1], collapse=","), 
-  ps=2010, cc="TOTAL",rg="1")
-
-fmt="csv", 
-
-
-reporters.df[reporters.df[ ,2] %in%  ,1]
-
-
-
-as.matrix(do.call(rbind, reporters.df$results))
-
-
-
-
-# Successful test:
-library("Matrix")
-sparseMatrix(i = c(1,1,2,3,1), j=1:length(c(1,1,2,3,1))  ) %*% matrix(1:5, ncol=1)
-
-
-
-rowSums(as.matrix(left.matrix))
 
 

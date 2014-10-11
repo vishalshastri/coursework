@@ -111,7 +111,87 @@ library(stringr)
 
 
 
-####################### IMPOSING SYMMETRY RESTRICTIONS Before adding-up
+
+
+
+
+
+
+
+
+####################### IMPOSING ADDING-UP RESTRICTIONS
+
+
+
+ln.E.vars <- all.vars(as.formula(paste("ln.E.data ~", ln.E.string.before.symm)))
+ln.E.vars <- ln.E.vars[ !grepl("(w[0-9])|(y[0-9])|(ln.E.data)", ln.E.vars ) ]
+ln.E.vars <- sort(ln.E.vars)
+
+# used to have "if (M>1) {" here, but we need to run this part below because they deal with the w's
+
+betas.single <- sort(ln.E.vars[grepl("beta[0-9][0-9]", ln.E.vars)])
+
+ln.E.string <- str_replace_all(ln.E.string, "beta01", paste0("(-(", paste0(betas.single[-1], collapse=" + "), " - 1))" ) )
+# from p. 4 of http://ageconsearch.umn.edu/bitstream/22027/1/sp03mo02.pdf
+
+beta.input.adding.up <- sort( ln.E.vars[grepl("beta[.][0-9][0-9]", ln.E.vars)] )
+
+beta.adding.up.mat <-matrix(sort(beta.input.adding.up ), ncol=N)
+
+beta.adding.up.mat[, 1] <-
+  paste("(-(",
+    apply(beta.adding.up.mat[, -1], 1, paste, collapse=" + " ),
+  "))" )
+
+symm.mat<-beta.adding.up.mat
+
+k <- 2
+
+#symm.mat<-matrix(paste0(replacements$greek[k], ".", apply(X=expand.grid(lead.zero(1:max(N,M)), lead.zero(1:max(N,M))), MARGIN=1, FUN=paste, collapse=".")), nrow=max(N,M), ncol=max(N,M))
+
+# ok the below is trying to reverse it:
+#symm.mat<-matrix(paste0(replacements$greek[k], ".", apply(X=expand.grid(lead.zero(1:max(N,M)), lead.zero(1:max(N,M))), MARGIN=1, FUN=paste, collapse=".")), nrow=max(N,M), ncol=max(N,M))
+
+symm.mat[upper.tri(symm.mat, diag = FALSE)] <- t(symm.mat)[upper.tri(symm.mat, diag = FALSE)]
+symm.mat<-symm.mat[1:replacements$N[k], 1:replacements$M[k]]  
+
+symm.mat[1,1] <- paste0("(-( ", paste0(c(symm.mat[-1, -1]), collapse= " + "), " ))")
+# used to do unique()
+
+beta.adding.up.mat <- symm.mat
+
+beta.adding.up.mat[1,1] <- gsub("[-]", "", beta.adding.up.mat[1,1])
+  
+# data.frame(alpha.input.adding.up, c(alpha.adding.up.mat))
+
+for ( i in 1:length(beta.input.adding.up )) {
+  ln.E.string <- str_replace_all(ln.E.string, beta.input.adding.up[i], c(beta.adding.up.mat)[i])
+}
+
+# if (M>1) {
+
+gamma.input.adding.up <- sort( ln.E.vars[grepl("gamma[.][0-9][0-9]", ln.E.vars)] )
+
+gamma.adding.up.mat <-matrix(sort(gamma.input.adding.up ), ncol=M, byrow=FALSE)
+
+gamma.adding.up.mat[1, ] <-
+  paste("(-(",
+    apply(gamma.adding.up.mat[-1, , drop=FALSE], 2, paste, collapse=" + " ),
+  "))" )
+  
+# data.frame(alpha.input.adding.up, c(alpha.adding.up.mat))
+
+for ( i in 1:length(gamma.input.adding.up)) {
+  ln.E.string <- str_replace_all(ln.E.string, gamma.input.adding.up[i], c(gamma.adding.up.mat)[i])
+}
+
+
+# }
+
+
+
+
+####################### IMPOSING SYMMETRY RESTRICTIONS After adding-up
 
 
 
@@ -164,83 +244,43 @@ for ( i in 1:length(c(symm.mat.2))) {
 }
 
 
+kappa.matrix.1 <-matrix(paste0("kappa", J.N.dim[[1]], J.N.dim[[2]]), nrow=J, ncol=N)
+
+kappa.matrix.2 <- kappa.matrix.1 
+
+
+kappa.matrix.2[, 1] <- paste0("(-(", apply(kappa.matrix.1[, -1], 1, paste0, collapse= " + "), "))")
 
 
 
-
-
-
-
-
-
-
-
-####################### IMPOSING ADDING-UP RESTRICTIONS
-
-
-
-ln.E.vars <- all.vars(as.formula(paste("ln.E.data ~", ln.E.string.before.symm)))
-ln.E.vars <- ln.E.vars[ !grepl("(w[0-9])|(y[0-9])|(ln.E.data)", ln.E.vars ) ]
-ln.E.vars <- sort(ln.E.vars)
-
-# used to have "if (M>1) {" here, but we need to run this part below because they deal with the w's
-
-betas.single <- sort(ln.E.vars[grepl("beta[0-9][0-9]", ln.E.vars)])
-
-ln.E.string <- str_replace_all(ln.E.string, "beta01", paste0("(-(", paste0(betas.single[-1], collapse=" + "), " - 1))" ) )
-# from p. 4 of http://ageconsearch.umn.edu/bitstream/22027/1/sp03mo02.pdf
-
-beta.input.adding.up <- sort( ln.E.vars[grepl("beta[.][0-9][0-9]", ln.E.vars)] )
-
-beta.adding.up.mat <-matrix(sort(beta.input.adding.up ), ncol=N)
-
-beta.adding.up.mat[, 1] <-
-  paste("(-(",
-    apply(beta.adding.up.mat[, -1], 1, paste, collapse=" + " ),
-  "))" )
-
-symm.mat<-beta.adding.up.mat
-
-k <- 2
-
-#symm.mat<-matrix(paste0(replacements$greek[k], ".", apply(X=expand.grid(lead.zero(1:max(N,M)), lead.zero(1:max(N,M))), MARGIN=1, FUN=paste, collapse=".")), nrow=max(N,M), ncol=max(N,M))
-
-# ok the below is trying to reverse it:
-#symm.mat<-matrix(paste0(replacements$greek[k], ".", apply(X=expand.grid(lead.zero(1:max(N,M)), lead.zero(1:max(N,M))), MARGIN=1, FUN=paste, collapse=".")), nrow=max(N,M), ncol=max(N,M))
-
-symm.mat[upper.tri(symm.mat, diag = FALSE)] <- t(symm.mat)[upper.tri(symm.mat, diag = FALSE)]
-symm.mat<-symm.mat[1:replacements$N[k], 1:replacements$M[k]]  
-
-symm.mat[1,1] <- paste0("(-( ", paste0(c(symm.mat[-1, -1]), collapse= " + "), " ))")
-# used to do unique()
-
-beta.adding.up.mat <- symm.mat
-  
-# data.frame(alpha.input.adding.up, c(alpha.adding.up.mat))
-
-for ( i in 1:length(beta.input.adding.up )) {
-  ln.E.string <- str_replace_all(ln.E.string, beta.input.adding.up[i], c(beta.adding.up.mat)[i])
-}
-
-# if (M>1) {
-
-gamma.input.adding.up <- sort( ln.E.vars[grepl("gamma[.][0-9][0-9]", ln.E.vars)] )
-
-gamma.adding.up.mat <-matrix(sort(gamma.input.adding.up ), ncol=M, byrow=FALSE)
-
-gamma.adding.up.mat[1, ] <-
-  paste("(-(",
-    apply(gamma.adding.up.mat[-1, , drop=FALSE], 2, paste, collapse=" + " ),
-  "))" )
-  
-# data.frame(alpha.input.adding.up, c(alpha.adding.up.mat))
-
-for ( i in 1:length(gamma.input.adding.up)) {
-  ln.E.string <- str_replace_all(ln.E.string, gamma.input.adding.up[i], c(gamma.adding.up.mat)[i])
+for ( i in 1:nrow(kappa.matrix.1)) {
+  ln.E.string <- str_replace_all(ln.E.string, kappa.matrix.1[i, 1], kappa.matrix.2[i, 1])
 }
 
 
-# }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -279,6 +319,9 @@ for ( n in 1:N) {
 
 
 S.n[[1]] <- NULL
+
+
+
 
 
 

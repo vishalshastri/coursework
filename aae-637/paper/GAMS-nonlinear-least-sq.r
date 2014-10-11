@@ -61,7 +61,7 @@ library(Matrix)
 load(saved.workspace.path)
 
 
-target.top.crop.number <- 5
+target.top.crop.number <- 1
 
 #Papa (patatas)    3155 
 #Maiz combined   1838 
@@ -449,8 +449,19 @@ S.n.H.region <- S.n.H
 S.n.H.region[[length(S.n.H.region)]] <- 
   as.formula( paste0("ln.E.data ~ ", as.character(S.n.H[[length(S.n.H)]])[[3]], " + region" ) )
   
-linear.sur.est.region <- systemfit( S.n.H.region[length(S.n.H.region)], "SUR", restrict.matrix = lm.param.restrictions[!grepl("S.n.H", lm.param.restrictions)] ,  maxit = 5000 )
+#lm.param.restrictions.cost.fn <- gsub("cost[.]fn_I[(]0[.]5", "2 * cost.fn_I(0.5", lm.param.restrictions[!grepl("S.n.H", lm.param.restrictions)])
+
+lm.param.restrictions.cost.fn <-lm.param.restrictions[!grepl("S.n.H", lm.param.restrictions)]
+  
+linear.sur.est.region <- systemfit( S.n.H.region[length(S.n.H.region)], "SUR", restrict.matrix = lm.param.restrictions.cost.fn  ,  maxit = 5000, data=data.frame(combined.df, ln.E.data=combined.df$cost ))
+# Note: data=combined.df is new
 # Note here that I am only estimating one equation, the cost function
+
+# Below should be numerically zero
+sum(coef(linear.sur.est.region)[grepl("log[(]w[0-9][0-9][)][:]log[(]q01[)]", 
+  names(coef(linear.sur.est.region)))])
+  
+
 
 region.rearrange <- coef(linear.sur.est.region)[grepl("region", names(coef(linear.sur.est.region)))]
 linear.sur.est.region$coefficients <- c(coef(linear.sur.est.region)[
@@ -467,8 +478,18 @@ names(ln.E.start.vals)[is.na(names(ln.E.start.vals)) ] <-
   paste0("region",  lead.zero(1:ncol(region.matrix)))
 
 # This is to handle the fact that some of these drop out with adding-up restrictions:
-ln.E.start.vals <- ln.E.start.vals[!grepl("(beta01)|(beta....01)|(gamma....01)", 
+ln.E.start.vals <- ln.E.start.vals[!grepl("(beta01)|(beta....01)|(gamma....01)|(kappa....01)", 
   names(ln.E.start.vals))]
+
+#for ( i in 1:length(ln.E.start.vals)) {
+#  if (!grepl("(beta[.])|(zeta[.])", names(ln.E.start.vals)[i])) { next}
+#  split.param.name<- strsplit(names(ln.E.start.vals)[i], "[.]")[[1]]
+#  if(split.param.name[2] != split.param.name[3]) {
+#    ln.E.start.vals[i] <- ln.E.start.vals[i] / 2
+#    cat(names(ln.E.start.vals[i]), "\n")
+#  }
+#}
+# Apparently I didnt need this
 
 
 theta.starts <- rep(1, times=N-1)
@@ -504,19 +525,6 @@ for ( i in 1:N) {
 
 
 
-
-
-combined.w.params.df <- as.list(as.data.frame(combined.df))
-
-for ( i in 1:length(GAMS.linear.results.params.names)) {
-  combined.w.params.df[[ GAMS.linear.results.params.names[i] ]] <- GAMS.linear.results.params.numbers[i]
-}
-
-for ( i in 1:N) {
-  combined.w.params.df[[ paste0("theta", lead.zero(i)) ]] <- 1
-}
-
-
 modified.ln.E.string <- str_extract( ln.E.string, "log[(] [(]w01 / [(]w01 [*] theta01[)][)].*")
 
 modified.ln.E.string <- gsub(" [+] region.*$", "", modified.ln.E.string)
@@ -531,7 +539,61 @@ modified.ln.E.string.evaled <- with(combined.w.params.df, eval(parse(text=modifi
 
 longlogsection.initial <- paste0("longlogsection.l(\"", 1:nrow(combined.df), "\") = ", modified.ln.E.string.evaled, ";")
 
+summary(modified.ln.E.string.evaled)
 
+
+
+ln.E.string.w.region <- paste0(ln.E.string, " + ", region.tackon.clean)
+
+#rm(list=names(combined.df))
+
+ln.E.string.evaled <- with(combined.w.params.df, eval(parse(text=gsub(pattern="[.]", replacement="", x=ln.E.string.w.region ) )))
+
+
+#ln.E.string.linear.w.region <- paste0(ln.E.string.linear, " + ", region.tackon.clean)
+
+
+#ln.E.string.evaled <- with(combined.w.params.df, eval(parse(text=gsub(pattern="[.]", replacement="", x=ln.E.string.linear.w.region) )))
+
+
+
+sum( (combined.w.params.df$cost - ln.E.string.evaled )^2) / sum(resid(linear.sur.est.region)[[1]]^2)
+
+sum( (combined.w.params.df$cost - mean(combined.w.params.df$cost) )^2)
+
+
+#data.frame(SUR=predict(linear.sur.est.region), nonlin=ln.E.string.evaled)
+
+#data.frame(SUR=coef(linear.sur.est.region), nonlin=c(ln.E.start.vals[!grepl("theta", names(ln.E.start.vals))], rep(NA, 73-62)), 
+#nonlin.names=c(names(ln.E.start.vals)[!grepl("theta", names(ln.E.start.vals))], rep(NA, 73-62)))
+
+#t(t(coef(linear.sur.est.region)))
+
+
+sum( predict(linear.sur.est.region) - resid(linear.sur.est.region) - combined.w.params.df$cost)
+# ok, so A-ok, i.e. it's predicting on the right data
+
+# ln.E.string.GAMS
+
+
+#linear.sur.est.region <- systemfit( S.n.H.region[length(S.n.H.region)], "SUR", restrict.matrix = lm.param.restrictions.cost.fn  ,  maxit = 5000, data=data.frame(combined.df, ln.E.data=combined.df$cost ))
+# Note: data=combined.df is new
+
+#linear.sur.est.region$eq[[1]]
+
+
+
+#predict(linear.sur.est.region, formula= ln.E.data ~ y01 + log(w01) + log(w02) + log(w03) + log(w04) + log(w05) + log(w06) )
+
+
+
+longlogsection.initial <- paste0("longlogsection.l(\"", 1:nrow(combined.df), "\") = ", modified.ln.E.string.evaled, ";")
+
+residual.initial <- paste0("residual.l(\"", 1:nrow(combined.df), "\") = ", resid(linear.sur.est.region)$cost.fn, ";")
+
+#residual(t)
+
+#longlogsection.l("1")
 
 
 
@@ -550,10 +612,11 @@ c(
 param.starting.vals,
 #start.vals.lines,
 longlogsection.initial,
+residual.initial,
 #share.denom.initial,
 "* primal approach",
-"model nls /all/;",
-#"model nls /obj,fit/;",
+#"model nls /all/;",
+"model nls /obj,fit/;", # Ok, it seems we _really_ need the obj,fit version
 "options domlim=5000;",
 "*options seed=5;",
 "*options iterlim=0;",
@@ -623,11 +686,11 @@ completed.GAMS.file <-  c(
 
 
   
-cat(completed.GAMS.file, file=paste0(GAMS.projdir, "testnonlin-gams-file.gms"), sep="\n")
+cat(completed.GAMS.file, file=paste0(GAMS.projdir, "testnonlin-gams-file3.gms"), sep="\n")
 
 run.linear.from.shell <-paste0("cd ", GAMS.projdir, "\n", 
    GAMS.exe.path, " ", 
-   paste0(GAMS.projdir, "testnonlin-gams-file.gms"),
+   paste0(GAMS.projdir, "testnonlin-gams-file3.gms"),
    " Ps=0 suppress=1")
 
 # "GMElinear", strsplit(target.crop, " ")[[1]][1], 
@@ -639,10 +702,14 @@ system(run.linear.from.shell)
 
 
 
+
+
+
+
  
-  file=paste0(GAMS.projdir, "GMEnonlinear", strsplit(target.crop, " ")[[1]][1], 
-   formatC(bootstrap.iter, width = 5, flag = "0"), ".gms"), 
-  sep="\n")
+#  file=paste0(GAMS.projdir, "GMEnonlinear", strsplit(target.crop, " ")[[1]][1], 
+#   formatC(bootstrap.iter, width = 5, flag = "0"), ".gms"), 
+#  sep="\n")
   
 # rvhess = maxdouble
 
