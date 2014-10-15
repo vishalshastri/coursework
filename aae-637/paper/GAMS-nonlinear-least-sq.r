@@ -61,7 +61,7 @@ library(Matrix)
 load(saved.workspace.path)
 
 
-target.top.crop.number <- 1
+target.top.crop.number <- 2
 
 #Papa (patatas)    3155 
 #Maiz combined   1838 
@@ -492,6 +492,9 @@ ln.E.start.vals <- ln.E.start.vals[!grepl("(beta01)|(beta....01)|(gamma....01)|(
 # Apparently I didnt need this
 
 
+set.seed(100)
+
+#theta.starts <- rep(1, times=N-1) + rnorm(N-1, sd=.01)
 theta.starts <- rep(1, times=N-1)
 names(theta.starts) <- paste0("theta", lead.zero(1:(N-1)))
 theta06 <- 1
@@ -505,7 +508,10 @@ ln.E.start.vals <- ln.E.start.vals[!grepl("beta[.]01[.][0-9][0-9]", names(ln.E.s
 # the proper restrictions were put into the OLS model
 
 
+# ln.E.start.vals <- fm1DNase1$coefficients
 
+
+ln.E.start.vals <- ln.E.start.vals + rnorm(length(ln.E.start.vals), sd=.01)
 
 GAMS.linear.results.params.names <- gsub("[.]", "", names(ln.E.start.vals))
 
@@ -519,9 +525,9 @@ for ( i in 1:length(GAMS.linear.results.params.names)) {
   combined.w.params.df[[ GAMS.linear.results.params.names[i] ]] <- GAMS.linear.results.params.numbers[i]
 }
 
-for ( i in 1:N) {
-  combined.w.params.df[[ paste0("theta", lead.zero(i)) ]] <- 1
-}
+#for ( i in 1:N) {
+#  combined.w.params.df[[ paste0("theta", lead.zero(i)) ]] <- 1
+#}
 
 
 
@@ -557,6 +563,10 @@ ln.E.string.evaled <- with(combined.w.params.df, eval(parse(text=gsub(pattern="[
 
 
 
+
+
+
+
 sum( (combined.w.params.df$cost - ln.E.string.evaled )^2) / sum(resid(linear.sur.est.region)[[1]]^2)
 
 sum( (combined.w.params.df$cost - mean(combined.w.params.df$cost) )^2)
@@ -589,7 +599,16 @@ sum( predict(linear.sur.est.region) - resid(linear.sur.est.region) - combined.w.
 
 longlogsection.initial <- paste0("longlogsection.l(\"", 1:nrow(combined.df), "\") = ", modified.ln.E.string.evaled, ";")
 
-residual.initial <- paste0("residual.l(\"", 1:nrow(combined.df), "\") = ", resid(linear.sur.est.region)$cost.fn, ";")
+#residual.initial <- paste0("residual.l(\"", 1:nrow(combined.df), "\") = ", resid(linear.sur.est.region)$cost.fn, ";")
+
+
+resid.evaluated <- with(data.frame(combined.w.params.df, ln.E.data=combined.w.params.df$cost), 
+eval(parse(text=paste0(gsub("[.]", "", ln.E.string), " + ", region.tackon.clean, " - ln.E.data"))))
+
+
+
+residual.initial <- paste0("residual.l(\"", 1:nrow(combined.df), "\") = ", resid.evaluated , ";")
+
 
 #residual(t)
 
@@ -616,7 +635,8 @@ residual.initial,
 #share.denom.initial,
 "* primal approach",
 #"model nls /all/;",
-"model nls /obj,fit/;", # Ok, it seems we _really_ need the obj,fit version
+#"model nls /obj,fit/;", # Ok, it seems we _really_ need the obj,fit version
+"model nls /obj,fit,restrbiglogposi/;", # try it different...
 "options domlim=5000;",
 "*options seed=5;",
 "*options iterlim=0;",
@@ -686,17 +706,35 @@ completed.GAMS.file <-  c(
 
 
   
-cat(completed.GAMS.file, file=paste0(GAMS.projdir, "testnonlin-gams-file3.gms"), sep="\n")
+cat(completed.GAMS.file, file=paste0(GAMS.projdir, "testnonlin-gams-file7.gms"), sep="\n")
 
 run.linear.from.shell <-paste0("cd ", GAMS.projdir, "\n", 
    GAMS.exe.path, " ", 
-   paste0(GAMS.projdir, "testnonlin-gams-file3.gms"),
+   paste0(GAMS.projdir, "testnonlin-gams-file7.gms"),
    " Ps=0 suppress=1")
 
 # "GMElinear", strsplit(target.crop, " ")[[1]][1], 
 #   formatC(bootstrap.iter, width = 5, flag = "0"), ".gms", 
 
 system(run.linear.from.shell)
+
+# 5.9153767323E+03
+# 5.9153767323E+03
+
+
+
+# R-squared for linear model:
+1 - (sum(resid(linear.sur.est.region)[[1]]^2) / (length(resid(linear.sur.est.region)[[1]])-1)) /
+  (sum((combined.df$cost - mean(combined.df$cost))^2)/ (length(resid(linear.sur.est.region)[[1]]) - length(coef(linear.sur.est.region)) - 1))
+  
+#1.5960343132E+03
+# R-squared for nonlin model:
+1 - (    1.7728559971E+04
+/ (length(resid(linear.sur.est.region)[[1]])-1)) /
+  (sum((combined.df$cost - mean(combined.df$cost))^2)/ (length(resid(linear.sur.est.region)[[1]]) - length(coef(linear.sur.est.region)) - 5 - 1))
+# - 5 due to the thetas
+  
+
 
 
 
@@ -712,6 +750,271 @@ system(run.linear.from.shell)
 #  sep="\n")
   
 # rvhess = maxdouble
+
+
+
+
+
+
+
+
+
+
+GAMS.nonlinear.results<- readLines(paste0(GAMS.projdir, "testnonlin-gams-file3.lst") )
+
+
+GAMS.nonlinear.results.params<- GAMS.nonlinear.results[grep("parameters to be estimated$", GAMS.nonlinear.results)]
+
+GAMS.nonlinear.results.params <- GAMS.nonlinear.results.params[grep("VARIABLE", GAMS.nonlinear.results.params)]
+
+GAMS.nonlinear.results.params.names <- gsub("[.]L", "", str_extract(GAMS.nonlinear.results.params, "[^ ]*[.]L") )
+
+
+GAMS.nonlinear.results.params.numbers <- as.numeric(gsub("  parameters to be estimated", "",
+  str_extract(GAMS.nonlinear.results.params, "[^ ]*  parameters to be estimated") ) )
+
+
+GAMS.nonlinear.results.params.full <- GAMS.nonlinear.results.params.numbers
+names(GAMS.nonlinear.results.params.full) <- GAMS.nonlinear.results.params.names
+
+
+
+
+
+combined.w.params.df.nonlin <- as.list(as.data.frame(combined.df))
+
+for ( i in 1:length(GAMS.nonlinear.results.params.names)) {
+  combined.w.params.df.nonlin[[ GAMS.nonlinear.results.params.names[i] ]] <- GAMS.nonlinear.results.params.numbers[i]
+}
+
+
+ln.E.string.evaled <- with(combined.w.params.df.nonlin, eval(parse(text=gsub(pattern="[.]", replacement="", x=ln.E.string.w.region ) )))
+
+modified.ln.E.string.evaled <- with(combined.w.params.df.nonlin, eval(parse(text=modified.ln.E.string )))
+
+
+#ln.E.string.linear.w.region <- paste0(ln.E.string.linear, " + ", region.tackon.clean)
+
+
+#ln.E.string.evaled <- with(combined.w.params.df, eval(parse(text=gsub(pattern="[.]", replacement="", x=ln.E.string.linear.w.region) )))
+
+
+
+sum( (combined.w.params.df$cost - ln.E.string.evaled )^2) / sum(resid(linear.sur.est.region)[[1]]^2)
+
+
+
+
+
+
+
+
+
+
+
+ln.E <- paste0("nls.formula.ln.E.region <- ln.E.data ~ ", gsub("[.]", "", ln.E.string), " + ", region.tackon.clean)
+eval(parse(text=ln.E))
+
+
+# install.packages("minpack.lm")
+# install.packages("nlmrt")
+
+library("minpack.lm")
+library("nlmrt")
+# nlmrt is for nlfb I think
+
+first.line <- paste0( "args <- c(\"", paste(names(ln.E.start.vals), sep="\", \"", collapse="\", \""), "\")\nfor ( i in 1:length(args)) { assign(args[i], x[i])} ; ")
+
+
+#  gsub("[.]", "", ln.E.string)
+eval(parse(text=paste0("mod.nlmrt <- function(x) {", first.line, 
+"  ret <- ",ln.E.string, " + ", region.tackon.clean, " - ln.E.data ; ifelse(is.finite(ret), ret, 10^300) }")))
+
+#for (i in 1:ncol(region.matrix)) {
+#  assign(paste0("region", lead.zero(i)), region.matrix[, i])
+#}
+
+#for (i in 1:ncol(region.matrix)) {
+#  assign(colnames(region.matrix)[i], region.matrix[, i])
+#}
+
+
+#rm("region01")
+#rm("region02")
+#rm("region03")
+#rm("region04")
+#rm("region05")
+#rm("region06")
+#rm("region07")
+#rm("region08")
+
+table(x01>0)
+table(x02>0)
+table(x03>0)
+table(x04>0)
+table(x05>0)
+table(x06>0)
+
+
+
+
+
+#try.nlsLM.cost.fn <- nlsLM(nls.formula.ln.E.region, start=ln.E.start.vals+.001, 
+#data  = cbind( as.data.frame(args.list), as.data.frame(region.matrix) ),
+#trace=TRUE, lower=ifelse(grepl("theta", names(ln.E.start.vals)), 0, -Inf), 
+#control = nls.lm.control(maxiter=1000, maxfev = 100000),
+#weights=firm.df[, "factor.de.expansión.x"] )
+
+
+
+
+# cbind( as.data.frame(args.list), as.data.frame(region.matrix) )
+
+
+R.nls.start.vals <- unlist(combined.w.params.df[sapply(combined.w.params.df, length)==1])
+
+theta06 <- 1
+R.nls.start.vals <- R.nls.start.vals[!grepl("theta06", names(R.nls.start.vals))]
+
+try.nlsLM.cost.fn <- nlsLM(nls.formula.ln.E.region, 
+start=R.nls.start.vals, 
+data  = data.frame(combined.df, ln.E.data=combined.df$cost ),
+trace=TRUE, lower=ifelse(grepl("theta", names(R.nls.start.vals)), 0, -Inf), 
+control = nls.lm.control(maxiter=1000, maxfev = 100000, factor=.1) )
+
+
+
+colnames(region.matrix) <- iconv(colnames(region.matrix), to="ASCII//TRANSLIT")
+colnames(region.matrix) <- gsub("'", "", colnames(region.matrix))
+colnames(region.matrix) <- gsub("[.]", "", colnames(region.matrix))
+
+library(nlmrt)
+
+for (i in 1:ncol(region.matrix)) {
+  assign(paste0("region", lead.zero(i)), region.matrix[, i])
+}
+
+for (i in 1:ncol(region.matrix)) {
+  assign(gsub("[.]", "", colnames(region.matrix)[i]), region.matrix[, i])
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+for (i in 1:ncol(data.frame(combined.df, ln.E.data=combined.df$cost ))) {
+  assign(colnames(data.frame(combined.df, ln.E.data=combined.df$cost ))[i], data.frame(combined.df, ln.E.data=combined.df$cost )[, i])
+}
+
+sum((mod.nlmrt(R.nls.start.vals) ^2))
+sum(resid(linear.sur.est.region)[[1]]^2)
+
+sum((mod.nlmrt(R.nls.start.vals) ^2)) >
+sum(mod.nlmrt(R.nls.start.vals + ifelse(grepl("theta", names(R.nls.start.vals)), rnorm(5, sd=.1), 0)) ^2)
+
+sum(fm1DNase1$resid^2)
+
+
+R.nls.start.vals <- unlist(combined.w.params.df[sapply(combined.w.params.df, length)==1])
+
+theta06 <- 1
+R.nls.start.vals <- R.nls.start.vals[!grepl("theta06", names(R.nls.start.vals))]
+
+
+first.line <- paste0( "args <- c(\"", paste(names(R.nls.start.vals), sep="\", \"", collapse="\", \""), "\")\nfor ( i in 1:length(args)) { assign(args[i], x[i])} ; ")
+
+
+#  
+eval(parse(text=paste0("mod.nlmrt <- function(x) {", first.line, 
+"  ret <- ", gsub("[.]", "", ln.E.string), " + ", region.tackon.clean, " - ln.E.data ; ifelse(is.finite(ret), ret, 10^300) }")))
+
+
+#eval(parse(text=paste0("mod.nlmrt <- function(x) {", first.line, 
+#"  ret <- ", ln.E.string, " - ln.E.data ; ifelse(is.finite(ret), ret, 10^300) }")))
+# [!grepl("region", names(R.nls.start.vals))]
+
+set.seed(100)
+
+fm1DNase1 <-  with(data.frame(combined.df, ln.E.data=combined.df$cost ), 
+nlfb(start=R.nls.start.vals + rnorm(length(R.nls.start.vals), sd=.01), resfn=mod.nlmrt, trace=TRUE )
+)
+
+nlfb(start=R.nls.start.vals, resfn=mod.nlmrt, trace=TRUE, data=data.frame(combined.df, ln.E.data=combined.df$cost ) )
+# mod.predicted
+
+# R-squared for nonlin model:
+ 1 - (sum(fm1DNase1$resid^2) / (length(fm1DNase1$resid)-1)) /
+  (sum((combined.df$cost - mean(combined.df$cost))^2)/ (length(fm1DNase1$resid) - length(fm1DNase1$coefficients) - 1))
+# 0.29296
+# theta01 = 1.0013  theta02 = 0.99287  theta03 = 1.0064  theta04 = 1.002  theta05 = 0.9993 
+
+# R-squared for linear model:
+1 - (sum(resid(linear.sur.est.region)[[1]]^2) / (length(resid(linear.sur.est.region)[[1]])-1)) /
+  (sum((combined.df$cost - mean(combined.df$cost))^2)/ (length(fm1DNase1$resid) - length(coef(linear.sur.est.region)) - 1))
+  
+  
+  
+ 1 - (5915.3767 / (length(fm1DNase1$resid)-1)) /
+  (sum((combined.df$cost - mean(combined.df$cost))^2)/ (length(fm1DNase1$resid) - length(fm1DNase1$coefficients) - 1))
+
+  
+
+mod.nlmrt
+
+# Jacobian is singular. hmm:
+str(solve(t(fm1DNase1$jacobian) %*% fm1DNase1$jacobian))
+
+# Thanks to http://stackoverflow.com/questions/12304963/using-eigenvalues-to-test-for-singularity-identifying-collinear-columns
+ testcols <- function(ee) {
+       ## split eigenvector matrix into a list, by columns
+       evecs <- split(zapsmall(ee$vectors),col(ee$vectors))
+       ## for non-zero eigenvalues, list non-zero evec components
+       mapply(function(val,vec) {
+           if (val!=0) NULL else which(vec!=0)
+       },zapsmall(ee$values),evecs)
+   }
+   
+names(fm1DNase1$coefficients)
+
+testcols(eigen(t(fm1DNase1$jacobian) %*% fm1DNase1$jacobian))
+
+
+testcols(eigen(t(cbind(1, region.matrix)) %*% cbind(1, region.matrix)))
+
+"region04"  "region05"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

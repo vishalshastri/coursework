@@ -41,11 +41,15 @@ log10_ceiling <- function(x) {
 
 for ( i in 1:N) {
 
-  input.scaling  <- log10_ceiling(
-    sqrt(sum((c(combined.df[, paste0("x", lead.zero(i))], 
-    combined.df[, paste0("w", lead.zero(i))])^2)/(nrow(combined.df)-1)))
-  )
+  if (scale.vars.on.orig.data) { 
+    input.scaling  <- input.scaling.orig[i] 
+  } else {
+    input.scaling  <- log10_ceiling(
+      sqrt(sum((c(combined.df[, paste0("x", lead.zero(i))], 
+      combined.df[, paste0("w", lead.zero(i))])^2)/(nrow(combined.df)-1)))
+    )
   # Got this idea from scale() function
+  }
   
   input.scaling <- input.scaling / 100
   

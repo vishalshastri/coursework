@@ -1,6 +1,48 @@
 
 
 
+# QUESTION 1.a
+
+#install.packages("plm")
+library("plm")
+library("plyr")
+library("sandwich")
+library("lmtest")
+
+data(Produc)
+
+
+
+summary( trad.fe.plm <- plm(unemp ~ hwy + water + util, data=Produc, effect = "individual", model = "within"))
+
+coeftest(trad.fe.plm, vcov=vcovBK)
+
+# QUESTION 1.b
+
+
+Produc.means.df <- ddply(Produc[, c("state", "unemp", "hwy", "water", "util")], "state",
+  function(x) {data.frame(t(colMeans(x[, -1])))} )
+
+colnames(Produc.means.df)[!colnames(Produc.means.df) %in% "state"] <- 
+  paste0(colnames(Produc.means.df)[!colnames(Produc.means.df) %in% "state"], ".mean")
+
+Produc <-merge(Produc, Produc.means.df)
+
+summary( demeaned.fe.plm <- plm( 
+  I(unemp - unemp.mean) ~ - 1 + I(hwy - hwy.mean) + I(water - water.mean) + I(util - util.mean), data=Produc, effect = "individual", model = "pooling"))
+# -1 for no intercept
+
+coeftest(demeaned.fe.plm, vcov=vcovBK)
+
+# QUESTION 1.c
+
+summary( state.dummies.fe.plm <- plm( 
+  unemp  ~ - 1 + hwy + water + util + state, data=Produc, effect = "individual", model = "pooling"))
+
+coeftest(state.dummies.fe.plm, vcov=vcovBK)
+
+
+
 
 # QUESTION 2.a.i
 
@@ -12,7 +54,7 @@ jtrain.df <- jtrain.df[jtrain.df$year %in% 1987:1988 & !is.na(jtrain.df$hrsemp),
 
 treatment.indiv <- jtrain.df$fcode[jtrain.df$grant==1 ]
 
-jtrain.df$treatment <- ifelse(jtrain.df$fcode %in%treatment.indiv, 1, 0)
+jtrain.df$treatment <- ifelse(jtrain.df$fcode %in% treatment.indiv, 1, 0)
 
 dif.in.dif.means <- aggregate(hrsemp ~ treatment + year, data=jtrain.df, FUN=mean)
 
@@ -61,13 +103,46 @@ unzip("/Users/travismcarthur/Desktop/Econ 718 Metrics/problem sets/PS 2/regm.raw
 
 regm.df <- read.table("/Users/travismcarthur/Desktop/Econ 718 Metrics/problem sets/PS 2/regm.raw", col.names=c("coll", "merit", "male", "black", "asian", "year", "state", "chst"))
 
+# What is chst?
+
+# regm.df <- plm.data(regm.df, indexes=c("state", "year"))
+
+summary(standard.coll.lm <- lm(coll ~ merit + male + black + asian + factor(year) + factor(state), data=regm.df ))
 
 
+coeftest(standard.coll.lm, vcov=vcovHC)
+# Het-corrected
+
+source("http://people.su.se/~ma/clmclx.R")
+
+mclx(fm=standard.coll.lm, dfcw=1, cluster1=regm.df$state, cluster2=regm.df$year)
+
+clx(fm=standard.coll.lm, dfcw=1, cluster=regm.df$state)
 
 
+# QUESTION 3.b
+
+state.weight.df <- data.frame(prop.table(table(regm.df$state)))
+colnames(state.weight.df) <- c("state", "inverse.state.weight")
+
+regm.df <- merge(regm.df, state.weight.df)
+
+summary(standard.coll.weighted.lm <- lm(coll ~ merit + male + black + asian + factor(year) + factor(state), data=regm.df, weight= 1/inverse.state.weight))
+
+# TODO: do various standard errors
+
+# QUESTION 3.c
 
 
+regm.means.df <- ddply(regm.df, c("state", "year"), function(x) {data.frame(t(colMeans(x)))} )
 
+colnames(regm.means.df )[!colnames(regm.means.df ) %in% c("state", "year")] <- 
+  paste0(colnames(regm.means.df )[!colnames(regm.means.df) %in% c("state", "year")], ".mean")
+
+regm.df <- merge(regm.df, regm.means.df)
+
+summary( demeaned.coll.plm <- lm( 
+  I(coll - coll.mean) ~ - 1 + I(merit - merit.mean) + I(male - male.mean) + I(black - black.mean) + I(asian - asian.mean), data=regm.df))
 
 
 

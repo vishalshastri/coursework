@@ -79,6 +79,7 @@ target.top.crop.number <- 2
 #Quinua            284 
 
 
+
 log.plus.one.cost <- FALSE
 
 bootstrap.iter <- 1
@@ -86,6 +87,45 @@ bootstrap.iter <- 1
 bootstrap.selection.v <- TRUE
 source(paste0(code.dir, "build-model-extract-parcels.r"))
 # Above is a bit hacky
+
+combined.df <- data.frame(mget(c("y01", paste0("x", lead.zero(1:N)), 
+  paste0("w", lead.zero(1:N)),  paste0("q", lead.zero(1:J)) )))
+  
+region.matrix.df <-   as.data.frame(region.matrix)
+
+
+colnames(region.matrix.df) <- iconv(colnames(region.matrix.df), to="ASCII//TRANSLIT")
+colnames(region.matrix.df) <- gsub("'", "", colnames(region.matrix.df) )
+colnames(region.matrix.df) <- gsub("[.]", "", colnames(region.matrix.df) )
+  
+combined.df <- cbind(combined.df, region.matrix.df)
+
+
+# Below makes use of the fact that we have the original dataframe floating in workspace
+# from the above source()
+
+log10_ceiling <- function(x) {
+    10^(ceiling(log10(x)))
+}
+# Thanks to http://stackoverflow.com/questions/7906996/algorithm-to-round-to-the-next-order-of-magnitude-in-r
+
+input.scaling.orig <- c()
+for ( i in 1:N) {
+
+  input.scaling.orig  <- c( input.scaling.orig, log10_ceiling(
+    sqrt(sum((c(combined.df[, paste0("x", lead.zero(i))], 
+    combined.df[, paste0("w", lead.zero(i))])^2)/(nrow(combined.df)-1)))
+  )
+  )
+  # Got this idea from scale() function
+
+}
+
+scale.vars.on.orig.data <- TRUE
+
+
+
+
 
 
 set.seed(100)
@@ -96,6 +136,8 @@ nrow(firm.df)
 
 
 bootstrap.replications.v <- 1201:1500
+# 0:300 301:600 601:900 901:1200 1201:1500
+# condor_R max-entropy-bootstrap.r bootmaiz1.log &
 
 bootstrap.replications <- max(bootstrap.replications.v)
 
