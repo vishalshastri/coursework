@@ -1,4 +1,11 @@
 
+# 
+
+## source("/Users/travismcarthur/git/coursework/aae-637/paper/initial-data-setup.r")
+
+
+
+
 
 
 
@@ -54,6 +61,7 @@ library(Matrix)
 
 
 
+
 load(saved.workspace.path)
 
 
@@ -71,6 +79,7 @@ target.top.crop.number <- 2
 #Quinua            284 
 
 
+
 log.plus.one.cost <- FALSE
 
 bootstrap.iter <- 1
@@ -78,7 +87,6 @@ bootstrap.iter <- 1
 bootstrap.selection.v <- TRUE
 source(paste0(code.dir, "build-model-extract-parcels.r"))
 # Above is a bit hacky
-
 
 combined.df <- data.frame(mget(c("y01", paste0("x", lead.zero(1:N)), 
   paste0("w", lead.zero(1:N)),  paste0("q", lead.zero(1:J)) )))
@@ -118,37 +126,31 @@ scale.vars.on.orig.data <- TRUE
 
 
 
+
+
 set.seed(100)
 
+#bootstrap.replications <- 1
 #bootstrap.replications <- 1500
 nrow(firm.df)
 
 
-bootstrap.selection.mat<- matrix(rep(1:nrow(firm.df), nrow(firm.df)), 
-  nrow=nrow(firm.df))
-  
-#bootstrap.selection.mat<- matrix(rep(1:13, 13), 
-#  nrow=13)
+bootstrap.replications.v <- 1201:1500
+# 0:300 301:600 601:900 901:1200 1201:1500
+# condor_R max-entropy-bootstrap.r bootmaiz1.log &
 
-n <- nrow(firm.df)
-
-bootstrap.selection.mat <- matrix(bootstrap.selection.mat[-seq(1,n^2,n+1)], n-1, n)
-
-rm(n)
+bootstrap.replications <- max(bootstrap.replications.v)
 
 
-# Thanks to http://stackoverflow.com/questions/18839090/removing-diagonal-elements-from-matrix-in-r
-
+bootstrap.selection.mat<- matrix(sample( x=nrow(firm.df), size=nrow(firm.df)*bootstrap.replications, 
+  replace=TRUE), nrow=nrow(firm.df))
 
 time.counter <- c()
 
-
-
-bootstrap.replications.v <- 1:600
-
-
-
 # 1:bootstrap.replications
+
+boot.or.jacknife <- "boot"
+
 for ( bootstrap.iter in bootstrap.replications.v) {
 
 if( bootstrap.iter==0 ) {
@@ -169,71 +171,20 @@ source(paste0(code.dir, "build-model-extract-parcels.r"))
 
 source(paste0(code.dir, "GAMS-construction-functions.r"))
 
+source(paste0(code.dir, "GAMS-nonlinear-least-sq.r"))
 
 
-cost.err.endpoint <- round(max(abs(resid(linear.sur.est.region)[grepl("cost", 
-  names(resid(linear.sur.est.region)))])) * 1.4, digits=1)
-
-
-share.err.endpoint <- round(max(abs(resid(linear.sur.est.region)[!grepl("cost", 
-  names(resid(linear.sur.est.region)))])) * 1.4, digits=1)
-  
-
-cost.err.support <- seq(from = -cost.err.endpoint, to = cost.err.endpoint, length.out=3)
-
-# -round( max(combined.df$cost) * 5 )
-
-share.err.support <- seq(from = -share.err.endpoint, to = share.err.endpoint, length.out=3)
-
-other.param.endpoint <- round( max(abs(coef(linear.sur.est.region))) * 3 , digits=1)
-
-other.param.support <- seq(from = -other.param.endpoint, to = other.param.endpoint, length.out=5)
-
-
-linear.GAMS.output <- FALSE
-
-
-source(paste0(code.dir, "GAMS-linear-construction.r"))
-
-# elapsed 0:08:19.548
-# elapsed 0:08:26.802
-
-
-theta.param.support <- qlnorm(seq(.1, .999, length.out=13), meanlog= 0, sdlog = 1.5)
-theta.param.support <- theta.param.support/mean(theta.param.support)
-
-# plot(c(0,13), c(0,13))
-# rug(theta.param.support, col="red")
-
-
-source(paste0(code.dir, "jackknife-GAMS-nonlin-constr.r"))
-# /Users/travismcarthur/git/coursework/aae-637/paper/GAMS-nonlinear-construction.r
-
-run.nonlinear.from.shell <-paste0("cd ", GAMS.projdir, "\n", 
+run.NLS.from.shell <-paste0("cd ", GAMS.projdir, "\n", 
    GAMS.exe.path, " ", 
-   "GMEnonlinearjackknife", strsplit(target.crop, " ")[[1]][1], 
+   "NLS", boot.or.jacknife, strsplit(target.crop, " ")[[1]][1], 
    formatC(bootstrap.iter, width = 5, flag = "0"), ".gms", 
    " Ps=0 suppress=1")
 
-system(run.nonlinear.from.shell)
+system(run.NLS.from.shell)
 
-time.counter <- c(time.counter, Sys.time())
-save(time.counter, file=paste0(GAMS.projdir, strsplit(target.crop, " ")[[1]][1], 
-  "jackknifestrapcounter.Rdata"))
 
 
 }
 
 
-# }
-
-
-
-#load(paste0(GAMS.projdir, strsplit(target.crop, " ")[[1]][1], 
-#  "jackknifestrapcounter.Rdata"))
-#diff(time.counter)
-#hist(diff(time.counter))
-
-  
-  
 

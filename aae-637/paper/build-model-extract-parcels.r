@@ -66,9 +66,9 @@ firm.df <- firm.df[bootstrap.selection.v, ]
 
 # sur-var-building
 # linear-sur-building
-source(paste0(code.dir, "sur-var-building.r"))
-source(paste0(code.dir, "linear-sur-building.r"))
-source(paste0(code.dir, "nonlinear-sur-building.r"))
+source(paste0(code.dir, "sur-var-building.r"), local=TRUE)
+source(paste0(code.dir, "linear-sur-building.r"), local=TRUE)
+source(paste0(code.dir, "nonlinear-sur-building.r"), local=TRUE)
 
 
 
@@ -162,10 +162,6 @@ ln.E <- gsub("'", "", ln.E )
 nls.formula.ln.E.region <- ln.E 
 
 #eval(parse(text=ln.E))
-
-
-
-
 
 
 
