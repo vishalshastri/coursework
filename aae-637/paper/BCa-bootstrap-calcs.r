@@ -6,9 +6,18 @@ condor.gams.dir <- "/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Cond
 
 listed.files <- list.files(condor.gams.dir )
 
-#target.estimation <- "GMEnonlinearMaiz"
- target.estimation <- "GMEnonlinearHaba"
-# target.estimation <- "GMEnonlinearTrigo"
+
+theta.ci.ls <- list()
+cost.ci.ls <- list()
+share.ci.ls <- list()
+
+
+for ( target.top.crop.number in c(2, 5)) {
+
+
+# target.top.crop.number <- 5
+
+target.estimation <- c( "GMEnonlinearPapa", "GMEnonlinearMaiz", "GMEnonlinearCebada",  "GMEnonlinearTrigo", "GMEnonlinearHaba")[target.top.crop.number]
 
 target.files <- listed.files[grepl( paste0(target.estimation, "[0-9]{5}[.]lst") , listed.files)]
 
@@ -61,7 +70,9 @@ bootstrapped.thetas.ls[[bootstrap.iter]] <-
 
 #target.estimation <- "GMEnonlinearjackknifeMaiz"
 #target.estimation <- "GMEnonlinearjackknifeHaba"
-target.estimation <- "GMEnonlinearjackknifeTrigo"
+#target.estimation <- "GMEnonlinearjackknifeTrigo"
+
+target.estimation <- c( "GMEnonlinearjackknifePapa", "GMEnonlinearjackknifeMaiz", "GMEnonlinearjackknifeCebada",  "GMEnonlinearjackknifeTrigo", "GMEnonlinearjackknifeHaba")[target.top.crop.number]
 
 target.files <- listed.files[grepl( paste0(target.estimation, "[0-9]{5}[.]lst") , listed.files)]
 
@@ -258,7 +269,7 @@ theta.false.ci.df
 
 # Now expressed as a ratio
 
-# BELOW IDS FOR DIFFERENCES:
+# BELOW IDS FOR RATIOS:
 
 comparison.theta <- "theta01"
 
@@ -357,6 +368,7 @@ theta.dif.ci.df <- do.call(rbind, theta.dif.ci.ls)
 
 library("ggplot2")
 
+# ADD TO SLIDIFY
 ggplot(theta.dif.ci.df[nrow(theta.dif.ci.df):1,], aes(x = param)) +
 #  geom_point(size = 4) +
   geom_errorbar(aes(ymax = Upper, ymin = Lower, size=size, width=0, colour=size)) +  # as.factor(size)
@@ -368,14 +380,6 @@ ggplot(theta.dif.ci.df[nrow(theta.dif.ci.df):1,], aes(x = param)) +
 # min(as.numeric(unlist(theta.dif.ci.df)), na.rm=TRUE)+.1  
 # This problem with this of course is that log is not defined at zero:
 #, limits=c(0, max(as.numeric(unlist(theta.dif.ci.df)), na.rm=TRUE)*1.2)
-  
-
-
-
-
-
-
-
 
 
 
@@ -386,7 +390,6 @@ ggplot(theta.dif.ci.df[nrow(theta.dif.ci.df):1,], aes(x = param)) +
 saved.workspace.path <- "/Users/travismcarthur/Desktop/Metrics (637)/Final paper/GAMS work/saved workspace.Rdata"
 code.dir <- "/Users/travismcarthur/git/coursework/aae-637/paper/"
 load(saved.workspace.path)
-target.top.crop.number <- 4
 # Remember to change the above according to which crop we are doing
 bootstrap.iter <- 1
 bootstrap.selection.v <- TRUE
@@ -455,7 +458,7 @@ extra.cost.string <- str_replace_all(extra.cost.string, "[.]", "")
 
 #if(length(theta.hats)<6) { theta.hats<- c(theta.hats, theta06=1) }
 
-extra.cost.ci.ls <- list()
+# extra.cost.ci.ls <- list()
 
 
 
@@ -463,7 +466,7 @@ extra.cost.ci.ls <- list()
 
 
 #alpha <- .05
-alpha <- targ.alpha 
+# alpha <- targ.alpha 
 #alpha <- .005
 
 #theta.dif.ci.df <- data.frame( theta01=c(0,0), theta02=c(0,0), theta03=c(0,0), theta04=c(0,0), theta05=c(0,0), theta06=c(0,0))
@@ -475,22 +478,6 @@ alpha <- targ.alpha
 #theta.hats.comp <- theta.hats[names(theta.hats)!=comparison.theta]
 
 #target.theta.est <- theta.hats[names(theta.hats)==comparison.theta]
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -582,7 +569,7 @@ set.seed(100)
 nrow(firm.df)
 
 
-bootstrap.replications.v <- 0:1500
+bootstrap.replications.v <- 0:(length(bootstrapped.all.params.ls)-1)
 # 0:300 301:600 601:900 901:1200 1201:1500
 # condor_R max-entropy-bootstrap.r bootmaiz1.log &
 
@@ -601,6 +588,7 @@ bootstrapped.extra.cost.ls <- list()
 use.orig.data.for.bootstrap <- FALSE
 
 for ( bootstrap.iter in bootstrap.replications.v) {
+#cat(bootstrap.iter , "\n")
 
 if (length(bootstrapped.all.params.ls[[bootstrap.iter + 1]] ) ==0) {next}
 
@@ -703,7 +691,7 @@ bootstrap.replications.v <- 1:nrow(firm.df)
 jackknife.extra.cost.ls <- list()
 
 for ( bootstrap.iter in bootstrap.replications.v) {
-
+cat(bootstrap.iter, nrow(firm.df), "\n")
 if (length(jackknifed.all.params.ls[[bootstrap.iter]] ) ==0) {next}
 
 
@@ -797,59 +785,9 @@ list(bootstrapped.extra.cost.ls, jackknife.extra.cost.ls)
 
 
 
-test.ls <- eval.bootstrapped.string(extra.cost.string)
 
 
-
-
-
-
-extra.cost.stat.calc(mean, alpha=.05)
-
-
-
-
-
-> extra.cost.stat.calc(mean, alpha=.05)
-       bias         acc 
--0.04874201 -0.05027917 
-lower.2.871821% upper.92.34685% 
-     -0.4538647       0.7855172 
-
-
-extra.cost.stat.calc(quantile, alpha=.05, probs=.90)
-extra.cost.stat.calc(quantile, alpha=.05, probs=.75)
-extra.cost.stat.calc(quantile, alpha=.05, probs=.5)
-extra.cost.stat.calc(quantile, alpha=.05, probs=.25)
-extra.cost.stat.calc(quantile, alpha=.05, probs=.10)
-
-quantile(bootstrapped.extra.cost.ls[[1]], probs=.5)
-quantile(bootstrapped.extra.cost.ls[[1]], probs=.25)
-
-statistic.fn <- quantile
-
-sapply(bootstrapped.extra.cost.ls[1], FUN=statistic.fn, probs=.10)
-
-summary(sapply(bootstrapped.extra.cost.ls[-1], FUN=statistic.fn, probs=.1))
-
-hist(sapply(bootstrapped.extra.cost.ls[-1], FUN=statistic.fn, probs=.1))
-
-
-extra.cost.stat.calc <- function(statistic.fn, alpha, ...) {
-
-
-init.param.bootstraps <- sapply(bootstrapped.extra.cost.ls[-1], FUN=statistic.fn, ...)
-init.param.bootstraps <- init.param.bootstraps[!is.na(init.param.bootstraps)]
-
-init.param.jackknifes <- sapply(jackknife.extra.cost.ls, FUN=statistic.fn, ...)
-init.param.jackknifes <- init.param.jackknifes[!is.na(init.param.jackknifes )]
-
-BCa.CIs(param.hat = sapply(bootstrapped.extra.cost.ls[1], FUN=statistic.fn, ...), 
-  param.bootstraps = init.param.bootstraps, 
-  param.jackknifes = init.param.jackknifes , 
-  alpha=alpha)
-}
-
+# 
 
 
 BCa.CIs <- function(param.hat, param.bootstraps, param.jackknifes, alpha)  {
@@ -914,17 +852,6 @@ num.bootstrap.replications <- length(param.bootstraps)
 
 
 
-
-optimal.shares <- str_replace_all(share.numerators, " [*] theta[0-9][0-9]", "")
-optimal.shares <- str_replace_all(optimal.shares, "[.]", "")
-
-
-
-optimal.shares.evaled.ls <- eval.bootstrapped.string(optimal.shares[1])
-
-
-
-
 extra.cost.stat.calc <- function(statistic.fn, hat.estimate, bootstraps, jackknifes, alpha, ...) {
 
 
@@ -941,18 +868,16 @@ BCa.CIs(param.hat = sapply(hat.estimate, FUN=statistic.fn, ...),
 }	
 
 
-extra.cost.stat.calc(statistic.fn=median,
-  hat.estimate = optimal.shares.evaled.ls[[1]][1],
-  bootstraps = optimal.shares.evaled.ls[[1]][!sapply(optimal.shares.evaled.ls[[1]], FUN=is.null)], 
-  jackknifes = optimal.shares.evaled.ls[[2]][!sapply(optimal.shares.evaled.ls[[2]], FUN=is.null)],
-  alpha=.05
-)
 
+
+
+
+
+optimal.shares <- str_replace_all(share.numerators, " [*] theta[0-9][0-9]", "")
+optimal.shares <- str_replace_all(optimal.shares, "[.]", "")
 
 
 nonoptimal.predicted.shares <- str_replace_all(paste0(share.numerators, " / ", share.denominator), "[.]", "")
-
-nonoptimal.predicted.shares.evaled.ls <- eval.bootstrapped.string(nonoptimal.predicted.shares[1])
 
 
 
@@ -962,26 +887,142 @@ optimal.minus.nonoptimal.predicted.shares <- paste0(optimal.shares,  " - (", non
 
 nonoptimal.predicted.shares.evaled.ls <- eval.bootstrapped.string(nonoptimal.predicted.shares[1])
 
-    
+optimal.shares.evaled.ls <- eval.bootstrapped.string(optimal.shares[1])
 
 optimal.minus.nonoptimal.predicted.shares.evaled.ls <- eval.bootstrapped.string(optimal.minus.nonoptimal.predicted.shares[1])
 
-
-extra.cost.list.to.input <-  optimal.minus.nonoptimal.predicted.shares.evaled.ls
-
-hat.estimate <- extra.cost.list.to.input[[1]][1]
-bootstraps <- extra.cost.list.to.input[[1]][!sapply(extra.cost.list.to.input[[1]], FUN=is.null)]
-jackknifes = extra.cost.list.to.input[[2]][!sapply(extra.cost.list.to.input[[2]], FUN=is.null)]
-
-extra.cost.stat.calc(statistic.fn=median,
-  hat.estimate = hat.estimate,
-  bootstraps = bootstraps, 
-  jackknifes = jackknifes,
-  alpha=.05
-)
+extra.cost.evaled.ls<- eval.bootstrapped.string(extra.cost.string)
 
 
-# TODO: Fix the "top crop" thing
+
+
+conditional.optimal.minus.nonoptimal.predicted.shares.evaled.ls<- list()
+length(conditional.optimal.minus.nonoptimal.predicted.shares.evaled.ls) <- 2
+
+for ( i in 1:length(optimal.minus.nonoptimal.predicted.shares.evaled.ls[[1]])) {
+
+  conditional.optimal.minus.nonoptimal.predicted.shares.evaled.ls[[1]][[i]] <- 
+  optimal.minus.nonoptimal.predicted.shares.evaled.ls[[1]][[i]][
+    nonoptimal.predicted.shares.evaled.ls[[1]][[i]] > 0 | 
+      optimal.shares.evaled.ls[[1]][[i]] > 0
+  ]
+
+}
+
+for ( i in 1:length(optimal.minus.nonoptimal.predicted.shares.evaled.ls[[2]])) {
+
+  conditional.optimal.minus.nonoptimal.predicted.shares.evaled.ls[[2]][[i]] <- 
+  optimal.minus.nonoptimal.predicted.shares.evaled.ls[[2]][[i]][
+    nonoptimal.predicted.shares.evaled.ls[[2]][[i]] > 0 | 
+      optimal.shares.evaled.ls[[2]][[i]] > 0
+  ]
+
+}
+
+# Two loops since first one deals with bootstrap and the other deals with jackknife
+
+
+
+
+
+for ( i in c("extra.cost.evaled.ls",
+  "conditional.optimal.minus.nonoptimal.predicted.shares.evaled.ls") ) {
+
+  extra.cost.list.to.input <-  get(i)
+
+
+  hat.estimate <- extra.cost.list.to.input[[1]][1]
+  bootstraps <- extra.cost.list.to.input[[1]][!sapply(extra.cost.list.to.input[[1]], FUN=is.null)]
+  jackknifes = extra.cost.list.to.input[[2]][!sapply(extra.cost.list.to.input[[2]], FUN=is.null)]
+
+  assign(paste0("median.CI.", i),  extra.cost.stat.calc(statistic.fn=median,
+    hat.estimate = hat.estimate,
+    bootstraps = bootstraps, 
+    jackknifes = jackknifes,
+    alpha=.05
+  )
+  )
+}
+
+
+
+# Ok, we want 
+
+theta.ci.ls[[strsplit(target.crop, " ")[[1]][1]]] <- 
+  data.frame(theta.dif.ci.df, crop=strsplit(target.crop, " ")[[1]][1])
+
+cost.ci.ls[[strsplit(target.crop, " ")[[1]][1]]] <- median.CI.extra.cost.evaled.ls
+share.ci.ls[[strsplit(target.crop, " ")[[1]][1]]] <-
+  median.CI.conditional.optimal.minus.nonoptimal.predicted.shares.evaled.ls
+
+
+
+
+
+
+
+
+
+
+get(paste0("median.CI", i))
+
+
+
+
+
+
+
+
+theta.dif.ci.df.test <- rbind(data.frame(theta.dif.ci.df, crop="haba"), data.frame(theta.dif.ci.df, crop="maiz"))
+
+# Facet info from http://www.cookbook-r.com/Graphs/Facets_(ggplot2)/
+
+
+# ADD TO SLIDIFY
+ggplot(theta.dif.ci.df.test[nrow(theta.dif.ci.df.test):1,], aes(x = param)) +
+#  geom_point(size = 4) +
+  geom_errorbar(aes(ymax = Upper, ymin = Lower, size=size, width=0, colour=size)) +  # as.factor(size)
+  geom_hline(yintercept=1, colour="red") +
+  coord_trans(y="log2") +
+  scale_y_continuous(breaks=c( 1,5,10,15))  +
+  facet_grid(. ~ crop )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     
 
 
@@ -1026,6 +1067,33 @@ extra.cost.stat.calc(statistic.fn=median,
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+extra.cost.stat.calc(statistic.fn=median,
+  hat.estimate = optimal.shares.evaled.ls[[1]][1],
+  bootstraps = optimal.shares.evaled.ls[[1]][!sapply(optimal.shares.evaled.ls[[1]], FUN=is.null)], 
+  jackknifes = optimal.shares.evaled.ls[[2]][!sapply(optimal.shares.evaled.ls[[2]], FUN=is.null)],
+  alpha=.05
+)
 
 
 
@@ -1067,6 +1135,37 @@ ggplot(theta.dif.ci.df[nrow(theta.dif.ci.df):1,], aes(x = param)) +
 
 
 
+
+
+extra.cost.stat.calc(mean, alpha=.05)
+
+
+
+
+
+> extra.cost.stat.calc(mean, alpha=.05)
+       bias         acc 
+-0.04874201 -0.05027917 
+lower.2.871821% upper.92.34685% 
+     -0.4538647       0.7855172 
+
+
+extra.cost.stat.calc(quantile, alpha=.05, probs=.90)
+extra.cost.stat.calc(quantile, alpha=.05, probs=.75)
+extra.cost.stat.calc(quantile, alpha=.05, probs=.5)
+extra.cost.stat.calc(quantile, alpha=.05, probs=.25)
+extra.cost.stat.calc(quantile, alpha=.05, probs=.10)
+
+quantile(bootstrapped.extra.cost.ls[[1]], probs=.5)
+quantile(bootstrapped.extra.cost.ls[[1]], probs=.25)
+
+statistic.fn <- quantile
+
+sapply(bootstrapped.extra.cost.ls[1], FUN=statistic.fn, probs=.10)
+
+summary(sapply(bootstrapped.extra.cost.ls[-1], FUN=statistic.fn, probs=.1))
+
+hist(sapply(bootstrapped.extra.cost.ls[-1], FUN=statistic.fn, probs=.1))
 
 
 
