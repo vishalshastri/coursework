@@ -12,7 +12,7 @@ cost.ci.ls <- list()
 share.ci.ls <- list()
 
 
-for ( target.top.crop.number in c(2, 5)) {
+for ( target.top.crop.number in c(2, 4, 5)) {
 
 
 # target.top.crop.number <- 5
@@ -686,12 +686,14 @@ bootstrap.selection.mat <- matrix(bootstrap.selection.mat[-seq(1,n^2,n+1)], n-1,
 
 rm(n)
 
-bootstrap.replications.v <- 1:nrow(firm.df)
+# bootstrap.replications.v <- 1:nrow(firm.df)
+bootstrap.replications.v <- 1:length(jackknifed.all.params.ls)
+# Just in case we don't have full jackknife, let's relax this a bit
 
 jackknife.extra.cost.ls <- list()
 
 for ( bootstrap.iter in bootstrap.replications.v) {
-cat(bootstrap.iter, nrow(firm.df), "\n")
+#cat(bootstrap.iter, nrow(firm.df), "\n")
 if (length(jackknifed.all.params.ls[[bootstrap.iter]] ) ==0) {next}
 
 
@@ -946,26 +948,32 @@ for ( i in c("extra.cost.evaled.ls",
 
 
 
-# Ok, we want 
-
 theta.ci.ls[[strsplit(target.crop, " ")[[1]][1]]] <- 
   data.frame(theta.dif.ci.df, crop=strsplit(target.crop, " ")[[1]][1])
 
 cost.ci.ls[[strsplit(target.crop, " ")[[1]][1]]] <- median.CI.extra.cost.evaled.ls
+
 share.ci.ls[[strsplit(target.crop, " ")[[1]][1]]] <-
   median.CI.conditional.optimal.minus.nonoptimal.predicted.shares.evaled.ls
 
 
+}
+# END BIG LOOP
 
 
 
 
 
+theta.ci.df.final <- do.call(rbind, theta.ci.ls)
 
 
-
-get(paste0("median.CI", i))
-
+ggplot(theta.ci.df.final[nrow(theta.ci.df.final):1,], aes(x = param)) +
+#  geom_point(size = 4) +
+  geom_errorbar(aes(ymax = Upper, ymin = Lower, size=size, width=0, colour=size)) +  # as.factor(size)
+  geom_hline(yintercept=1, colour="red") +
+  coord_trans(y="log2") +
+  scale_y_continuous(breaks=c( 1,5,10,15))  +
+  facet_grid(. ~ crop )
 
 
 
@@ -992,6 +1000,7 @@ ggplot(theta.dif.ci.df.test[nrow(theta.dif.ci.df.test):1,], aes(x = param)) +
 
 
 
+# DELETE BELOW
 
 
 
@@ -1014,6 +1023,16 @@ ggplot(theta.dif.ci.df.test[nrow(theta.dif.ci.df.test):1,], aes(x = param)) +
 
 
 
+
+
+
+
+
+
+
+
+
+# DELETE BELOW
 
 
 

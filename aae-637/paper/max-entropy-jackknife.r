@@ -1,6 +1,8 @@
 
 
 
+local.source.evaluation <- FALSE
+
 
 
 saved.workspace.path <- "/Users/travismcarthur/Desktop/Metrics (637)/Final paper/GAMS work/saved workspace.Rdata"

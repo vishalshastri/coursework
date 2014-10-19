@@ -7,7 +7,8 @@
 
 
 
-
+local.source.evaluation <- FALSE
+dropped.cost.share.eq <- 10
 
 
 saved.workspace.path <- "/Users/travismcarthur/Desktop/Metrics (637)/Final paper/GAMS work/saved workspace.Rdata"
@@ -65,7 +66,7 @@ library(Matrix)
 load(saved.workspace.path)
 
 
-target.top.crop.number <- 2
+target.top.crop.number <- 4
 
 #Papa (patatas)    3155 
 #Maiz combined   1838 
@@ -149,7 +150,7 @@ time.counter <- c()
 
 # 1:bootstrap.replications
 
-for ( bootstrap.iter in bootstrap.replications.v) {
+for ( bootstrap.iter in 0) {
 
 if( bootstrap.iter==0 ) {
   bootstrap.selection.v <- TRUE

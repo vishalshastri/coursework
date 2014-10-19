@@ -318,7 +318,7 @@ for ( n in 1:N) {
 }
 
 
-S.n[[1]] <- NULL
+S.n[[dropped.cost.share.eq]] <- NULL
 
 
 
