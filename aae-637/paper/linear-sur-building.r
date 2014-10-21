@@ -537,7 +537,7 @@ double.kappa.restrictions <- double.kappa.restrictions[grepl("cost.fn", double.k
 lm.param.restrictions <- c(lm.param.restrictions, single.beta.restriction , double.beta.restrictions, double.gamma.restrictions, double.kappa.restrictions    )
 
 
-linear.sur.est <- systemfit( S.n.H, "SUR", restrict.matrix = lm.param.restrictions,  maxit = 5000 )
+linear.sur.est <- systemfit( S.n.H[length(S.n.H)], "SUR", restrict.matrix = lm.param.restrictions[!grepl("S.n.H",lm.param.restrictions)] ,  maxit = 5000 )
 
 
 # TODO: say in paper that restrictions ensure that null hypothesis means that the shadow is same as orig

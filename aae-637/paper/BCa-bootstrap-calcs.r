@@ -1,7 +1,13 @@
 
 library("stringr")
 
-condor.gams.dir <- "/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Condor/10-7-projdir/home/c/cschmidt/TravisImInYourInternets/gamsdir/projdir/"
+
+local.source.evaluation <- TRUE
+dropped.cost.share.eq <- 1
+# anything >6 means that no equation gets dropped
+
+
+condor.gams.dir <- "/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Condor/10-19-projdir/home/c/cschmidt/TravisImInYourInternets/gamsdir/projdir/"
 
 
 listed.files <- list.files(condor.gams.dir )
@@ -12,7 +18,7 @@ cost.ci.ls <- list()
 share.ci.ls <- list()
 
 
-for ( target.top.crop.number in c(2, 4, 5)) {
+for ( target.top.crop.number in c(2, 5)) {
 
 
 # target.top.crop.number <- 5
@@ -964,6 +970,33 @@ share.ci.ls[[strsplit(target.crop, " ")[[1]][1]]] <-
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+cost.ci.ls
+
+share.ci.ls
+
+
+
 theta.ci.df.final <- do.call(rbind, theta.ci.ls)
 
 
@@ -978,6 +1011,85 @@ ggplot(theta.ci.df.final[nrow(theta.ci.df.final):1,], aes(x = param)) +
 
 
 
+
+
+
+
+
+
+
+    
+# install.packages("matrixcalc")
+library("matrixcalc")
+
+beta.adding.up.mat.sym <- beta.adding.up.mat
+
+
+replacements <- data.frame(greek=c("alpha", "beta", "zeta", "gamma"), N=c(M,N,J,N), M=c(M,N,J,M))
+replacements <- replacements[1:3, ]
+# so do not actually need for gamma
+
+k <- 2
+
+# ok the below is trying to reverse it:
+symm.mat<-matrix(paste0(replacements$greek[k], ".", apply(X=expand.grid(lead.zero(1:max(N,M)), lead.zero(1:max(N,M))), MARGIN=1, FUN=paste, collapse=".")), nrow=max(N,M), ncol=max(N,M))
+
+symm.mat[upper.tri(symm.mat, diag = FALSE)] <- t(symm.mat)[upper.tri(symm.mat, diag = FALSE)]
+symm.mat<-symm.mat[1:replacements$N[k], 1:replacements$M[k]]
+
+
+expanded.greeks.grid <- expand.grid(lead.zero(1:max(N,M)), lead.zero(1:max(N,M)))
+expanded.greeks.grid <- data.frame(expanded.greeks.grid$Var2, expanded.greeks.grid$Var1)
+
+symm.mat.2<-matrix(paste0(replacements$greek[k], ".", apply(X=expanded.greeks.grid, MARGIN=1, FUN=paste, collapse=".")), nrow=max(N,M), ncol=max(N,M))
+
+symm.mat.2[upper.tri(symm.mat.2, diag = FALSE)] <- t(symm.mat.2)[upper.tri(symm.mat.2, diag = FALSE)]
+symm.mat.2<-symm.mat.2[1:replacements$N[k], 1:replacements$M[k]]
+
+
+for ( i in 1:length(c(symm.mat.2))) {
+  beta.adding.up.mat.sym <- str_replace_all(beta.adding.up.mat.sym, c(symm.mat)[i], c(symm.mat.2)[i])
+}
+
+
+
+
+
+
+
+beta.neg.def.test <- function(params) {
+
+  evaled.beta.mat<-matrix(0, ncol=nrow(beta.adding.up.mat.sym), nrow=nrow(beta.adding.up.mat.sym))
+
+  for ( i in 1:nrow(beta.adding.up.mat.sym)) {
+    for ( j in 1:nrow(beta.adding.up.mat.sym)) {
+      evaled.beta.mat[i,j] <- with(as.list(params), 
+        eval(parse(text=gsub("[.]", "", beta.adding.up.mat.sym[i,j]))))
+    }
+  }
+
+  is.positive.semi.definite(evaled.beta.mat)
+# evaled.beta.mat
+
+}
+
+
+
+# list(bootstrapped.extra.cost.ls, jackknife.extra.cost.ls)
+
+table(sapply( bootstrapped.all.params.ls[sapply(bootstrapped.all.params.ls, FUN=length)>0], FUN=beta.neg.def.test ))
+
+
+
+
+is.symmetric.matrix(beta.neg.def.test(bootstrapped.all.params.ls[[1]]))
+
+is.positive.semi.definite(beta.neg.def.test(bootstrapped.all.params.ls[[1]]))
+
+
+eigen(beta.neg.def.test(bootstrapped.all.params.ls[[1]]))$values
+
+is.singular.matrix(beta.neg.def.test(bootstrapped.all.params.ls[[1]]))
 
 
 

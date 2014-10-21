@@ -9,6 +9,7 @@
 
 local.source.evaluation <- FALSE
 dropped.cost.share.eq <- 10
+# anything >6 means that no equation gets dropped
 
 
 saved.workspace.path <- "/Users/travismcarthur/Desktop/Metrics (637)/Final paper/GAMS work/saved workspace.Rdata"
@@ -176,9 +177,10 @@ cost.err.endpoint <- round(max(abs(resid(linear.sur.est.region)[grepl("cost",
   names(resid(linear.sur.est.region)))])) * 1.4, digits=1)
 
 
-share.err.endpoint <- round(max(abs(resid(linear.sur.est.region)[!grepl("cost", 
-  names(resid(linear.sur.est.region)))])) * 1.4, digits=1)
-  
+#share.err.endpoint <- round(max(abs(resid(linear.sur.est.region)[!grepl("cost", 
+#  names(resid(linear.sur.est.region)))])) * 1.4, digits=1)
+
+share.err.endpoint <- 1.5 
 
 cost.err.support <- seq(from = -cost.err.endpoint, to = cost.err.endpoint, length.out=3)
 

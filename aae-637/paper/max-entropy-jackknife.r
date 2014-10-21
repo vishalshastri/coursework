@@ -1,7 +1,9 @@
 
 
 
+
 local.source.evaluation <- FALSE
+dropped.cost.share.eq <- 10
 
 
 
@@ -177,8 +179,10 @@ cost.err.endpoint <- round(max(abs(resid(linear.sur.est.region)[grepl("cost",
   names(resid(linear.sur.est.region)))])) * 1.4, digits=1)
 
 
-share.err.endpoint <- round(max(abs(resid(linear.sur.est.region)[!grepl("cost", 
-  names(resid(linear.sur.est.region)))])) * 1.4, digits=1)
+#share.err.endpoint <- round(max(abs(resid(linear.sur.est.region)[!grepl("cost", 
+#  names(resid(linear.sur.est.region)))])) * 1.4, digits=1)
+
+share.err.endpoint <- 1.5 
   
 
 cost.err.support <- seq(from = -cost.err.endpoint, to = cost.err.endpoint, length.out=3)
