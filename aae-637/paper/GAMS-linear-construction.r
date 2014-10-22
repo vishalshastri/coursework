@@ -87,8 +87,12 @@ top.before.data <- c(
 "sets ",
 paste0("  t number of observations  / 1 * ", nrow(combined.df), " /"),
 paste0("  d number of variables in datafile  / 1 * ", ncol(combined.df), " /"),
+paste0("  s dimension of S matrix / 1 * ", N-1, "/"),
+paste0("  ss second dimension of S matrix / 1 * ", N-1, "/"),
 "  m number of points in interval z / 1 * ", length(other.param.support), "/",
 "  j number of points in interval v / 1 * 3 /;",
+"",
+#"alias (s, ss);",
 "",
 "parameter",
 "  datafile(t,d)   raw data")
@@ -237,6 +241,8 @@ cov.var.declarations <- paste0("  ", cov.var.declarations,  "    SUR covar param
 
 variable.declaration.lines <- c("variables",
   paste0("  ", all.params, "   parameters to be estimated"),
+  "  Smat(s,ss)   S matrix to make cost function concave",
+  "  SmatT(ss,s)   transpose of S matrix to make cost function concave",
   cov.var.declarations,
   paste0("  p", all.params, "(m)    probability corresponding param"),
   paste0("  w", all.eqns, "(t,j)    probability corresponding error term"),
@@ -431,6 +437,80 @@ cov.rest.declarations <- cov.rest.declarations.mat
 cov.rest.declarations  <- cov.rest.declarations[cov.rest.declarations != ""]
 
 
+
+
+
+double.beta.params<- unique(str_extract_all(gsub("[.]", "", ln.E.string), "beta[0-9]{4}")[[1]])
+
+double.beta.indices <- str_extract_all(double.beta.params, "[0-9]{2}")
+
+concave.restriction.defn <- c()
+
+for ( i in 1:length(double.beta.indices)) {
+
+ first.ind <- as.numeric(double.beta.indices[[i]][1])
+ second.ind <- as.numeric(double.beta.indices[[i]][2])
+
+  concave.restriction.defn <- c(concave.restriction.defn,  paste0( "restrconcave", double.beta.params[i], "..      ", double.beta.params[i], " =e= - sum(ss, Smat(\"", 
+  first.ind - 1, "\",ss)*SmatT(ss,\"", second.ind - 1, "\"));") )
+  
+#    concave.restriction.defn <- c(concave.restriction.defn,  paste0( 
+#    "restrconcavelowertrinonzero", 
+#   second.ind, first.ind, "..      ", 1e-08, " =l= sqr(Smat(\"", 
+#  second.ind - 1, "\",", "\"", first.ind - 1, "\"));")) 
+  # Above is basically specifying the transpose
+  
+  if (first.ind==second.ind) {next}
+  # since we don't want to zero out the diagonal elements
+    
+  concave.restriction.defn <- c(concave.restriction.defn,  paste0( "restrconcavelowertri", 
+  first.ind, second.ind, "..      ", 0, " =e= Smat(\"", 
+  first.ind - 1, "\",", "\"", second.ind - 1, "\");")) 
+  
+}
+
+concave.restriction.declare <- c()
+
+for ( i in 1:length(double.beta.indices)) {
+  concave.restriction.declare <- c(concave.restriction.declare, 
+    paste0( "restrconcave", double.beta.params[i]))
+    
+   first.ind <- as.numeric(double.beta.indices[[i]][1])
+   second.ind <- as.numeric(double.beta.indices[[i]][2])
+   
+#   concave.restriction.declare <- c(concave.restriction.declare, 
+#    paste0( "restrconcavelowertrinonzero", second.ind, first.ind))
+
+  if (first.ind==second.ind) {next}
+  
+  concave.restriction.declare <- c(concave.restriction.declare, 
+    paste0( "restrconcavelowertri", first.ind, second.ind))
+    
+}
+
+Smat.transpose.restriction.defn <- "restrSmattrans(s,ss).. Smat(s,ss) =e= SmatT(ss,s);"
+
+Smat.transpose.restriction.declare <- "restrSmattrans"
+
+
+#concave.restriction.defn <- c()
+
+#for ( i in 1:length(double.beta.indices)) {
+
+# first.ind <- as.numeric(double.beta.indices[[i]][1])
+# second.ind <- as.numeric(double.beta.indices[[i]][2])
+
+#  concave.restriction.defn <- c(concave.restriction.defn,  paste0( "restrconcave", double.beta.params[i], "..      ", double.beta.params[i], " =e= - sum(ss, Smat(\"", 
+#  first.ind - 1, "\",ss)*SmatT(ss,\"", second.ind - 1, "\"));") )
+  
+#}
+
+
+
+
+
+
+
 equation.declarations <- c(
   "equations",
   "  object             primal GME objective function",
@@ -440,6 +520,8 @@ equation.declarations <- c(
   "restrcostb(t)",
   paste0("restr", 1:length(S.n), "sa(t)"),
   paste0("restr", 1:length(S.n), "sb(t)"),
+  concave.restriction.declare,
+  Smat.transpose.restriction.declare,
   cov.rest.declarations,
   ";"
 )
@@ -477,12 +559,18 @@ for ( i in 1:length(all.eqns) ) {
 
 
 
+set.seed(100)
+
+Smat.initiation.v <- matrix(rnorm((N-1)^2), nrow=N-1)
+Smat.initiation.v[upper.tri(Smat.initiation.v)] <- 0
+Smat.initiation.v <- c(Smat.initiation.v)
+
+Smat.initiation.grid <- expand.grid(1:(N-1), 1:(N-1))
+
+Smat.initial.values <- paste0("Smat.L(\"", Smat.initiation.grid[, 1], "\",\"", Smat.initiation.grid[, 2], "\") =  ", Smat.initiation.v, ";")
 
 
-
-
-
-
+set.seed(100)
 
 
 
@@ -510,7 +598,8 @@ cov.var.display  <- cov.var.display[cov.var.display!= ""]
 parameter.display.lines <- c( paste0("display ", all.params, ".l;"),
   paste0("display p", all.params, ".l;"),
   paste0("display w", all.eqns, ".l;"),
-  paste0("display ", cov.var.display, ".l;")
+  paste0("display ", cov.var.display, ".l;"),
+  paste0("display Smat.l")
   )
 
 
@@ -520,6 +609,7 @@ c(
 "*Initial conditions",
 paste0("  p", all.params, ".l(m) = 1/MM;"),
 paste0("  w", all.eqns, ".l(t,j) = 1/JJ;"),
+Smat.initial.values,
 error.weights.lines,
 "* primal approach",
 "model gme /all/;",
@@ -572,6 +662,8 @@ completed.GAMS.file <-  c(
   model.restrictions.cost, " ", 
   prob.weight.param.lines, " ", 
   prob.weight.error.lines, " ", 
+  concave.restriction.defn, " ",
+  Smat.transpose.restriction.defn, " ",
   covar.SUR.lines,
   final.lines, " ",
   parameter.display.lines 

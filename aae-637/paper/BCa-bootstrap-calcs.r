@@ -9,6 +9,9 @@ dropped.cost.share.eq <- 1
 
 condor.gams.dir <- "/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Condor/10-19-projdir/home/c/cschmidt/TravisImInYourInternets/gamsdir/projdir/"
 
+condor.gams.dir <- "/Users/travismcarthur/Desktop/gamsdir/projdir/"
+target.top.crop.number <- 4
+
 
 listed.files <- list.files(condor.gams.dir )
 
@@ -24,6 +27,7 @@ for ( target.top.crop.number in c(2, 5)) {
 # target.top.crop.number <- 5
 
 target.estimation <- c( "GMEnonlinearPapa", "GMEnonlinearMaiz", "GMEnonlinearCebada",  "GMEnonlinearTrigo", "GMEnonlinearHaba")[target.top.crop.number]
+
 
 target.files <- listed.files[grepl( paste0(target.estimation, "[0-9]{5}[.]lst") , listed.files)]
 
@@ -1068,10 +1072,23 @@ beta.neg.def.test <- function(params) {
     }
   }
 
-  is.positive.semi.definite(evaled.beta.mat)
-# evaled.beta.mat
+#  is.negative.semi.definite(evaled.beta.mat)
+ evaled.beta.mat
 
 }
+
+eigen(beta.neg.def.test(bootstrapped.all.params.ls[[1]]))$values
+
+
+eigen(beta.neg.def.test(bootstrapped.all.params.ls[[1]])[-1, -1])$values
+
+eigen(beta.neg.def.test(bootstrapped.all.params.ls[[1]]))$values
+
+is.negative.semi.definite(beta.neg.def.test(bootstrapped.all.params.ls[[1]]), tol=1e-7)
+
+
+sapply( bootstrapped.all.params.ls[sapply(bootstrapped.all.params.ls, FUN=length)>0], FUN=beta.neg.def.test )
+
 
 
 
@@ -1090,6 +1107,16 @@ is.positive.semi.definite(beta.neg.def.test(bootstrapped.all.params.ls[[1]]))
 eigen(beta.neg.def.test(bootstrapped.all.params.ls[[1]]))$values
 
 is.singular.matrix(beta.neg.def.test(bootstrapped.all.params.ls[[1]]))
+
+S.mat <- matrix(runif(100*100), ncol=100, nrow=100)
+S.mat[upper.tri(S.mat)] <- 0
+
+is.negative.semi.definite( - S.mat %*% t(S.mat))
+
+
+
+
+
 
 
 
