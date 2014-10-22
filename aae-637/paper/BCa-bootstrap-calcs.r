@@ -10,7 +10,7 @@ dropped.cost.share.eq <- 1
 condor.gams.dir <- "/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Condor/10-19-projdir/home/c/cschmidt/TravisImInYourInternets/gamsdir/projdir/"
 
 condor.gams.dir <- "/Users/travismcarthur/Desktop/gamsdir/projdir/"
-target.top.crop.number <- 4
+target.top.crop.number <- 2
 
 
 listed.files <- list.files(condor.gams.dir )
