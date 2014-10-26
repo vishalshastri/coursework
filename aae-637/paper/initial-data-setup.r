@@ -26,13 +26,23 @@ inputs.df$x19.abono.bs.quintal[is.na(inputs.df$x19.abono.bs.quintal)] <- 0
 # summary(inputs.df[inputs.df[, "x19.fertilizante.bs.quintal"]>0, "x19.fertilizante.bs.quintal"])
 
 
-for ( i in grep("quintal", colnames(inputs.df)) ) {
-  inputs.df[, gsub("quintal", "kg", colnames(inputs.df)[i]) ] <- inputs.df[, i] * 46
+for ( i in grep("cantidad.quintal", colnames(inputs.df)) ) {
+  inputs.df[, gsub("cantidad.quintal", "cantidad.kg", colnames(inputs.df)[i]) ] <- inputs.df[, i] * 46
+}
+
+for ( i in grep("obtenidad.quintal", colnames(inputs.df)) ) {
+  inputs.df[, gsub("obtenidad.quintal", "obtenidad.kg", colnames(inputs.df)[i]) ] <- inputs.df[, i] * 46
 }
 
 # p. 18 of ftp://ftp.fao.org/docrep/fao/010/ah868e/ah868e00.pdf
 # "One Bolivian arroba is equivalent to 11.5 kg"
 # "One Bolivian quintal is equivalent to 46 kg"
+
+for ( i in grep("bs.quintal", colnames(inputs.df)) ) {
+  inputs.df[, gsub("bs.quintal", "bs.kg", colnames(inputs.df)[i]) ] <- inputs.df[, i] / 46
+}
+# Reciprocal since data is is Bolivianos per quintals
+
 
 
 
@@ -632,7 +642,7 @@ summary(inputs.df[, c("x19.fertilizante.bs.kg", "x19.sem.comprada.bs.kg", "x19.a
 
 
 
-
+save.image("/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Rdata results files/saved workspace only inputsDF.Rdata")
 
 
 

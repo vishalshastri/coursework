@@ -267,6 +267,7 @@ variable.declaration.lines <- c("variables",
   paste0("  ", all.params, "   parameters to be estimated"),
   "  Smat(s,ss)   S matrix to make cost function concave",
   "  SmatT(ss,s)   transpose of S matrix to make cost function concave",
+  "  errorrelax(t) small value to accomodate the zero error adding up restriction",
   cov.var.declarations,
   paste0("  p", all.params[!grepl("theta", all.params)], "(m)    probability corresponding param"),
   paste0("  p", all.params[grepl("theta", all.params)], "(h)    probability corresponding param"),
@@ -586,6 +587,17 @@ Smat.transpose.restriction.declare <- "restrSmattrans"
 
 
 
+restriction.that.err.sum.to.zero.defn <- paste0("restrerrsumtozero(t)..        0 =e= errorrelax(t) + ", paste0("sum(j, vs", 1:length(S.n), "(j) * ws", 1:length(S.n), "(t, j))", collapse=" + "), ";")
+
+restriction.that.err.sum.to.zero.declare <- "restrerrsumtozero(t)"
+
+# NOTE: Here we are assuming that we have dropped no equations above. Otherwise, this will be a big problem
+
+errorrelaxrestrict.defn <- "errorrelaxrestrict(t)..    1e-06 =g= sqr(errorrelax(t));"
+
+errorrelaxrestrict.declare <- "errorrelaxrestrict(t)"
+
+
 
 
 
@@ -613,6 +625,8 @@ equation.declarations <- c(
   paste0("restrthetaposi", lead.zero(1:(N-1))), # Added this for theta posi restrictions
   "restrbiglogposi(t)",
   concave.restriction.declare,
+  restriction.that.err.sum.to.zero.declare,
+  errorrelaxrestrict.declare,
   Smat.transpose.restriction.declare,
   cov.rest.declarations,
 #  "restrsharedenom(t)",
@@ -923,7 +937,8 @@ parameter.display.lines <- c( paste0("display ", all.params, ".l;"),
   paste0("display p", all.params, ".l;"),
   paste0("display w", all.eqns, ".l;"),
   paste0("display ", cov.var.display, ".l;"),
-  paste0("display Smat.l")
+  paste0("display Smat.l"),
+  paste0("display errorrelax.l")
   )
 
 
@@ -948,6 +963,8 @@ completed.GAMS.file <-  c(
   prob.weight.param.lines, " ", 
   prob.weight.error.lines, " ", 
   Smat.transpose.restriction.defn, " ", 
+  restriction.that.err.sum.to.zero.defn,
+  errorrelaxrestrict.defn,
   concave.restriction.defn, " ", 
   covar.SUR.lines,
   final.lines, " ",

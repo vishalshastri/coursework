@@ -3,13 +3,13 @@ library("stringr")
 
 
 local.source.evaluation <- TRUE
-dropped.cost.share.eq <- 1
+dropped.cost.share.eq <- 10
 # anything >6 means that no equation gets dropped
 
 
 condor.gams.dir <- "/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Condor/10-19-projdir/home/c/cschmidt/TravisImInYourInternets/gamsdir/projdir/"
 
-condor.gams.dir <- "/Users/travismcarthur/Desktop/gamsdir/projdir/"
+#condor.gams.dir <- "/Users/travismcarthur/Desktop/gamsdir/projdir/"
 target.top.crop.number <- 2
 
 
@@ -983,34 +983,65 @@ share.ci.ls[[strsplit(target.crop, " ")[[1]][1]]] <-
 
 
 
+share.ci.df.final<- do.call(rbind, share.ci.ls)
+colnames(share.ci.df.final) <- c("Lower 95% CI", "Upper 95% CI")
 
 
+cost.ci.df.final<- do.call(rbind, cost.ci.ls)
+colnames(cost.ci.df.final) <- c("Lower 95% CI", "Upper 95% CI")
 
-
-
-
-
-
-
-
-
-
-cost.ci.ls
-
-share.ci.ls
 
 
 
 theta.ci.df.final <- do.call(rbind, theta.ci.ls)
 
+colnames(theta.ci.df.final)[colnames(theta.ci.df.final)=="size"] <- "alpha"
 
-ggplot(theta.ci.df.final[nrow(theta.ci.df.final):1,], aes(x = param)) +
+theta.ci.df.final$param <- c("Seed", "Organic Fert", "Plaguicidas", "Labor", "Tractor Hrs")
+# NOTE: above is a bit fragile since it relies on the column to be in exactly the right order
+
+names(theta.ci.df.final)[names(theta.ci.df.final)=="param"] <- "Input"
+
+save( theta.ci.df.final, share.ci.df.final, cost.ci.df.final,
+  file="/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Rdata results files/thetas cost and share.Rdata")
+
+
+
+
+
+
+
+
+
+
+ggplot(theta.ci.df.final[nrow(theta.ci.df.final):1,], aes(x = Input)) +
 #  geom_point(size = 4) +
-  geom_errorbar(aes(ymax = Upper, ymin = Lower, size=size, width=0, colour=size)) +  # as.factor(size)
+  geom_errorbar(aes(ymax = Upper, ymin = Lower, size=alpha, width=0, colour=alpha)) +  # as.factor(size)
   geom_hline(yintercept=1, colour="red") +
   coord_trans(y="log2") +
   scale_y_continuous(breaks=c( 1,5,10,15))  +
-  facet_grid(. ~ crop )
+  facet_grid(crop ~ . ) + # facet_grid(. ~ crop ) +
+  ggtitle(bquote(paste("Bootstrap CI's of ", over(theta[fertilizer], theta[j])))) +
+  theme(text = element_text(size = 20))
+# Thanks to http://stackoverflow.com/questions/15297814/include-text-control-characters-in-plotmath-expressions
+# Ah, I see: it's putting the inputs in alphabetical order
+
+
+
+
+
+
+# Below can help show distribution of thetas, but this is just for the most recently processed crop:
+
+histogram( ~ theta01 + theta02 + theta03 + theta04 + theta05, data = bootstrapped.thetas.df,
+    xlab = "", type = "density",
+    panel = function(x) {
+        panel.histogram(x, breaks=NULL, nint= 20)
+#        panel.mathdensity(dmath = dnorm, col = "black",
+#            args = list(mean=mean(x),sd=sd(x)))
+    },
+    )
+
 
 
 
@@ -1138,7 +1169,6 @@ ggplot(theta.dif.ci.df.test[nrow(theta.dif.ci.df.test):1,], aes(x = param)) +
 
 
 
-
 # DELETE BELOW
 
 
@@ -1177,9 +1207,9 @@ ggplot(theta.dif.ci.df.test[nrow(theta.dif.ci.df.test):1,], aes(x = param)) +
 
 
 
+lapply(extra.cost.evaled.ls[[1]], summary)
 
-
-
+table(extra.cost.evaled.ls[[1]][[1]]<0)
 
     
 

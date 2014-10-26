@@ -243,6 +243,7 @@ variable.declaration.lines <- c("variables",
   paste0("  ", all.params, "   parameters to be estimated"),
   "  Smat(s,ss)   S matrix to make cost function concave",
   "  SmatT(ss,s)   transpose of S matrix to make cost function concave",
+  "  errorrelax(t) small value to accomodate the zero error adding up restriction",
   cov.var.declarations,
   paste0("  p", all.params, "(m)    probability corresponding param"),
   paste0("  w", all.eqns, "(t,j)    probability corresponding error term"),
@@ -493,6 +494,19 @@ Smat.transpose.restriction.defn <- "restrSmattrans(s,ss).. Smat(s,ss) =e= SmatT(
 Smat.transpose.restriction.declare <- "restrSmattrans"
 
 
+restriction.that.err.sum.to.zero.defn <- paste0("restrerrsumtozero(t)..        0 =e= errorrelax(t) + ", paste0("sum(j, vs", 1:length(S.n), "(j) * ws", 1:length(S.n), "(t, j))", collapse=" + "), ";")
+
+restriction.that.err.sum.to.zero.declare <- "restrerrsumtozero(t)"
+
+# NOTE: Here we are assuming that we have dropped no equations above. Otherwise, this will be a big problem
+
+errorrelaxrestrict.defn <- "errorrelaxrestrict(t)..    1e-06 =g= sqr(errorrelax(t));"
+
+errorrelaxrestrict.declare <- "errorrelaxrestrict(t)"
+
+
+
+
 #concave.restriction.defn <- c()
 
 #for ( i in 1:length(double.beta.indices)) {
@@ -522,6 +536,8 @@ equation.declarations <- c(
   paste0("restr", 1:length(S.n), "sb(t)"),
   concave.restriction.declare,
   Smat.transpose.restriction.declare,
+  restriction.that.err.sum.to.zero.declare,
+  errorrelaxrestrict.declare,
   cov.rest.declarations,
   ";"
 )
@@ -599,7 +615,8 @@ parameter.display.lines <- c( paste0("display ", all.params, ".l;"),
   paste0("display p", all.params, ".l;"),
   paste0("display w", all.eqns, ".l;"),
   paste0("display ", cov.var.display, ".l;"),
-  paste0("display Smat.l")
+  paste0("display Smat.l"),
+  paste0("display errorrelax.l")
   )
 
 
@@ -664,6 +681,8 @@ completed.GAMS.file <-  c(
   prob.weight.error.lines, " ", 
   concave.restriction.defn, " ",
   Smat.transpose.restriction.defn, " ",
+  restriction.that.err.sum.to.zero.defn, " ",
+  errorrelaxrestrict.defn, " ",
   covar.SUR.lines,
   final.lines, " ",
   parameter.display.lines 

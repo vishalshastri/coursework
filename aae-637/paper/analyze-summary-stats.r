@@ -49,6 +49,7 @@ for ( i in 1:num.of.top.crops) {
 
 
 target.crop <- top.crops[i]
+print(target.crop)
 
 firm.df <- inputs.df[inputs.df$x19.codigo == target.crop & inputs.df$x19.produccion.obtenidad.kg>0 &
 !is.na(inputs.df$x19.produccion.obtenidad.kg), ]
@@ -96,13 +97,52 @@ fert.intensity.unconditional.ls[[i]] <-
 fert.intensity.conditional.ls[[i]] <- 
   median(firm.df$x19.fertilizante.cantidad.kg[firm.df$x19.fertilizante.cantidad.kg>0] / 
     firm.df$x19.superficie.cultivada.hectareas[firm.df$x19.fertilizante.cantidad.kg>0], na.rm=TRUE)
+    
+cat("number of firms with same crop in multiple plots", "\n")
+print(table(table(firm.df$folio)))
+
+w01 = firm.df$x19.fertilizante.bs.kg
+w02 = firm.df$x19.sem.comprada.bs.kg
+w03 = firm.df$hourly.tractor.rental
+w04 = firm.df$x19.plagicidas.bs.kg
+w05 = firm.df$hourly.wage
+w06 = firm.df$x19.abono.bs.kg
+y01 <- log( firm.df$x19.produccion.obtenidad.kg )
+
+q01 = firm.df$x19.superficie.cultivada.hectareas
+# q01[q01 ==0] = median(q01)
+
+firm.df$x19.uso.riego.r = ifelse(firm.df$x19.uso.riego!="Si",  0, 1)
+
+firm.df$ag.fam.labor.equiv.spread.r = firm.df$ag.fam.labor.equiv.spread
+firm.df$ag.fam.labor.equiv.spread.r[firm.df$ag.fam.labor.equiv.spread.r == 0] = .5
+
+<- do.call(rbind, lapply(firm.df[, c(
+  "x19.produccion.obtenidad.kg",
+  "x19.fertilizante.cantidad.kg",    
+  "x19.sem.comprada.cantidad.kg", 
+  "x19.abono.cantidad.kg", 
+  "x19.plagicidas.cantidad.kg",
+  "paid.hours.spread", 
+  "tractor.hrs.final",
+  "x19.fertilizante.bs.kg",
+  "x19.sem.comprada.bs.kg",
+  "hourly.tractor.rental",
+  "x19.plagicidas.bs.kg",
+  "hourly.wage",
+  "x19.abono.bs.kg",
+  "x19.superficie.cultivada.hectareas",
+  "x19.uso.riego.r",
+  "ag.fam.labor.equiv.spread.r"
+  )  ], FUN=summary)
+  )
 
 
 }
 
 censored.df <- do.call(rbind, censored.cols.ls)
 
-colnames(censored.df) <- c("Fert", "Seed", "Abono", "Plag", "Labor", "Tractor")
+colnames(censored.df) <- c("Inorganic Fert", "Seed", "Organic Fert", "Plaguicidas", "Labor", "Tractor Hrs")
 
 barplot(as.matrix(censored.df), beside=TRUE, col=terrain.colors(num.of.top.crops),
   main="Proportion of uncensored observations")
@@ -120,6 +160,8 @@ unlist(fert.intensity.unconditional.ls)
 unlist(fert.intensity.conditional.ls)
 
 
+
+# number of farms that have the same crop in multiple plots
        
 
 

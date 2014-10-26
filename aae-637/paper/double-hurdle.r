@@ -344,7 +344,7 @@ crop.wide.df[, "hhh.edu.measure.r"] <-
 
 
 
-
+table(round(crop.wide.df$indig.prop), crop.wide.df$hhh.edu.measure.r)
 
 
 levels(crop.wide.df$hhh.edu.measure)
@@ -449,8 +449,20 @@ save.image(file = "/Users/travismcarthur/Desktop/Metrics (637)/Final paper/hurdl
 #main.specification <- as.formula(paste("fert.exp ~ ", "department + indig.prop + indig.practices + hhh.literacy + hhh.age  + hhh.edu.measure.r + hhh.sex + REMPAIS + REMEXT + credit.source + drive.time.amanzanada + drive.time.urban + mean.ann.rain.5yr + AWC.CLASS + T.TEB + T.CACO3 + T.CASO4 + T.ESP + T.ECE + T.GRAVEL + T.SILT + T.CLAY  ", " | ", "department + indig.prop + indig.practices + hhh.age  + REMPAIS + REMEXT +  mean.ann.rain.5yr + hhh.edu.measure.r + AWC.CLASS + T.TEB + T.CACO3 + T.CASO4 + T.ESP + T.ECE + T.GRAVEL + T.SILT + T.CLAY  ", " | 0" ) )
 # Above is without elevation
 
-main.specification <- as.formula(paste("fert.exp ~ ", "department + indig.prop + indig.practices + hhh.literacy + hhh.age  + hhh.edu.measure.r + hhh.sex + REMPAIS + REMEXT + credit.source + drive.time.amanzanada + drive.time.urban + mean.ann.rain.5yr + elevation + AWC.CLASS + T.TEB + T.CACO3 + T.CASO4 + T.ESP + T.ECE + T.GRAVEL + T.SILT + T.CLAY  ", " | ", "department + indig.prop + indig.practices + hhh.age  + REMPAIS + REMEXT +  mean.ann.rain.5yr + elevation + hhh.edu.measure.r + AWC.CLASS + T.TEB + T.CACO3 + T.CASO4 + T.ESP + T.ECE + T.GRAVEL + T.SILT + T.CLAY  ", " | 0" ) )
+#main.specification <- as.formula(paste("fert.exp ~ ", "department + indig.prop + indig.practices + hhh.literacy + hhh.age  + hhh.edu.measure.r + hhh.sex + REMPAIS + REMEXT + credit.source + drive.time.amanzanada + drive.time.urban + mean.ann.rain.5yr + elevation + AWC.CLASS + T.TEB + T.CACO3 + T.CASO4 + T.ESP + T.ECE + T.GRAVEL + T.SILT + T.CLAY  ", " | ", "department + indig.prop + indig.practices + hhh.age  + REMPAIS + REMEXT +  mean.ann.rain.5yr + elevation + hhh.edu.measure.r + AWC.CLASS + T.TEB + T.CACO3 + T.CASO4 + T.ESP + T.ECE + T.GRAVEL + T.SILT + T.CLAY  ", " | 0" ) )
+
+# main.specification is the specification that we use for the final results. 
+# Above is what we used for the 637 paper that was actually turned in 
+
+crop.wide.df$credit.source.r <- 
+  factor(ifelse(crop.wide.df$credit.source=="No.Credit", "No.Credit", "Received.Credit"))
   
+  
+
+main.specification <- as.formula(paste("fert.exp ~ ", "department + indig.prop*hhh.edu.measure.r + indig.practices + hhh.literacy + hhh.age  + hhh.sex + REMPAIS + REMEXT + credit.source.r + drive.time.amanzanada + drive.time.urban + mean.ann.rain.5yr + elevation + AWC.CLASS + T.TEB + T.CACO3 + T.CASO4 + T.ESP + T.ECE + T.GRAVEL + T.SILT + T.CLAY  ", " | ", "department + indig.prop + indig.practices + hhh.age  + REMPAIS + REMEXT +  mean.ann.rain.5yr + elevation + hhh.edu.measure.r + AWC.CLASS + T.TEB + T.CACO3 + T.CASO4 + T.ESP + T.ECE + T.GRAVEL + T.SILT + T.CLAY  ", " | 0" ) )
+# Note that we are not including interaction term indig.prop*hhh.edu.measure.r in
+# the second hurdle since I wonder if we will have enough observations for the bootstrap
+
   
 m110d <- mhurdle(main.specification, 
   data = crop.wide.df, weights=crop.wide.df$FACTOR, corr = "d" , dist = "ln", method =  "BFGS" ,  print.level=2)
@@ -515,7 +527,10 @@ m110d <- mhurdle(main.specification,
 
 test.frame <-as.data.frame(lapply(model.frame(m110d$formula, crop.wide.df),  FUN=mean)) 
 
-factors.to.convert <- c( "hhh.edu.measure.r", "hhh.sex", "credit.source", "hhh.literacy", "department")
+#factors.to.convert <- c( "hhh.edu.measure.r", "hhh.sex", "credit.source", "hhh.literacy", "department")
+# ABove are the vars in the turned-in 637 paper
+
+factors.to.convert <- c( "hhh.edu.measure.r", "hhh.sex", "credit.source.r", "hhh.literacy", "department")
 
 
 for ( i in factors.to.convert ) {
@@ -606,6 +621,11 @@ bootstraps <- apply(matrix(
 )
 
 table(sapply(bootstraps, FUN=function(x) length(x)==1) )
+
+#Most recent:
+
+#FALSE  TRUE 
+# 2857  1143 
 
 # FALSE  TRUE 
 #  2114   886 
@@ -710,6 +730,8 @@ dhurdle.mfx.bootstrapped[, 3] <- dhurdle.mfx.bootstrapped[, 4]
 dhurdle.mfx.bootstrapped[, 4] <- reverse.ci.order.v
 
 
+
+
 # TODO: something not messed up with the alignment of the 2nd hurdle and the results are wrong
 # Also look at drive time alignments
 
@@ -739,7 +761,7 @@ m110d$formula
 
 
 
-m110d.formula.simplified <- as.formula("fert.exp ~ department + indig.prop + indig.practices + hhh.literacy + hhh.age  + hhh.edu.measure.r + hhh.sex + REMPAIS + REMEXT + credit.source + drive.time.amanzanada + drive.time.urban + mean.ann.rain.5yr + elevation + AWC.CLASS + T.TEB + T.CACO3 + T.CASO4 + T.ESP + T.ECE + T.GRAVEL + T.SILT + T.CLAY" )
+m110d.formula.simplified <- as.formula("fert.exp ~ department + indig.prop + indig.practices + hhh.literacy + hhh.age  + hhh.edu.measure.r + hhh.sex + REMPAIS + REMEXT + credit.source.r + drive.time.amanzanada + drive.time.urban + mean.ann.rain.5yr + elevation + AWC.CLASS + T.TEB + T.CACO3 + T.CASO4 + T.ESP + T.ECE + T.GRAVEL + T.SILT + T.CLAY" )
 #as.formula(paste("fert.exp ~ ", "indig.prop + indig.practices   + hhh.edu.measure + hhh.sex + REMPAIS + REMEXT + credit.source + drive.time.amanzanada + mean.ann.rain.5yr  ", " + ", "indig.prop + indig.practices   + REMPAIS + REMEXT + mean.ann.rain.5yr  + AWC.CLASS + T.TEB + T.CACO3 + T.CASO4 + T.ESP + T.ECE + T.GRAVEL + T.SILT + T.CLAY  "))
 
 
@@ -777,6 +799,10 @@ colnames(unprocessed.summary.table) <- c("Mean", "Median", "Std dev", "Min", "Ma
 
 unprocessed.summary.table<- unprocessed.summary.table[-1, ]
 # eliminating the "intercept" row
+
+save(crop.wide.df, dhurdle.mfx.bootstrapped, unprocessed.summary.table, file="/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Rdata results files/double hurdle.Rdata")
+
+
 
 stargazer(unprocessed.summary.table , summary=FALSE, out.header = FALSE, out=paste0(work.dir, "tex building/hurdlesummary.tex"),  
   rownames=TRUE,
