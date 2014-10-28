@@ -1002,6 +1002,18 @@ theta.ci.df.final$param <- c("Seed", "Organic Fert", "Plaguicidas", "Labor", "Tr
 
 names(theta.ci.df.final)[names(theta.ci.df.final)=="param"] <- "Input"
 
+
+
+#bootstrap.selection.v <- TRUE
+
+#source(paste0(code.dir, "abbreviated-dataset-building.r"), local=TRUE) 
+
+#length(y01)
+
+
+
+
+
 save( theta.ci.df.final, share.ci.df.final, cost.ci.df.final,
   file="/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Rdata results files/thetas cost and share.Rdata")
 

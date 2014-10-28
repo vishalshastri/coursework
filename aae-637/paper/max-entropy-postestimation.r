@@ -43,6 +43,11 @@ GAMS.nonlinear.results<- readLines(paste0(GAMS.projdir, "GMEnonlinear", strsplit
    formatC(bootstrap.iter, width = 5, flag = "0"), ".lst"))
 
 
+GAMS.nonlinear.results<- readLines(paste0(GAMS.projdir, "GMElinear", strsplit(target.crop, " ")[[1]][1], 
+   formatC(bootstrap.iter, width = 5, flag = "0"), ".lst"))
+
+
+
 
 
 GAMS.nonlinear.results <- GAMS.nonlinear.results[
@@ -81,7 +86,8 @@ prob.numbers <- GAMS.nonlinear.results[which(!is.na(GAMS.nonlinear.results.extra
 
 # GAMS.nonlinear.results<- readLines("/Users/travismcarthur/Desktop/Dropbox/entropytest.lst")
 
-GAMS.nonlinear.results<- readLines(paste0(GAMS.projdir, "GMEnonlinear", strsplit(target.crop, " ")[[1]][1], 
+GAMS.nonlinear.results<- readLines(paste0(GAMS.projdir, "GMElinear", # "GMEnonlinear", 
+strsplit(target.crop, " ")[[1]][1], 
    formatC(bootstrap.iter, width = 5, flag = "0"), ".lst"))
 
 
@@ -101,8 +107,8 @@ GAMS.nonlinear.results.params.numbers <- as.numeric(gsub("  parameters to be est
 
 # GAMS.nonlinear.results<- readLines("/Users/travismcarthur/Desktop/Dropbox/entropytest.lst")
 
-GAMS.nonlinear.results<- readLines(paste0(GAMS.projdir, "GMEnonlinear", strsplit(target.crop, " ")[[1]][1], 
-   formatC(bootstrap.iter, width = 5, flag = "0"), ".lst"))
+#GAMS.nonlinear.results<- readLines(paste0(GAMS.projdir, "GMEnonlinear", strsplit(target.crop, " ")[[1]][1], 
+#   formatC(bootstrap.iter, width = 5, flag = "0"), ".lst"))
 
 #home.mac <- TRUE
 
@@ -132,7 +138,8 @@ error.weight.eq.ls<-list()
 
 for ( i in 1:length(all.eqns) ) {
   
-  err.weight.temp.df <- read.table(paste0(GAMS.projdir, "GMEnonlinear", strsplit(target.crop, " ")[[1]][1], 
+  err.weight.temp.df <- read.table(paste0(GAMS.projdir, "GMElinear",  # "GMEnonlinear", 
+  strsplit(target.crop, " ")[[1]][1], 
    formatC(bootstrap.iter, width = 5, flag = "0"), ".lst"), 
     skip = begin.err.weight[i] + 3,  nrows= nrow(combined.df))
     # "/Users/travismcarthur/Desktop/Dropbox/entropytest.lst"
@@ -166,6 +173,12 @@ for ( i in all.eqns ) {
 big.sigma <- cov(do.call( cbind, error.collapsed.eq.ls))
 
 error.collapsed.eq.df <- do.call( cbind, error.collapsed.eq.ls)
+
+summary(rowSums(error.collapsed.eq.df[, 2:7]))
+
+
+      Min.    1st Qu.     Median       Mean    3rd Qu.       Max. 
+-0.5579000 -0.0777800 -0.0223300 -0.0504800 -0.0000002  0.0000051 
 
 summary(error.collapsed.eq.df)
 hist(error.collapsed.eq.df)
