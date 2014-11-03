@@ -20,7 +20,6 @@ sort(table(inputs.df$x19.codigo), decreasing=TRUE)[1:10]
 # for (target.crop in top.crops) {
 
 
-prop.table(table(
 
 
 

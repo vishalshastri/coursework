@@ -7,9 +7,12 @@ dropped.cost.share.eq <- 10
 # anything >6 means that no equation gets dropped
 
 
-condor.gams.dir <- "/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Condor/10-19-projdir/home/c/cschmidt/TravisImInYourInternets/gamsdir/projdir/"
+#condor.gams.dir <- "/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Condor/10-19-projdir/home/c/cschmidt/TravisImInYourInternets/gamsdir/projdir/"
 
 #condor.gams.dir <- "/Users/travismcarthur/Desktop/gamsdir/projdir/"
+
+condor.gams.dir <- "/Users/travismcarthur/Desktop/Condor/10-28-projdir/home/c/cschmidt/TravisImInYourInternets/gamsdir/projdir/"
+
 target.top.crop.number <- 2
 
 
@@ -21,7 +24,7 @@ cost.ci.ls <- list()
 share.ci.ls <- list()
 
 
-for ( target.top.crop.number in c(2, 5)) {
+for ( target.top.crop.number in c(2, 4, 5)) {
 
 
 # target.top.crop.number <- 5

@@ -20,7 +20,7 @@ crop.wide.df$fake.treatment <- ifelse(crop.wide.df$area.r.MAIZ>area.median, TRUE
 
 
 
-h1 <- 0.3
+h1 <- 0.2
 x <- crop.wide.df$area.r.MAIZ
 y <- crop.wide.df$harvest.r.MAIZ
 kern11u <- ifelse( x>area.median & x<(area.median+h1), 1, 0)
@@ -51,8 +51,12 @@ g=Tr+3*log(x+1)+sin(x*12)/3
 
 y <- g+qnorm(runif(1000))/5
 
+pdf(file="/Users/travismcarthur/Desktop/Econ 718 Metrics/problem sets/PS 3/scatterplot.pdf", width=5, height=5)
+
 plot(x, y)
 abline(v=.5)
+
+dev.off()
 
 
 library("AER")
@@ -64,14 +68,22 @@ library("AER")
 
 summary(dummy.ivreg <- ivreg( 
   y ~ Tr +  poly(x, degree=5, raw=TRUE) + Tr:poly(x-0.5, degree=5, raw=TRUE) | 
-  I(x>.5) +  poly(x, degree=5, raw=TRUE) + I(x>.time.amanzanada5):poly(x-0.5, degree=5, raw=TRUE)
+  I(x>.5) +  poly(x, degree=5, raw=TRUE) + I(x>.5):poly(x-0.5, degree=5, raw=TRUE)
   ))
 
+library("stargazer")
+
+stargazer(dummy.ivreg,  
+  out.header = FALSE, 
+  out="/Users/travismcarthur/Desktop/Econ 718 Metrics/problem sets/PS 3/table2.tex", 
+  no.space=TRUE, single.row=TRUE, keep.stat=c("n", "adj.rsq"),
+  title="RD on Fuzzy dataset via IV")
 
 
 
 
-# QUESTION 4
+
+# QUESTION 4.a
 
 load("/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Rdata results files/double hurdle.Rdata")
 
@@ -79,12 +91,52 @@ load("/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Rdata results file
 library("AER")
 
 
-chisq.test(crop.wide.df$received.credit, crop.wide.df$hhh.literacy)
+chisq.test(crop.wide.df$credit.source.r, crop.wide.df$hhh.literacy)
+
+table(crop.wide.df$hhh.literacy, crop.wide.df$hhh.edu.measure.r)
+table(crop.wide.df$credit.source.r, crop.wide.df$hhh.edu.measure.r)
+table(crop.wide.df$credit.source.r, crop.wide.df$hogar.incident)
+table(crop.wide.df$credit.source.r, crop.wide.df$hhh.age>70)
 
 summary(fert.ivreg <- ivreg( log(fert.exp+1) ~ 
-  received.credit + indig.prop + drive.time.urban + mean.ann.rain.5yr + elevation + hhh.sex | 
+  credit.source.r + indig.prop + drive.time.urban + mean.ann.rain.5yr + elevation + hhh.sex | 
   hhh.literacy + indig.prop + drive.time.urban + mean.ann.rain.5yr + elevation + hhh.sex, 
 data=crop.wide.df))
+
+
+
+stargazer(fert.ivreg,  
+  out.header = FALSE, 
+  out="/Users/travismcarthur/Desktop/Econ 718 Metrics/problem sets/PS 3/table3.tex", 
+  no.space=TRUE, single.row=TRUE, keep.stat=c("n", "adj.rsq"),
+  title="IV regression, using literacy as an instrument")
+
+
+
+# QUESTION 4.b
+
+summary(lambda.calc.1.lm <- lm( I(credit.source.r=="Received.Credit") ~ indig.prop + drive.time.urban + mean.ann.rain.5yr + elevation + hhh.sex + hhh.literacy, 
+data=crop.wide.df))
+# lamda is coef on "instrument" in this reg, i.e. hhh.literacy
+
+
+estimated.lambda <- coef(lambda.calc.1.lm)["hhh.literacyno"]
+
+
+
+summary(lambda.calc.2.lm <- lm( log(fert.exp+1) ~ I((hhh.literacy=="no")*estimated.lambda) + indig.prop + drive.time.urban + mean.ann.rain.5yr + elevation + hhh.sex, 
+data=crop.wide.df, subset=hhh.age>70))
+
+
+
+
+stargazer(lambda.calc.2.lm,  
+  out.header = FALSE, 
+  out="/Users/travismcarthur/Desktop/Econ 718 Metrics/problem sets/PS 3/table4.tex", 
+  no.space=TRUE, single.row=TRUE, keep.stat=c("n", "adj.rsq"),
+  title="Calculation of bias of IV (subset where age of household head is greater than 70)")
+
+
 
 
 # QUESTION 4.c
@@ -112,8 +164,65 @@ summary(fert.ivreg.perfect <- ivreg( Y_i ~
   Z_i + indig.prop + drive.time.urban + mean.ann.rain.5yr + elevation + hhh.sex, 
 data=crop.wide.df))
 
+stargazer(fert.ivreg.perfect,  
+  out.header = FALSE, 
+  out="/Users/travismcarthur/Desktop/Econ 718 Metrics/problem sets/PS 3/table5.tex", 
+  no.space=TRUE, single.row=TRUE, keep.stat=c("n", "adj.rsq"),
+  title="IV with perfect instrument (True treatment effect is 15")
 
 
+
+
+
+
+summary(lambda.calc.1.lm.2 <- lm( T_i ~ indig.prop + drive.time.urban + mean.ann.rain.5yr + elevation + hhh.sex + Z_i, 
+data=crop.wide.df))
+# lamda is coef on "instrument" in this reg, i.e. hhh.literacy
+
+
+estimated.lambda <- coef(lambda.calc.1.lm.2)["Z_i"]
+
+
+
+summary(lambda.calc.2.lm.2 <- lm( Y_i~ I(Z_i*estimated.lambda) + indig.prop + drive.time.urban + mean.ann.rain.5yr + elevation + hhh.sex, 
+data=crop.wide.df, subset=hhh.age>70))
+
+
+
+
+stargazer(lambda.calc.2.lm.2,  
+  out.header = FALSE, 
+  out="/Users/travismcarthur/Desktop/Econ 718 Metrics/problem sets/PS 3/table6.tex", 
+  no.space=TRUE, single.row=TRUE, keep.stat=c("n", "adj.rsq"),
+  title="Calculation of bias of IV with perfect instrument")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# TODO: DELETE:
+#DELETE
+
+summary(lambda.calc.1.lm <- lm( I(credit.source.r=="Received.Credit") ~ indig.prop + drive.time.urban + mean.ann.rain.5yr + elevation + hhh.sex + I(hhh.age>70), 
+data=crop.wide.df))
 
 
 

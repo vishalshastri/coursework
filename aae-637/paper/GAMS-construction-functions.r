@@ -9,11 +9,64 @@ library("gdata")
 
 # install.packages("stringr")
 library("stringr")
+library("plyr")
+
+#plyr::round_any(.1234567, accuracy=.0001, f=floor)
 
 
 
 make.GAMS.data <- function(x) {
 
+
+
+# http://stackoverflow.com/questions/13483430/how-to-make-rounded-percentages-add-up-to-100
+# http://stackoverflow.com/questions/23158165/truncate-decimal-to-specified-places?rq=1
+
+trunc.prec <- function(x, ..., prec = 0) base::trunc(x * 10^prec, ...) / 10^prec
+
+largest.remainder.method <- function(x, digits, index=1) {
+
+  x <- as.matrix(x)
+  x <- round(x, digits=digits+3)
+  # Above is to deal with some weird behavior when the actual value is
+  # infinitesiammly different from 1
+  
+  if (index==2) x <- t(x)
+#   plyr::round_any(x, accuracy=1/10^digits, f=floor)
+  x.truncated <- trunc.prec(x, prec=digits)
+  x.remainder <- x - x.truncated
+  
+  for ( i in seq_len(nrow(x.truncated))) {
+    if(sum(x.truncated[i, ])==1 ) next
+    dif.to.make.up <- as.integer(round((1 - sum(x.truncated[i, ]) )*10^digits))
+    
+    x.remainder.manip <- x.remainder[i, ]
+    names(x.remainder.manip) <- seq_len(length(x.remainder.manip ))
+    
+    # kind of hacky, below
+    indices.to.add <- as.numeric(names(
+      sort(x.remainder.manip, decreasing=TRUE)[seq_len(dif.to.make.up)]
+    ))
+    
+    x.truncated[i, indices.to.add] <- x.truncated[i, indices.to.add] + 1/10^digits
+  }
+  
+  if (index==2) x.truncated <- t(x.truncated )
+  
+  round(x.truncated , digits=digits)
+ 
+}
+
+
+x[, grepl("^s[0-9]+$", names(x))] <- 
+  as.data.frame(largest.remainder.method(x=x[, grepl("^s[0-9]+$", names(x))], digits=5))
+  
+#  x<- x[rowSums(as.data.frame(largest.remainder.method(x=x[, grepl("^s[0-9]+$", names(x))], digits=5)))!=1, grepl("^s[0-9]+$", names(x))][2, ]
+  
+#  x.fixed <- as.data.frame(largest.remainder.method(x=x[, grepl("^s[0-9]+$", names(x))], digits=5))
+  
+#  x.fixed[rowSums(x.fixed)!=1, ]
+  
 raw.first.df <- x[, 1:4]
 
 colnames(raw.first.df) <- sprintf("%10s", as.character(1:4))
