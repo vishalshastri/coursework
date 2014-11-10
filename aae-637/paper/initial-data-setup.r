@@ -10,7 +10,7 @@ inputs.df<- read.spss(paste0(work.dir, "bd68/2-AGRICOLA/Cultivos (Preg-19)/2.-EN
 colnames(inputs.df) <- tolower( make.names(gsub("[()]|[.]", "", attr(inputs.df, "variable.labels")) ) )
 
 
-
+tar -zcvf projdir10-28.tar.gz /home/c/cschmidt/TravisImInYourInternets/gamsdir/projdir
 
 exclude.index <- is.na(inputs.df$x19.abono.cantidad.quintal) | 
   inputs.df$x19.superficie.cultivada.hectareas==0  

@@ -14,6 +14,10 @@ dropped.cost.share.eq <- 10
 
 saved.workspace.path <- "/Users/travismcarthur/Desktop/Metrics (637)/Final paper/GAMS work/saved workspace.Rdata"
 
+saved.workspace.path <- "/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Rdata results files/saved workspace only inputsDF.Rdata"
+
+
+
 GAMS.projdir <-  "/Users/travismcarthur/Desktop/gamsdir/projdir/"
 
 GAMS.exe.path <- "/Applications/GAMS/gams24.1_osx_x64_64_sfx/gams"
@@ -67,7 +71,7 @@ library(Matrix)
 load(saved.workspace.path)
 
 
-target.top.crop.number <- 4
+target.top.crop.number <- 5
 
 #Papa (patatas)    3155 
 #Maiz combined   1838 
@@ -151,6 +155,8 @@ time.counter <- c()
 
 # 1:bootstrap.replications
 
+bootstrap.iter <- 0
+
 for ( bootstrap.iter in 0) {
 
 if( bootstrap.iter==0 ) {
@@ -180,7 +186,8 @@ cost.err.endpoint <- round(max(abs(resid(linear.sur.est.region)[grepl("cost",
 #share.err.endpoint <- round(max(abs(resid(linear.sur.est.region)[!grepl("cost", 
 #  names(resid(linear.sur.est.region)))])) * 1.4, digits=1)
 
-share.err.endpoint <- 1.5 
+#share.err.endpoint <- 1.5 
+share.err.endpoint <- 2
 
 cost.err.support <- seq(from = -cost.err.endpoint, to = cost.err.endpoint, length.out=3)
 

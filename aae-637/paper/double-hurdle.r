@@ -132,10 +132,6 @@ crop.wide.df$fert.exp[crop.wide.df$fert.exp>5000] <-
 
 
 
-
-
-
-
 # lognormal
 # truncnorm
 # loglogit
@@ -300,6 +296,23 @@ par(mfcol=c(1,1))
 
 
 
+
+
+
+
+
+
+# Start double hurdle here:
+
+
+
+
+
+
+
+
+
+
 mode.factor <- function(x) {
   ux <- unique(x)
   ux[which.max(tabulate(match(x, ux)))]
@@ -352,6 +365,12 @@ levels(crop.wide.df$hhh.edu.measure)
 sort(table(crop.wide.df$hhh.edu.measure))
 
 sort(table(crop.wide.df$hhh.edu.measure.r))
+
+
+
+
+
+
 
 m110d <- mhurdle(as.formula(paste("fert.exp ~ ", "department + indig.prop + indig.practices + hhh.literacy + hhh.age  + hhh.edu.measure.r*indig.prop + hhh.sex + REMPAIS + REMEXT + credit.source + drive.time.amanzanada + drive.time.urban + mean.ann.rain.5yr + AWC.CLASS + T.TEB + T.CACO3 + T.CASO4 + T.ESP + T.ECE + T.GRAVEL + T.SILT + T.CLAY  ", " | ", "department + indig.prop + indig.practices + hhh.age  + REMPAIS + REMEXT +  mean.ann.rain.5yr + hhh.edu.measure.r*indig.prop + AWC.CLASS + T.TEB + T.CACO3 + T.CASO4 + T.ESP + T.ECE + T.GRAVEL + T.SILT + T.CLAY  ", " | 0" ) ), 
   data = crop.wide.df, weights=crop.wide.df$FACTOR, corr = "d" , dist = "ln", method =  "BFGS" ,  print.level=2, iterlim=500)
@@ -454,12 +473,40 @@ save.image(file = "/Users/travismcarthur/Desktop/Metrics (637)/Final paper/hurdl
 # main.specification is the specification that we use for the final results. 
 # Above is what we used for the 637 paper that was actually turned in 
 
+
+
+
+
+
+library("mhurdle")
+
 crop.wide.df$credit.source.r <- 
   factor(ifelse(crop.wide.df$credit.source=="No.Credit", "No.Credit", "Received.Credit"))
   
+
+outcome.vars <- c(# "fert.exp",  
+"seed.exp"  ,
+"hired.labor.exp" ,      
+"manure.exp"       ,                      
+"transport.exp"     ,                     
+"pesticide.exp"      ,                    
+"extension.exp"       ,                   
+"machine.exp"          ,                  
+"draft.anmial.exp"      ,                 
+"other.exp"   )
+
+dhurdle.mfx.bootstrapped.input.ls <- list()
+
+for ( target.input in outcome.vars) {
+  crop.wide.df[, target.input] <- crop.wide.df[, target.input]/crop.wide.df$area.r
+}
+# Set vars to per-hectare. Don't forget that fert.exp is already set as that.
+
+
+for ( target.input in outcome.vars) {
   
 
-main.specification <- as.formula(paste("fert.exp ~ ", "department + indig.prop*hhh.edu.measure.r + indig.practices + hhh.literacy + hhh.age  + hhh.sex + REMPAIS + REMEXT + credit.source.r + drive.time.amanzanada + drive.time.urban + mean.ann.rain.5yr + elevation + AWC.CLASS + T.TEB + T.CACO3 + T.CASO4 + T.ESP + T.ECE + T.GRAVEL + T.SILT + T.CLAY  ", " | ", "department + indig.prop + indig.practices + hhh.age  + REMPAIS + REMEXT +  mean.ann.rain.5yr + elevation + hhh.edu.measure.r + AWC.CLASS + T.TEB + T.CACO3 + T.CASO4 + T.ESP + T.ECE + T.GRAVEL + T.SILT + T.CLAY  ", " | 0" ) )
+main.specification <- as.formula(paste(target.input, " ~ ", "department + indig.prop*hhh.edu.measure.r + indig.practices + hhh.literacy + hhh.age  + hhh.sex + REMPAIS + REMEXT + credit.source.r + drive.time.amanzanada + drive.time.urban + mean.ann.rain.5yr + elevation + AWC.CLASS + T.TEB + T.CACO3 + T.CASO4 + T.ESP + T.ECE + T.GRAVEL + T.SILT + T.CLAY  ", " | ", "department + indig.prop + indig.practices + hhh.age  + REMPAIS + REMEXT +  mean.ann.rain.5yr + elevation + hhh.edu.measure.r + AWC.CLASS + T.TEB + T.CACO3 + T.CASO4 + T.ESP + T.ECE + T.GRAVEL + T.SILT + T.CLAY  ", " | 0" ) )
 # Note that we are not including interaction term indig.prop*hhh.edu.measure.r in
 # the second hurdle since I wonder if we will have enough observations for the bootstrap
 
@@ -503,12 +550,12 @@ colnames(d.hurdle.coef)[grepl("stars", colnames(d.hurdle.coef))] <- ""
 colnames(d.hurdle.coef)[colnames(d.hurdle.coef)==""][2] <- " "
 
 
-stargazer( d.hurdle.coef, out=paste0(work.dir, "tex building/hurdleparam.tex"),
-  summary=FALSE, out.header = FALSE, table.layout="a", rownames=FALSE, font.size="small",
-  column.sep.width="0pt", align=TRUE,
-  title=paste0("Double hurdle model: parameter estimates. (n = ", nrow(crop.wide.df), ")"),
-  notes=c("Signif codes: *** = 0.1\\%; ** = 1\\%; * = 5\\%; . = 10\\%.",
-   "Reference levels: Department - La Paz; Education - Primary; Credit - no loans.") )
+#stargazer( d.hurdle.coef, out=paste0(work.dir, "tex building/hurdleparam.tex"),
+#  summary=FALSE, out.header = FALSE, table.layout="a", rownames=FALSE, font.size="small",
+#  column.sep.width="0pt", align=TRUE,
+#  title=paste0("Double hurdle model: parameter estimates. (n = ", nrow(crop.wide.df), ")"),
+#  notes=c("Signif codes: *** = 0.1\\%; ** = 1\\%; * = 5\\%; . = 10\\%.",
+#   "Reference levels: Department - La Paz; Education - Primary; Credit - no loans.") )
 
 # doesnt work for simple tables,just models:
 # column.separate=c(1, 3,3), column.labels =c("test0", "test1", "test2"),
@@ -521,6 +568,8 @@ for ( i in factors.to.convert ) {
 
 
 mfx.bootstrap <- function(crop.wide.df) {
+
+cat(target.input)
 
 m110d <- mhurdle(main.specification, 
   data = crop.wide.df, weights=crop.wide.df$FACTOR, corr = "d" , dist = "ln", method =  "BFGS",  print.level=2, iterlim=500)
@@ -606,7 +655,7 @@ dhurdle.mfx <- t(dhurdle.mfx)
 
 set.seed(100)
 
-replications <- 4000
+replications <- 1500
 # replications <- 20
 
 y.df <- crop.wide.df
@@ -730,7 +779,10 @@ dhurdle.mfx.bootstrapped[, 3] <- dhurdle.mfx.bootstrapped[, 4]
 dhurdle.mfx.bootstrapped[, 4] <- reverse.ci.order.v
 
 
+dhurdle.mfx.bootstrapped.input.ls[[target.input]] <- dhurdle.mfx.bootstrapped
 
+
+}
 
 # TODO: something not messed up with the alignment of the 2nd hurdle and the results are wrong
 # Also look at drive time alignments
@@ -1869,4 +1921,600 @@ crop.wide.df$hhh.edu.measure.r <- factor(crop.wide.df$hhh.edu.measure.r)
 
 
 # Let's group Prestamo.de.algna.Cooperativa.de.ahorro with Prestamo.de.algn.Fondo.financiero.Privado
+
+
+tryCatch(.Fortran("PBIVNORM", prob=.5, lower=0, uppera=2, upperb=.Machine$double.xmax, infin=TRUE, correl=.1, 
+       lt=.2, PACKAGE = "pbivnorm"), error = function(e) "error test")
+       
+summary(glm("I(manure.exp>0) ~ department + indig.prop*hhh.edu.measure.r + indig.practices + hhh.literacy + hhh.age  + hhh.sex + REMPAIS + REMEXT + credit.source.r + drive.time.amanzanada + drive.time.urban + mean.ann.rain.5yr + elevation + AWC.CLASS + T.TEB + T.CACO3 + T.CASO4 + T.ESP + T.ECE + T.GRAVEL + T.SILT + T.CLAY", data=crop.wide.df, family=binomial(link = "logit")))
+
+
+table(crop.wide.df$manure.exp>0, crop.wide.df$department)
+
+table(crop.wide.df$manure.exp>0, crop.wide.df$AWC.CLASS)
+
+
+for ( i in outcome.vars[-c(3,6,7,8,9)]) {
+
+
+print(paste0(i, "\n"))
+
+main.specification <- as.formula(paste(i, " ~ ", "department + indig.prop*hhh.edu.measure.r + indig.practices + hhh.literacy + hhh.age  + hhh.sex + REMPAIS + REMEXT + credit.source.r + drive.time.amanzanada + drive.time.urban + mean.ann.rain.5yr + elevation + AWC.CLASS + T.TEB + T.CACO3 + T.CASO4 + T.ESP + T.ECE + T.GRAVEL + T.SILT + T.CLAY  ", " | ", "department + indig.prop + indig.practices + hhh.age  + REMPAIS + REMEXT +  mean.ann.rain.5yr + elevation + hhh.edu.measure.r + AWC.CLASS + T.TEB + T.CACO3 + T.CASO4 + T.ESP + T.ECE + T.GRAVEL + T.SILT + T.CLAY  ", " | 0" ) )
+# Note that we are not including interaction term indig.prop*hhh.edu.measure.r in
+# the second hurdle since I wonder if we will have enough observations for the bootstrap
+
+  
+m110d <- mhurdle(main.specification, 
+  data = crop.wide.df, weights=crop.wide.df$FACTOR, corr = "d" , dist = "ln", method =  "BFGS" ,  print.level=2)
+
+
+
+
+
+
+}
+
+
+
+  
+drop.unused.levels = FALSE
+
+
+
+# [, !apply(X2, 2, FUN=function(x) all(x[y>0]==0))]
+
+my.fit.simple.mhurdle <- function (X1, X2, y, dist = NULL) 
+{
+    probit <- glm(y != 0 ~ X1 - 1, family = binomial(link = "probit"))
+    lin <- switch(dist, ln = lm(log(y) ~ X2 - 1,  subset = y != 0), n = lm(y ~ X2 - 1, subset = y != 0), tn = truncreg(y ~ 
+        X2 - 1, subset = y != 0))
+        
+    lin$coefficients[is.na(lin$coefficients)] <- 0
+    df <- df.residual(lin)
+    np <- sum(y != 0)
+    K1 <- ncol(X1)
+    beta1 <- coef(probit)
+    bX1 <- as.numeric(crossprod(beta1, t(X1)))
+    K2 <- ncol(X2)
+    if (dist == "tn") {
+        sigma <- coef(lin)[ncol(X2) + 1]
+        beta2 <- coef(lin)[-(ncol(X2) + 1)]
+    }
+    else beta2 <- coef(lin)
+    bX2 <- as.numeric(crossprod(beta2, t(X2)))
+    L.null <- (y == 0) * log(1 - pnorm(bX1))
+    if (dist == "ln") {
+        logy <- rep(0, length(y))
+        logy[y != 0] <- log(y[y != 0])
+        resid <- (logy - bX2)
+    }
+    else resid <- y - bX2
+    scr <- sum(resid[y != 0]^2)
+    if (dist != "tn") 
+        sigma <- sqrt(scr/np)
+    mills1 <- mhurdle:::mills(bX1)
+    mills2 <- mhurdle:::mills(bX2/sigma)/pnorm(bX2/sigma)
+    mills1m <- mhurdle:::mills(-bX1)
+    L.pos <- switch(dist, ln = (y != 0) * (-logy + pnorm(bX1, 
+        log.p = TRUE) + dnorm(resid/sigma, log = TRUE) - log(sigma)), 
+        n = (y != 0) * (pnorm(bX1, log.p = TRUE) + dnorm(resid/sigma, 
+            log = TRUE) - log(sigma)), tn = (y != 0) * (pnorm(bX1, 
+            log.p = TRUE) + dnorm(resid/sigma, log = TRUE) - 
+            log(sigma) - pnorm(bX2/sigma, log.p = TRUE)))
+    gbX1 <- switch(dist, ln = (y == 0) * (-mills1m) + (y != 0) * 
+        mills1, n = (y == 0) * (-mills1m) + (y != 0) * mills1, 
+        tn = (y == 0) * (-mills1m) + (y != 0) * mills1)
+    gbX2 <- switch(dist, ln = (y != 0) * (resid/sigma^2), n = (y != 
+        0) * (resid/sigma^2), tn = (y != 0) * (resid/sigma^2 - 
+        1/sigma * mills2))
+    gsigma <- switch(dist, ln = (y != 0) * (resid^2/sigma^3 - 
+        1/sigma), n = (y != 0) * (resid^2/sigma^3 - 1/sigma), 
+        tn = (y != 0) * (resid^2/sigma^3 - 1/sigma + bX2/sigma^2 * 
+            mills2))
+    gradi <- cbind(gbX1 * X1, gbX2 * X2, as.numeric(gsigma))
+    dss <- -3 * scr/sigma^4 + sum(y != 0)/sigma^2
+    if (dist == "tn") {
+        vcov <- mhurdle:::bdiag(vcov(probit), vcov(lin))
+        coef <- c(coef(probit), coef(lin))
+    }
+    else {
+        vcov <- mhurdle:::bdiag(vcov(probit), vcov(lin)/np * df, -1/dss)
+        coef <- c(coef(probit), coef(lin), sigma)
+    }
+    fit <- cbind(zero = bX1, pos = bX2)
+    other.coef <- c("sd")
+    coef.names <- list(h1 = colnames(X1), h2 = colnames(X2), 
+        sd = other.coef)
+    fitted <- attr(mhurdle:::mhurdle.lnl(coef, X1 = X1, X2 = X2, X3 = NULL, 
+        X4 = NULL, y = y, gradient = FALSE, fitted = TRUE, dist = dist, 
+        corr = NULL), "fitted")
+    logLik <- structure(sum(L.null + L.pos), df = length(coef), 
+        nobs = length(y), class = "logLik")
+    result <- list(coefficients = coef, vcov = vcov, fitted.values = fitted, 
+        logLik = logLik, gradient = gradi, model = NULL, formula = NULL, 
+        coef.names = coef.names, call = NULL)
+    class(result) <- c("mhurdle", "maxLik")
+    result
+}
+
+
+
+
+assignInNamespace( "fit.simple.mhurdle", my.fit.simple.mhurdle, "mhurdle")
+
+
+
+# X2 <- model.matrix(formula, data = mf, rhs = 2)
+
+
+my.mhurdle <- function (formula, data, subset, weights, na.action, start = NULL, 
+    dist = c("ln", "tn", "n", "bc", "ihs"), corr = NULL, ...) 
+{
+    dots <- list(...)
+    oldoptions <- options(warn = -1)
+    on.exit(options(oldoptions))
+    cl <- match.call()
+    posT <- as.list(cl) == "T"
+    posF <- as.list(cl) == "F"
+    cl[posT] <- TRUE
+    cl[posF] <- FALSE
+    cl.save <- cl
+    dist <- match.arg(dist)
+    if (!inherits(formula, "Formula")) 
+        formula <- Formula(formula)
+    if (length(formula)[2] > 4) 
+        stop("at most 4 rhs should be provided in the formula")
+    mf <- match.call(expand.dots = FALSE)
+    m <- match(c("formula", "data", "subset", "na.action", "weights"), 
+        names(mf), 0L)
+    mf <- mf[c(1L, m)]
+    mf$drop.unused.levels <- TRUE
+    mf[[1L]] <- as.name("model.frame")
+    mf$formula <- formula
+    mf <- eval(mf, parent.frame())
+    mf.s <- droplevels(mf[mf[,1]>0,])
+    X1 <- model.matrix(formula, data = mf, rhs = 1)
+ #   X2 <- model.matrix(formula, data = mf.s, rhs = 2, drop.unused.levels=TRUE)
+ X2 <- model.matrix(formula, data = mf, rhs = 2)
+    X3 <- model.matrix(formula, data = mf, rhs = 3)
+    y <- model.response(mf)
+    n <- length(y)
+    if (length(X1) == 0) 
+        X1 <- NULL
+    if (length(X3) == 0) 
+        X3 <- NULL
+    if (length(X2) == 0) 
+        stop("the second hurdle (consumption equation) is mandatory")
+    h1 <- !is.null(X1)
+    h3 <- !is.null(X3)
+    if (length(formula)[2] == 4) {
+        X4 <- model.matrix(formula, data = mf, rhs = 4)
+        if (length(X4) == 0) 
+            X4 <- NULL
+    }
+    else X4 <- NULL
+    if (!is.null(corr)) {
+        if ((h1 + h3) == 2) {
+            if (nchar(corr) != 3) 
+                stop("corr should contain three characters")
+            if (!(corr %in% c("dii", "iid"))) 
+                stop("corr should currently be either dii or iid")
+            if (corr == "dii") 
+                corr <- "h1"
+            if (corr == "iid") 
+                corr <- "h3"
+        }
+        else {
+            if (nchar(corr) != 1) 
+                stop("corr should contain just one character")
+            if (!(corr %in% c("i", "d"))) 
+                stop("corr should be one of d or i")
+            if (corr == "i") 
+                corr <- NULL
+            else {
+                if (h1) 
+                  corr <- "h1"
+                if (h3) 
+                  corr <- "h3"
+            }
+        }
+    }
+    Pnull <- mean(y == 0)
+    if (dist != "ln") {
+        Ec <- mean(y[y > 0])
+        Vc <- var(y[y > 0])
+    }
+    else {
+        Ec <- mean(log(y[y > 0]))
+        Vc <- var(log(y[y > 0]))
+    }
+    start.naive <- c(rep(0.1, 1 + h1 + h3), 1)
+    moments <- c(Pnull, Ec, Vc)
+    dist.naive <- dist
+    if (dist %in% c("bc", "ihs")) 
+        dist.naive <- "n"
+    naive <- maxLik(mhurdle:::lnl.naive, start = start.naive, dist = dist.naive, 
+        moments = moments, h1 = h1, h3 = h3)
+    coef.naive <- naive$est
+    logLik.naive <- structure(naive$max * n, nobs = length(y), 
+        df = length(coef.naive), class = "logLik")
+    naive <- list(coefficients = coef.naive, logLik = logLik.naive, 
+        code = naive$code)
+    if (!h1 && !h3 && dist != "n") {
+        if (dist == "ln") 
+            result <- lm(log(y) ~ X2 - 1)
+        if (dist == "tn") 
+            result <- truncreg(y ~ X2 - 1)
+        return(result)
+    }
+    if (h1 && !h3 && !(dist %in% c("n", "bc", "ihs")) && is.null(corr)) {
+        result <- mhurdle:::fit.simple.mhurdle(X1, X2, y, dist = dist)
+        result$naive <- naive
+        result$call <- cl.save
+        result$model <- mf
+        result$formula <- formula
+        return(result)
+    }
+    dist.start <- dist
+    if (dist %in% c("bc", "ish")) 
+        dist.start <- "n"
+    if (is.null(start)) 
+        start <- mhurdle:::start.mhurdle(X1, X2, X3, y, dist.start)
+    if (!is.null(X4)) {
+        sd.int.pos <- ifelse(h1, ncol(X1), 0) + ncol(X2) + ifelse(h3, 
+            ncol(X3), 0) + 1
+        sd.last.pos <- sd.int.pos - 1 + ncol(X4)
+        start[sd.int.pos] <- log(start[sd.int.pos])
+        start <- c(start[1:sd.int.pos], rep(0, ncol(X4) - 1))
+    }
+    if (!is.null(corr)) 
+        start <- c(start, 0.1)
+    if (dist == "bc") 
+        start <- c(start, 1)
+    if (dist == "ihs") 
+        start <- c(start, 0.2)
+    result <- mhurdle:::mhurdle.fit(start, X1, X2, X3, X4, y, gradient = TRUE, 
+        fit = FALSE, dist = dist, corr = corr, ...)
+    result$naive <- naive
+    result$call <- cl.save
+    result$formula <- formula
+#    names(result$coefficients) <- colnames(result$vcov) <- rownames(result$vcov) <- mhurdle:::nm.mhurdle(result)
+names(result$coefficients)  <- mhurdle:::nm.mhurdle(result)
+    result$model <- mf
+    result
+}
+
+
+my.mhurdle.fit <- function (start, X1, X2, X3, X4, y, gradient = FALSE, fit = FALSE, 
+    dist = c("ln", "n", "tn", "bc", "ihs"), corr = NULL, ...) 
+{
+    start.time <- proc.time()
+    f <- function(param) mhurdle:::mhurdle.lnl(param, X1 = X1, X2 = X2, 
+        X3 = X3, X4 = X4, y = y, gradient = TRUE, fitted = FALSE, 
+        dist = dist, corr = corr)
+    check.gradient <- FALSE
+    if (check.gradient) {
+        ngrad <- c()
+        oparam <- start
+        fo <- f(start)
+        agrad <- apply(attr(fo, "gradient"), 2, sum)
+        eps <- 1e-05
+        for (i in 1:length(start)) {
+            oparam[i] <- oparam[i] + eps
+            ngrad <- c(ngrad, sum((as.numeric(f(oparam)) - fo)/eps))
+            oparam <- start
+        }
+        print(cbind(start, agrad, ngrad))
+    }
+    maxl <- maxLik(f, start = start, ...)
+    coefficients <- maxl$estimate
+    fitted <- attr(mhurdle:::mhurdle.lnl(coefficients, X1 = X1, X2 = X2, 
+        X3 = X3, X4 = X4, y = y, gradient = FALSE, fitted = TRUE, 
+        dist = dist, corr = corr), "fitted")
+    logLik <- f(coefficients)
+    gradi <- attr(logLik, "gradi")
+    logLik <- structure(as.numeric(logLik), df = length(coefficients), 
+        nobs = length(y), class = "logLik")
+    hessian <- maxl$hessian
+    convergence.OK <- maxl$code <= 2
+    elaps.time <- proc.time() - start.time
+    nb.iter <- maxl$iterations
+#    eps <- with(maxl, gradient %*% solve(-hessian) %*% gradient)
+#    est.stat <- list(elaps.time = elaps.time, nb.iter = nb.iter, 
+#        eps = eps, method = maxl$type, message = maxl$message)
+#    class(est.stat) <- "est.stat"
+    if (!is.null(X4)) 
+        sd.names <- colnames(X4)
+    else sd.names <- "sd"
+    if (!is.null(corr)) 
+        rho.names <- ifelse(corr == "h1", "corr12", "corr13")
+    else rho.names <- NULL
+    if (dist %in% c("bc", "ihs")) 
+        tr.names <- "tr"
+    else tr.names <- NULL
+    coef.names <- list(h1 = colnames(X1), h2 = colnames(X2), 
+        h3 = colnames(X3), sd = sd.names, corr = rho.names, tr = tr.names)
+    result <- list(coefficients = coefficients, vcov = NULL, 
+        fitted.values = fitted, logLik = logLik, gradient = gradi, 
+        formula = NULL, model = NULL, coef.names = coef.names, 
+        call = NULL, est.stat = NULL, naive = NULL)
+    if (ncol(X2) > 1) 
+        class(result) <- c("mhurdle")
+    result
+}
+
+
+
+
+assignInNamespace( "mhurdle.fit", my.mhurdle.fit, "mhurdle")
+
+#environment(my.mhurdle) <- as.environment("package:mhurdle")
+
+unlockBinding("mhurdle", as.environment("package:mhurdle"))
+assignInNamespace( "mhurdle", my.mhurdle, "mhurdle")
+assign("mhurdle", my.mhurdle, as.environment("package:mhurdle"))
+lockBinding("mhurdle", as.environment("package:mhurdle"))
+
+#  unlockBinding(name, env);
+ # assignInNamespace(name, value, ns=pkgName, envir=env);
+ # assign(name, value, envir=env);
+ # lockBinding(name, env);
+
+
+
+main.specification <- as.formula(paste("manure.exp", " ~ ", "department + indig.prop*hhh.edu.measure.r + indig.practices + hhh.literacy + hhh.age  + hhh.sex + REMPAIS + REMEXT + credit.source.r + drive.time.amanzanada + drive.time.urban + mean.ann.rain.5yr + elevation + AWC.CLASS + T.TEB + T.CACO3 + T.CASO4 + T.ESP + T.ECE + T.GRAVEL + T.SILT + T.CLAY  ", " | ", "department + indig.prop + indig.practices + hhh.age  + REMPAIS + REMEXT +  mean.ann.rain.5yr + elevation + hhh.edu.measure.r + AWC.CLASS + T.TEB + T.CACO3 + T.CASO4 + T.ESP + T.ECE + T.GRAVEL + T.SILT + T.CLAY  ", " | 0" ) )
+# Note that we are not including interaction term indig.prop*hhh.edu.measure.r in
+# the second hurdle since I wonder if we will have enough observations for the bootstrap
+
+  
+m110d <- mhurdle(main.specification, 
+  data = crop.wide.df, weights=crop.wide.df$FACTOR, corr = "d" , dist = "ln", method =  "BFGS" ,  print.level=2)
+  
+  
+m110d <- my.mhurdle(main.specification, 
+  data = crop.wide.df, weights=crop.wide.df$FACTOR, corr = "d" , dist = "ln", method =  "BFGS" ,  print.level=2)
+
+
+
+
+
+
+
+
+
+
+
+
+mhurdle:::mhurdle.lnl
+
+my.mhurdle.lnl <-function (param, X1, X2, X3, X4, y, gradient = FALSE, fitted = FALSE, 
+    dist = NULL, corr = NULL) 
+{
+    h1 <- !is.null(X1)
+    K1 <- ifelse(is.null(X1), 0, ncol(X1))
+    h3 <- !is.null(X3)
+    K3 <- ifelse(is.null(X3), 0, ncol(X3))
+    K2 <- ncol(X2)
+    beta2 <- param[(K1 + 1):(K1 + K2)]
+    beta2[is.na(beta2)] <- 0
+    # MY FIX
+    bX2 <- as.numeric(crossprod(t(X2), beta2))
+    if (h1) {
+        beta1 <- param[1:K1]
+        bX1 <- as.numeric(crossprod(t(X1), beta1))
+        Phi1 <- pnorm(bX1)
+        phi1 <- dnorm(bX1)
+    }
+    else {
+        bX1 <- beta1 <- NULL
+        Phi1 <- 1
+        phi1 <- 0
+    }
+    if (h3) {
+        beta3 <- param[(K1 + K2 + 1):(K1 + K2 + K3)]
+        bX3 <- as.numeric(crossprod(t(X3), beta3))
+        Phi3 <- pnorm(bX3)
+        phi3 <- dnorm(bX3)
+    }
+    else {
+        bX3 <- beta3 <- NULL
+        Phi3 <- 1
+        phi3 <- 0
+    }
+    if (is.null(X4)) 
+        K4 <- 1
+    else K4 <- ncol(X4)
+    beta4 <- param[(K1 + K2 + K3 + 1):(K1 + K2 + K3 + K4)]
+    if (is.null(X4)) 
+        sigma <- beta4
+    else sigma <- as.numeric(exp(crossprod(t(X4), beta4)))
+    rho1 <- rho3 <- 0
+    if (!is.null(corr)) {
+        if (corr == "h1") {
+            rho1 <- param[K1 + K2 + K3 + K4 + 1]
+            if (rho1 < -1) 
+                rho1 <- -0.99
+            if (rho1 > 1) 
+                rho1 <- 0.99
+        }
+        if (corr == "h3") {
+            rho3 <- param[K1 + K2 + K3 + K4 + 1]
+            if (rho3 < -1) 
+                rho3 <- -0.99
+            if (rho3 > 1) 
+                rho3 <- 0.99
+        }
+    }
+    if (dist == "bc") {
+        lambda <- param[K1 + K2 + K3 + K4 + (!is.null(corr)) + 
+            1]
+        Phi2 <- pnorm((bX2 + 1/lambda)/sigma)
+        phi2 <- dnorm((bX2 + 1/lambda)/sigma)
+        Phi12 <- mhurdle:::mypbivnorm(bX1, (bX2 + 1/lambda)/sigma, rho1)
+        Phi23 <- mhurdle:::mypbivnorm((bX2 + 1/lambda)/sigma, bX3, rho3)
+    }
+    else {
+        Phi2 <- pnorm(bX2/sigma)
+        phi2 <- dnorm(bX2/sigma)
+        Phi12 <- mhurdle:::mypbivnorm(bX1, bX2/sigma, rho1)
+        Phi23 <- mhurdle:::mypbivnorm(bX2/sigma, bX3, rho3)
+    }
+    if (dist == "ihs") 
+        lambda <- param[K1 + K2 + K3 + K4 + (!is.null(corr)) + 
+            1]
+    Ty <- switch(dist, ln = log2(y) + log(Phi3), bc = ((y * Phi3)^lambda - 
+        1)/lambda, ihs = log(lambda * y * Phi3 + sqrt(1 + (lambda * 
+        y * Phi3)^2))/lambda, y * Phi3)
+    lnJ <- switch(dist, ln = -log2(y), bc = (lambda - 1) * log2(y) + 
+        lambda * log(Phi3), ihs = -0.5 * log(1 + (lambda * Phi3 * 
+        y)^2) + log(Phi3), log(Phi3))
+    lnJlb <- switch(dist, bc = log2(y) + log(Phi3), ihs = -lambda * 
+        y^2 * Phi3^2/(1 + (lambda * y * Phi3)^2))
+    resid <- Ty - bX2
+    z <- function(x, resid, rho) {
+        if (is.null(x)) 
+            result <- list(f = 100, g = 0, h = 0)
+        else {
+            f <- (x + rho/sigma * resid)/sqrt(1 - rho^2)
+            g <- x * rho * (1 - rho^2)^-1.5 + ((1 - rho^2)^-0.5 + 
+                rho^2 * (1 - rho^2)^-1.5) * resid/sigma
+            h <- x * ((1 - rho^2)^-1.5 + 3 * rho^2 * (1 - rho^2)^-2.5) + 
+                resid/sigma * (3 * rho * (1 - rho^2)^-1.5 + 3 * 
+                  rho^3 * (1 - rho^2)^-2.5)
+            result <- list(f = f, g = g, h = h)
+        }
+        result
+    }
+    z1 <- z(bX1, resid, rho1)
+    z3 <- z(bX3, resid, rho3)
+    lnL.null <- switch(dist, tn = log(1 - Phi12$f * Phi23$f/Phi2^2), 
+        ln = log(1 - Phi1 * Phi3), log(1 - Phi12$f * Phi23$f/Phi2))
+    lnL.pos <- -log(sigma) + dnorm(resid/sigma, log = TRUE) + 
+        pnorm(z1$f, log.p = TRUE) + pnorm(z3$f, log.p = TRUE) + 
+        lnJ - (dist == "tn") * log(Phi2)
+    lnL <- lnL.null * (y == 0) + lnL.pos * (y != 0)
+    if (gradient) {
+        gradi <- c()
+        if (h1) {
+            lnL.beta1 <- (y == 0) * (switch(dist, tn = -(Phi12$a * 
+                Phi23$f)/(Phi2^2 - Phi12$f * Phi23$f), ln = -phi1 * 
+                Phi3/(1 - Phi1 * Phi3), -(Phi12$a * Phi23$f)/(Phi2 - 
+                Phi12$f * Phi23$f))) + (y != 0) * (mhurdle:::mills(z1$f)/sqrt(1 - 
+                rho1^2))
+            gradi <- cbind(gradi, lnL.beta1 * X1)
+        }
+        lnL.beta2 <- (y == 0) * (switch(dist, tn = (2 * Phi2 * 
+            phi2 - Phi12$b * Phi23$f - Phi12$f * Phi23$a)/(Phi2^2 - 
+            Phi12$f * Phi23$f)/sigma - 2 * mhurdle:::mills(bX2/sigma)/sigma, 
+            ln = 0, bc = (phi2 - Phi12$b * Phi23$f - Phi12$f * 
+                Phi23$a)/(Phi2 - Phi12$f * Phi23$f)/sigma - mhurdle:::mills((bX2 + 
+                1/lambda)/sigma)/sigma, (phi2 - Phi12$b * Phi23$f - 
+                Phi12$f * Phi23$a)/(Phi2 - Phi12$f * Phi23$f)/sigma - 
+                mhurdle:::mills(bX2/sigma)/sigma)) + (y != 0) * (resid/sigma^2 - 
+            mhurdle:::mills(z1$f) * rho1/sigma/sqrt(1 - rho1^2) - mhurdle:::mills(z3$f) * 
+            rho3/sigma/sqrt(1 - rho3^2) - (dist == "tn") * mhurdle:::mills(bX2/sigma)/sigma)
+        gradi <- cbind(gradi, lnL.beta2 * X2)
+        if (h3) {
+            Ty3 <- switch(dist, ln = mhurdle:::mills(bX3), bc = (y * Phi3)^lambda * 
+                mhurdle:::mills(bX3), ihs = y * phi3/sqrt(1 + (lambda * 
+                y * Phi3)^2), y * phi3)
+            lnJ3 <- switch(dist, ln = 0, bc = lambda * mhurdle:::mills(bX3), 
+                ihs = -phi3 * Phi3 * lambda^2 * y^2/(1 + (lambda * 
+                  y * Phi3)^2) + mhurdle:::mills(bX3), mhurdle:::mills(bX3))
+            lnL.beta3 <- (y == 0) * (switch(dist, tn = -(Phi12$f * 
+                Phi23$b)/(Phi2^2 - Phi12$f * Phi23$f), ln = -Phi1 * 
+                phi3/(1 - Phi1 * Phi3), -(Phi12$f * Phi23$b)/(Phi2 - 
+                Phi12$f * Phi23$f))) + (y != 0) * (-resid/sigma^2 * 
+                Ty3 + mhurdle:::mills(z1$f) * rho1/sqrt(1 - rho1^2)/sigma * 
+                Ty3 + mhurdle:::mills(z3$f) * (1 + rho3/sigma * Ty3)/sqrt(1 - 
+                rho3^2) + lnJ3)
+            gradi <- cbind(gradi, lnL.beta3 * X3)
+        }
+        lnL.sigma <- (y == 0) * (switch(dist, tn = -(2 * Phi2 * 
+            phi2 - Phi12$b * Phi23$f - Phi12$f * Phi23$a)/(Phi2^2 - 
+            Phi12$f * Phi23$f) * bX2/sigma^2 + 2 * mhurdle:::mills(bX2/sigma) * 
+            bX2/sigma^2, ln = 0, bc = -(phi2 - Phi12$b * Phi23$f - 
+            Phi12$f * Phi23$a)/(Phi2 - Phi12$f * Phi23$f) * (bX2 + 
+            1/lambda)/sigma^2 + mhurdle:::mills((bX2 + 1/lambda)/sigma) * 
+            (bX2 + 1/lambda)/sigma^2, -(phi2 - Phi12$b * Phi23$f - 
+            Phi12$f * Phi23$a)/(Phi2 - Phi12$f * Phi23$f) * bX2/sigma^2 + 
+            mhurdle:::mills(bX2/sigma) * bX2/sigma^2)) + (y != 0) * (-1/sigma + 
+            resid^2/sigma^3 - mhurdle:::mills(z1$f) * rho1/sqrt(1 - rho1^2) * 
+            resid/sigma^2 - mhurdle:::mills(z3$f) * rho3/sqrt(1 - rho3^2) * 
+            resid/sigma^2 + (dist == "tn") * mhurdle:::mills(bX2/sigma) * 
+            bX2/sigma^2)
+        if (!is.null(X4)) 
+            lnL.sigma <- lnL.sigma * sigma * X4
+        gradi <- cbind(gradi, lnL.sigma)
+        if (h1 && !is.null(corr) && corr == "h1") {
+            lnL.rho1 <- (y == 0) * (switch(dist, tn = -Phi12$rho * 
+                Phi23$f/(Phi2^2 - Phi12$f * Phi23$f), ln = 0, 
+                -Phi12$rho * Phi23$f/(Phi2 - Phi12$f * Phi23$f))) + 
+                (y != 0) * (mhurdle:::mills(z1$f) * z1$g)
+            gradi <- cbind(gradi, lnL.rho1)
+        }
+        if (h3 && !is.null(corr) && corr == "h3") {
+            lnL.rho3 <- (y == 0) * (switch(dist, tn = -Phi12$f * 
+                Phi23$rho/(Phi2^2 - Phi12$f * Phi23$f), ln = 0, 
+                -Phi12$f * Phi23$rho/(Phi2 - Phi12$f * Phi23$f))) + 
+                (y != 0) * (mhurdle:::mills(z3$f) * z3$g)
+            gradi <- cbind(gradi, lnL.rho3)
+        }
+        if (dist == "bc") {
+            Tylb <- (log(Phi3 * y) * (Phi3 * y)^lambda * lambda - 
+                ((Phi3 * y)^lambda - 1))/lambda^2
+            lnL.lambda <- vector(mode = "numeric", length = length(y))
+            lnL.lambda[y == 0] <- (((phi2 - Phi12$b * Phi23$f - 
+                Phi12$f * Phi23$a)/(Phi2 - Phi12$f * Phi23$f)/sigma - 
+                mhurdle:::mills((bX2 + 1/lambda)/sigma)/sigma) * (-1/lambda^2))[y == 
+                0]
+            lnL.lambda[y != 0] <- ((-resid/sigma^2 + mhurdle:::mills(z1$f) * 
+                rho1/sigma/sqrt(1 - rho1^2) + mhurdle:::mills(z3$f) * rho3/sigma/sqrt(1 - 
+                rho3^2)) * Tylb + lnJlb)[y != 0]
+            gradi <- cbind(gradi, lnL.lambda)
+        }
+        if (dist == "ihs") {
+            Tylb <- (y * Phi3)/lambda/sqrt(1 + (lambda * y * 
+                Phi3)^2) - Ty/lambda
+            lnL.lambda <- vector(mode = "numeric", length = length(y))
+            lnL.lambda[y != 0] <- ((-resid/sigma^2 + mhurdle:::mills(z1$f) * 
+                rho1/sigma/sqrt(1 - rho1^2) + mhurdle:::mills(z3$f) * rho3/sigma/sqrt(1 - 
+                rho3^2)) * Tylb + lnJlb)[y != 0]
+            gradi <- cbind(gradi, lnL.lambda)
+        }
+        attr(lnL, "gradient") <- gradi
+    }
+    if (fitted) {
+        P0 <- exp(lnL.null)
+        if (dist != "ln") {
+            if (h3) 
+                Psi23 <- rho3 * phi3 * pnorm((bX2/sigma - rho3 * 
+                  bX3)/sqrt(1 - rho3^2)) + phi2 * pnorm((bX3 - 
+                  rho3 * bX2/sigma)/sqrt(1 - rho3^2))
+            else Psi23 <- phi2
+            if (h1) 
+                Psi21 <- rho1 * phi1 * pnorm((bX2/sigma - rho1 * 
+                  bX1)/sqrt(1 - rho1^2)) + phi2 * pnorm((bX1 - 
+                  rho1 * bX2/sigma)/sqrt(1 - rho1^2))
+            else Psi21 <- phi2
+            Econd <- bX2/Phi3 + sigma * (Psi23 * Psi21 * Phi2)/(Phi12$f * 
+                Phi23$f * Phi3 * phi2)
+        }
+        else {
+            if (h3) 
+                Psi23 <- pnorm(bX3 + sigma * rho3)
+            else Psi23 <- 1
+            if (h1) 
+                Psi21 <- pnorm(bX1 + sigma * rho1)
+            else Psi21 <- 1
+            Econd <- exp(bX2 + sigma^2/2) * Psi21 * Psi23/(Phi1 * 
+                Phi3^2)
+        }
+        attr(lnL, "fitted") <- cbind(`P(y=0)` = P0, `E(y|y>0)` = Econd)
+    }
+    lnL
+}
+
+assignInNamespace( "mhurdle.lnl", my.mhurdle.lnl, "mhurdle")
+
 

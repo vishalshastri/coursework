@@ -241,9 +241,9 @@ cov.var.declarations <- paste0("  ", cov.var.declarations,  "    SUR covar param
 
 variable.declaration.lines <- c("variables",
   paste0("  ", all.params, "   parameters to be estimated"),
-  "  Smat(s,ss)   S matrix to make cost function concave",
-  "  SmatT(ss,s)   transpose of S matrix to make cost function concave",
-  "  errorrelax(t) small value to accomodate the zero error adding up restriction",
+#  "  Smat(s,ss)   S matrix to make cost function concave",
+#  "  SmatT(ss,s)   transpose of S matrix to make cost function concave",
+#  "  errorrelax(t) small value to accomodate the zero error adding up restriction",
   cov.var.declarations,
   paste0("  p", all.params, "(m)    probability corresponding param"),
   paste0("  w", all.eqns, "(t,j)    probability corresponding error term"),
@@ -494,7 +494,8 @@ Smat.transpose.restriction.defn <- "restrSmattrans(s,ss).. Smat(s,ss) =e= SmatT(
 Smat.transpose.restriction.declare <- "restrSmattrans"
 
 
-restriction.that.err.sum.to.zero.defn <- paste0("restrerrsumtozero(t)..        0 =e= errorrelax(t) + ", paste0("sum(j, vs", 1:length(S.n), "(j) * ws", 1:length(S.n), "(t, j))", collapse=" + "), ";")
+restriction.that.err.sum.to.zero.defn <- paste0("restrerrsumtozero(t)..        0 =e=  ", paste0("sum(j, vs", 1:length(S.n), "(j) * ws", 1:length(S.n), "(t, j))", collapse=" + "), ";")
+# errorrelax(t) +
 
 restriction.that.err.sum.to.zero.declare <- "restrerrsumtozero(t)"
 
@@ -534,10 +535,10 @@ equation.declarations <- c(
   "restrcostb(t)",
   paste0("restr", 1:length(S.n), "sa(t)"),
   paste0("restr", 1:length(S.n), "sb(t)"),
-  concave.restriction.declare,
-  Smat.transpose.restriction.declare,
-  restriction.that.err.sum.to.zero.declare,
-  errorrelaxrestrict.declare,
+#  concave.restriction.declare,
+#  Smat.transpose.restriction.declare,
+#  restriction.that.err.sum.to.zero.declare,
+#  errorrelaxrestrict.declare,
   cov.rest.declarations,
   ";"
 )
@@ -614,9 +615,9 @@ cov.var.display  <- cov.var.display[cov.var.display!= ""]
 parameter.display.lines <- c( paste0("display ", all.params, ".l;"),
   paste0("display p", all.params, ".l;"),
   paste0("display w", all.eqns, ".l;"),
-  paste0("display ", cov.var.display, ".l;"),
-  paste0("display Smat.l"),
-  paste0("display errorrelax.l")
+  paste0("display ", cov.var.display, ".l;")
+#  paste0("display Smat.l")
+#  paste0("display errorrelax.l")
   )
 
 
@@ -626,7 +627,7 @@ c(
 "*Initial conditions",
 paste0("  p", all.params, ".l(m) = 1/MM;"),
 paste0("  w", all.eqns, ".l(t,j) = 1/JJ;"),
-Smat.initial.values,
+#Smat.initial.values,
 error.weights.lines,
 "* primal approach",
 "model gme /all/;",
@@ -679,10 +680,10 @@ completed.GAMS.file <-  c(
   model.restrictions.cost, " ", 
   prob.weight.param.lines, " ", 
   prob.weight.error.lines, " ", 
-  concave.restriction.defn, " ",
-  Smat.transpose.restriction.defn, " ",
-  restriction.that.err.sum.to.zero.defn, " ",
-  errorrelaxrestrict.defn, " ",
+#  concave.restriction.defn, " ",
+#  Smat.transpose.restriction.defn, " ",
+#  restriction.that.err.sum.to.zero.defn, " ",
+#  errorrelaxrestrict.defn, " ",
   covar.SUR.lines,
   final.lines, " ",
   parameter.display.lines 
