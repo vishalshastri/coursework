@@ -1,14 +1,5 @@
 
-profits <- c(.11,.09)
-wages=c(1,1)
-mu=1
-rho=0.8
-alpha=0.4
-x_underbar=1
-gamma=6.5
-labor=c(1,1)
-kappa.mat=matrix(c(0.1, 0.2, 0.2, 0.1), ncol=2)
-tau.mat=matrix(c(1, 1.15, 1.15, 1), ncol=2)
+
 
 ppareto <- function(q, xm, alpha) ifelse(q > xm , 1 - (xm/q)^alpha, 0 )
 # Thanks to http://stats.stackexchange.com/questions/78168/how-to-know-if-my-data-fits-pareto-distribution
@@ -101,7 +92,13 @@ chaney.C.ls <- chaney.eqm.fn(optim.profits, solve=FALSE, tau.mat=matrix(c(1, 1, 
 
 # QUESTION D
 
-epsilon <- 10^-8
+epsilons.v <- c(1e-05, 1e-06, 1e-07, 1e-08)
+
+elasticities.ls  <- list()
+
+for ( epsilon in epsilons.v) {
+
+#epsilon <- 10^-8
 
 optim.profits <- optim(starting.profits, chaney.eqm.fn, control=list(trace=2),
                        tau.mat=matrix(c(1, 1.15 - epsilon, 1.15 - epsilon, 1), ncol=2))$par
@@ -142,7 +139,18 @@ elast.tar.wrt.im.3 <- (X_L_rel/X_H_rel - 1) /
 
 elast.tar.wrt.im.3
 
-plot(x=c(1, 1.05, 1.15), y=c(elast.tar.wrt.im, elast.tar.wrt.im.2 , elast.tar.wrt.im.3), type="b")
+elasticities.ls[[as.character(epsilon)]] <-  c(elast.tar.wrt.im, elast.tar.wrt.im.2 , elast.tar.wrt.im.3)
 
-c(elast.tar.wrt.im, elast.tar.wrt.im.2 , elast.tar.wrt.im.3) + 5.5
-  
+}
+
+pdf(file="/Users/travismcarthur/Desktop/Econ 871 Trade/Problem sets/PS 2/epsilonplot.pdf", width=7, height=7)
+
+matplot(x= c(1, 1.05, 1.15), y=do.call(cbind, elasticities.ls), type = "b", pch=1,col = 1:4,
+  ylab="Elasticity", xlab=expression(tau[12]^L),
+  main="Elasticity of imports w.r.t. tariffs") 
+
+legend("right", legend = names(elasticities.ls), col=1:4, pch=1, title="epsilon", lty=1:4) 
+
+dev.off()
+
+
