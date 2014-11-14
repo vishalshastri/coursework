@@ -59,7 +59,8 @@ pdf(file="/Users/travismcarthur/Desktop/Macro 2014/Problem sets/PS 3/plot1.pdf",
 
 
 
-plot(y=s.decision, x=K.seq, main="Optimal policy function")
+plot(y=s.decision, x=K.seq, main="Fig. 1: Optimal policy function", type="l", 
+  ylab="Saving rate", xlab="Initial Capital")
 
 dev.off()
 
@@ -94,40 +95,58 @@ no.ch.C.fn <- function(K, s) {
   alpha/(1-beta)
 }
 
-no.ch.C.meta.fn <- function(K) {
+#no.ch.C.meta.fn <- function(K) {
 
-  no.ch.C.fn <- function(C, K, s=s.decision[which.initial.K]) {
-    sum( (C - (K*(1-delta ) + C*s/(1-s))^.35 * N^.65 * (1-s))^2 )
-  }
+#  no.ch.C.fn <- function(C, K, s=s.decision[which.initial.K]) {
+#    sum( (C - (K*(1-delta ) + C*s/(1-s))^.35 * N^.65 * (1-s))^2 )
+#  }
 
-  optim(1.2, no.ch.C.fn, K=K)$par
-}
+#  optim(1.2, no.ch.C.fn, K=K)$par
+#}
 
 
-no.ch.C.val <- no.ch.C.meta.fn(1.2)
+#no.ch.C.val <- no.ch.C.meta.fn(1.2)
+
+
+
+no.ch.C.val <- ((1/beta + delta - 1) /
+    (z * .35 * N^(.65)) )^(-1/.65)
+
+
+
 
 K.path.seq <- seq(.01, max(K.path)+10, by=.1)
 for ( i in 1:length(K.path.seq)) {
  no.ch.C.val[i] <- no.ch.C.meta.fn(K.path.seq[i])
 }
 
+no.ch.K.val <- max(K.path)
+
 pdf(file="/Users/travismcarthur/Desktop/Macro 2014/Problem sets/PS 3/plot2.pdf", width=5, height=5)
 
 plot(x=K.path, y=C.path, ylim=c(0, max(C.path)), xlim=c(0, max(K.path)), 
-  main="Phase diagram")
+  main="Fig. 2: Phase diagram")
 
-lines( no.ch.K.val, C.path.seq, col="red")
-lines( K.path.seq, no.ch.C.val, col="blue")
+lines( K.path.seq, no.ch.C.val, col="red")
+abline(v=no.ch.K.val, col="blue", lty=2)
+# lines( K.path.seq, no.ch.C.val, col="blue", lty=2)
+legend("topleft", legend = c(expression(DeltaK==0), expression(DeltaC==0)), 
+  col=c("red", "blue"), lty=c(1,2)) 
 
 
 dev.off()
 
 pdf(file="/Users/travismcarthur/Desktop/Macro 2014/Problem sets/PS 3/plot3.pdf", width=5, height=5)
 
-plot(x=K.path, y=C.path, ylim=c(0, max(C.path)), xlim=c(0, max(K.path)))
+plot(x=K.path, y=C.path, ylim=c(0, max(C.path)), xlim=c(0, max(K.path)),
+  main="Fig. 3: Change in preferences")
 
-lines( no.ch.K.val, C.path.seq, col="red")
-lines( K.path.seq, no.ch.C.val, col="blue")
+#lines( no.ch.K.val, C.path.seq, col="red")
+#lines( K.path.seq, no.ch.C.val, col="blue")
+#abline(v=no.ch.C.val, col="blue", lty=2)
+
+lines( K.path.seq, no.ch.C.val, col="red")
+abline(v=no.ch.K.val, col="blue", lty=2)
 
 
 K.ss <- max(K.path)
@@ -250,10 +269,14 @@ no.ch.C.meta.fn <- function(K) {
 
 no.ch.C.val <- no.ch.C.meta.fn(1.2)
 
+
+
 K.path.seq <- seq(.01, max(K.path)+10, by=.1)
 for ( i in 1:length(K.path.seq)) {
  no.ch.C.val[i] <- no.ch.C.meta.fn(K.path.seq[i])
 }
+
+no.ch.K.val <- max(K.path)
 
 #par(new=TRUE)
 
@@ -261,11 +284,15 @@ for ( i in 1:length(K.path.seq)) {
 
 points(x=K.path, y=C.path, col="darkgreen", pch=3)
 
-lines( no.ch.K.val, C.path.seq, col="purple")
-lines( K.path.seq, no.ch.C.val, col="brown")
+#lines( no.ch.K.val, C.path.seq, col="purple")
+#lines( K.path.seq, no.ch.C.val, col="brown")
+#abline(v=no.ch.C.val, col="brown", lty=2)
+
+lines( K.path.seq, no.ch.C.val, col="purple")
+abline(v=no.ch.K.val, col="brown", lty=2)
 
 
-legend("right", legend = c(expression(gamma==2), expression(gamma==1.01)), 
+legend("topleft", legend = c(expression(gamma==2), expression(gamma==1.01)), 
   col=c("black", "darkgreen"), pch=c(1,3)) 
 
 dev.off()
@@ -384,30 +411,44 @@ no.ch.C.meta.fn <- function(K) {
 
 no.ch.C.val <- no.ch.C.meta.fn(1.2)
 
+
+
 K.path.seq <- seq(.01, max(K.path)+10, by=.1)
 for ( i in 1:length(K.path.seq)) {
  no.ch.C.val[i] <- no.ch.C.meta.fn(K.path.seq[i])
 }
 
+no.ch.K.val <- max(K.path)
+
 #par(new=TRUE)
 
 pdf(file="/Users/travismcarthur/Desktop/Macro 2014/Problem sets/PS 3/plot4.pdf", width=5, height=5)
 
-plot(x=K.path, y=C.path, ylim=c(0, max(C.path)), xlim=c(0, max(K.path)), col="darkgreen", pch=3)
+plot(x=K.path, y=C.path, ylim=c(0, max(C.path)), xlim=c(0, max(K.path)), col="darkgreen", pch=3,
+  main="Fig. 4: Change in technology")
 
 
 
-lines( no.ch.K.val, C.path.seq, col="purple")
-lines( K.path.seq, no.ch.C.val, col="brown")
+#lines( no.ch.K.val, C.path.seq, col="purple")
+#lines( K.path.seq, no.ch.C.val, col="brown")
+#abline(v=no.ch.C.val, col="brown", lty=2)
+
+lines( K.path.seq, no.ch.C.val, col="purple")
+abline(v=no.ch.K.val, col="brown", lty=2)
+
 
 points(x=K.path.orig, y=C.path.orig, col="black", pch=1)
 
-lines( no.ch.K.val.orig, C.path.seq.orig, col="red")
-lines( K.path.seq.orig, no.ch.C.val.orig, col="blue")
+#lines( no.ch.K.val.orig, C.path.seq.orig, col="red")
+#lines( K.path.seq.orig, no.ch.C.val.orig, col="blue")
+#abline(v=no.ch.C.val, col="blue", lty=2)
+
+lines( K.path.seq.orig, no.ch.C.val.orig, col="red")
+abline(v=no.ch.K.val.orig, col="blue", lty=2)
 
 
 
-legend("right", legend = c(expression(z==1), expression(z==1.2)), 
+legend("topleft", legend = c(expression(z==1), expression(z==1.2)), 
   col=c("black", "darkgreen"), pch=c(1,3)) 
 
 
@@ -433,53 +474,5 @@ dev.off()
 
 
 
-
-
-
-  
-  
-  
-}
-
-
-
-
-K.grid$util.dif <- abs(K.grid$K.util - K.grid$K.prime.util)
-
-
-test.agg <- by(K.grid[, c("util.dif", "s")], INDICES=list(K.grid$K), 
-  FUN=function(x) x$s[which.min(x$util.dif)]
-  # Note that we are taking min here
-)
-
-summary(unlist(test.agg))
-
-
-
-test.agg <- by(K.grid[, c("K.util", "K.prime.util", "s")], INDICES=list(K.grid$K), 
-  FUN=function(x) x$s[which.max(x$K.util + x$K.prime.util)]
-)
-
-summary(unlist(test.agg))
-
-
-
-
-
-
-
-
-
-value.fn <- function(K, K.prime) {
-  utility.fn(prod.fn(z=z, K, N=N), gamma=gamma ) + beta * value.fn(K.prime)
-}
-
-value.fn <- function(K) {
-  utility.fn(prod.fn(z=z, K, N=N), gamma=gamma ) + beta * value.fn(K.prime)
-}
-
-#- s
-K.prime=.2
-value.fn(K=.1)
 
 
