@@ -33,11 +33,29 @@ firm.df <- inputs.df[inputs.df$x19.codigo == target.crop & inputs.df$x19.producc
 
 price.to.trim <- c("x19.fertilizante.bs.kg", "x19.sem.comprada.bs.kg", "x19.abono.bs.kg",
    "x19.plagicidas.bs.kg", "hourly.wage",  "hourly.tractor.rental" )
+   
+# experimentaal
+if (experimental) {
+
+price.to.trim <- c("x19.fertilizante.bs.kg", "x19.sem.comprada.bs.kg", "x19.abono.bs.kg",
+   "x19.plagicidas.bs.kg", "hourly.wage",  "hourly.tractor.rental","x19.fertilizante.cantidad.kg",
+"x19.sem.comprada.cantidad.kg",
+"tractor.hrs.final",
+"x19.plagicidas.cantidad.kg",
+"paid.hours.spread",
+"x19.abono.cantidad.kg" )
+}
+   
+
 
 # firm.df <- firm.df[!is.na(firm.df$hourly.tractor.rental), ]
 # only kills 2 obseravtions for maiz and zero for Barley
 
 price.trim.criteria <- apply(firm.df[, price.to.trim], 2, FUN=function(x) x < quantile(x, probs=0.99) )
+if (experimental) {
+  price.trim.criteria <- apply(firm.df[, price.to.trim], 2, FUN=function(x) x < quantile(x, probs=0.98) )
+}
+
 price.trim.criteria <- apply(price.trim.criteria, 1, FUN=all)
 firm.df <- firm.df[price.trim.criteria, ]
 
@@ -54,9 +72,10 @@ uncensored.cost <- apply(firm.df[, c(
   1, FUN=function(x) {sum(x)!=0}
 )
 
+if (!experimental) {
 firm.df<- firm.df[uncensored.cost, ]
 # try to see what happens when we eliminate censoring
-
+}
 
 
 
