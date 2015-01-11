@@ -56,7 +56,14 @@ lead.zero <- function(x) {formatC(x, width = 2, flag = "0")}
 
 # TODO: NOTE: changing this below to log for now
 
-y01 <- log( firm.df$x19.produccion.obtenidad.kg )
+if (functional.form =="TRANSLOG") {
+  y01 <- log( firm.df$x19.produccion.obtenidad.kg )
+}
+
+if (functional.form =="SGM") {
+  y01 <-  firm.df$x19.produccion.obtenidad.kg 
+}
+
 
 # quick fix below
 
@@ -107,7 +114,13 @@ min(w04)
 q01 = firm.df$x19.superficie.cultivada.hectareas
 # q01[q01 ==0] = median(q01)
 
-q02 = ifelse(firm.df$x19.uso.riego!="Si",  1, exp(1))
+if (functional.form =="TRANSLOG") {
+  q02 = ifelse(firm.df$x19.uso.riego!="Si",  1, exp(1))
+}
+
+if (functional.form =="SGM") {
+  q02 = ifelse(firm.df$x19.uso.riego!="Si",  0, 1)
+}
 
 #q02 = ifelse(firm.df$x19.uso.riego!="Si",  exp(1), exp(2))
 
@@ -151,5 +164,16 @@ if (log.plus.one.cost) {
 ln.E.data <- unname(ln.E.data )
  
  # TODO: why are there some duplicated row names here (above)?
+ 
+ 
+ 
+if (functional.form =="SGM") {
+  mean.of.inputs <- colMeans(data.frame(mget(paste0("x", lead.zero(1:N)))))
+
+  for ( i in 1:N) {
+    assign( paste0("inputmean.", lead.zero(i)), mean.of.inputs[i])
+  }
+}
+
  
  

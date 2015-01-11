@@ -57,10 +57,10 @@ largest.remainder.method <- function(x, digits, index=1) {
  
 }
 
-
-x[, grepl("^s[0-9]+$", names(x))] <- 
-  as.data.frame(largest.remainder.method(x=x[, grepl("^s[0-9]+$", names(x))], digits=5))
-
+if ( any(grepl("^s[0-9]+$", names(x)))) {
+  x[, grepl("^s[0-9]+$", names(x))] <- 
+    as.data.frame(largest.remainder.method(x=x[, grepl("^s[0-9]+$", names(x))], digits=5))
+}
   
 #  x<- x[rowSums(as.data.frame(largest.remainder.method(x=x[, grepl("^s[0-9]+$", names(x))], digits=5)))!=1, grepl("^s[0-9]+$", names(x))][2, ]
   

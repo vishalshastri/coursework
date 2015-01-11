@@ -1,4 +1,10 @@
 
+# THESE ARE IMPORTANT PARAMS IMMEDIATELY BELOW:
+mfx.on.posi.median <- FALSE
+mean.of.MP <- TRUE
+# NOTE, IMPORTANT: It seems that under a quadratic specification, the mean of the marginal
+# products is equal to the marginal product of the mean, so the above is somewhat redundant.
+# The elasticities differ, however.
 
 
 local.source.evaluation <- FALSE
@@ -144,6 +150,10 @@ library("micEcon")
 
 boot.replications <- 2000
 
+# as.data.frame(t(apply(combined.df.orig.quad, 2, function(x) median(x[x>0]) )))
+
+set.seed(100)
+
 
 bootstraps <- apply(matrix(
     sample(1:nrow(combined.df.orig.quad), 
@@ -157,16 +167,34 @@ bootstraps <- apply(matrix(
           data=data.df, shifterNames=colnames(region.matrix.df) ) 
           
     estResult$coef[is.na(estResult$coef)] <- 0
-
-    combined.mean.temp <- as.data.frame(t(colMeans(data.df)))
     
-    margProducts <- quadFuncDeriv( 
+    if (mfx.on.posi.median ) {
+      combined.mean.temp <- as.data.frame(t(apply(data.df, 2, function(x) median(x[x>0], na.rm=TRUE) )))
+      combined.mean.temp[,apply(combined.mean.temp, 1, is.na)] <- 0
+      # Above is to deal with case when a region drops out of the bootstrap
+      # Careful: This sets all regions dummies to 1, but this does not affect our
+      # marginal effects calculation here    
+    } else {
+      combined.mean.temp <- as.data.frame(t(colMeans(data.df)))
+    }
+    
+    if (mean.of.MP) {
+      margProducts <- colMeans(quadFuncDeriv( 
+        c(paste0("x", lead.zero(1:N)), paste0("q", lead.zero(1:J))),
+          data.df, coef( estResult ) ), na.rm=TRUE)
+    } else {
+      margProducts <- quadFuncDeriv( 
       c(paste0("x", lead.zero(1:N)), paste0("q", lead.zero(1:J))),
           combined.mean.temp, coef( estResult ) ) 
+    }
           
     names(margProducts) <- paste0("margProduct.",  names(margProducts))
-
-    estElasticities <- elasticities(estResult, data=combined.mean.temp)
+    
+    if (mean.of.MP) {
+      estElasticities <- colMeans(elasticities(estResult, data=data.df), na.rm=TRUE)
+    } else {
+      estElasticities <- elasticities(estResult, data=combined.mean.temp)
+    }
     
     names(estElasticities) <- paste0("prodElast.",  names(estElasticities))
     
@@ -175,8 +203,11 @@ bootstraps <- apply(matrix(
     }
 )
 
+set.seed(100)
+
 point.est <- apply(matrix(
     1:nrow(combined.df.orig.quad), 
+#    sample(1:nrow(combined.df.orig.quad), replace=TRUE), 
     nrow=1),
     1, FUN=function(x) {
     
@@ -187,15 +218,33 @@ point.est <- apply(matrix(
           
     estResult$coef[is.na(estResult$coef)] <- 0
 
-    combined.mean.temp <- as.data.frame(t(colMeans(data.df)))
+    if (mfx.on.posi.median ) {
+      combined.mean.temp <- as.data.frame(t(apply(data.df, 2, function(x) median(x[x>0], na.rm=TRUE) )))
+      combined.mean.temp[,apply(combined.mean.temp, 1, is.na)] <- 0
+      # Above is to deal with case when a region drops out of the bootstrap
+      # Careful: This sets all regions dummies to 1, but this does not affect our
+      # marginal effects calculation here    
+    } else {
+      combined.mean.temp <- as.data.frame(t(colMeans(data.df)))
+    }
     
-    margProducts <- quadFuncDeriv( 
+   if (mean.of.MP) {
+      margProducts <- colMeans(quadFuncDeriv( 
+        c(paste0("x", lead.zero(1:N)), paste0("q", lead.zero(1:J))),
+          data.df, coef( estResult ) ), na.rm=TRUE)
+    } else {
+      margProducts <- quadFuncDeriv( 
       c(paste0("x", lead.zero(1:N)), paste0("q", lead.zero(1:J))),
           combined.mean.temp, coef( estResult ) ) 
+    }
           
     names(margProducts) <- paste0("margProduct.",  names(margProducts))
-
-    estElasticities <- elasticities(estResult, data=combined.mean.temp)
+    
+    if (mean.of.MP) {
+      estElasticities <- colMeans(elasticities(estResult, data=data.df), na.rm=TRUE)
+    } else {
+      estElasticities <- elasticities(estResult, data=combined.mean.temp)
+    }
     
     names(estElasticities) <- paste0("prodElast.",  names(estElasticities))
     
@@ -209,7 +258,7 @@ point.est <- apply(matrix(
 
 #CI.mat <- matrix(apply(bootstraps, 1, FUN=quantile, probs=c(0.025, 0.975)), ncol=2, byrow=TRUE)
 
-CI.mat <- matrix(apply(bootstraps, 1, FUN=quantile, probs=c(0.05, 0.95)), ncol=2, byrow=TRUE)
+CI.mat <- matrix(apply(bootstraps, 1, FUN=quantile, probs=c(0.05, 0.95), na.rm=TRUE), ncol=2, byrow=TRUE)
 
 input.desc <- c("Inorganic Fert", "Seeds", "Tractor Hrs", "Plaguicidas", "Hired Labor", "Organic Fert", "Land", "Irrigation", "Family Labor")
 
@@ -217,10 +266,18 @@ marg.prod.row.names <- rep(input.desc, 2)
 
 marg.prod.measure <- c(rep("Marginal Prod", length(input.desc)), rep("Output elasticity", length(input.desc)))
 
-input.units <- c("kg", "kg", "hours", "kg", "hours", "kg", "hectares", "binary", "persons/hectare", rep("", length(input.desc)))
+input.units <- c("kg", "kg", "hours", "kg", "hours", "kg", "hectares", "binary", "num persons", rep("", length(input.desc)))
 
 
-data.means.v <- c(colMeans(combined.df.orig.quad[, c(paste0("x", lead.zero(1:N)), paste0("q", lead.zero(1:J)))] ), rep(NA, length(input.desc)))
+
+if (mfx.on.posi.median ) {
+   data.means.v <- c(apply(combined.df.orig.quad[, c(paste0("x", lead.zero(1:N)), paste0("q", lead.zero(1:J)))], 2, function(x) median(x[x>0], na.rm=TRUE)), rep(NA, length(input.desc)))
+   # Careful: This sets all regions dummies to 1, but this does not affect our
+   # marginal effects calculation here    
+} else {
+  data.means.v <- c(colMeans(combined.df.orig.quad[, c(paste0("x", lead.zero(1:N)), paste0("q", lead.zero(1:J)))] ), rep(NA, length(input.desc)))
+}
+
 
 bootstrapped.results.df <- data.frame(Measure=marg.prod.measure, Input.Name=marg.prod.row.names , stringsAsFactors=FALSE) 
 
@@ -229,6 +286,9 @@ bootstrapped.results.df$Units <- input.units
 bootstrapped.results.df$Lower.90.CI <- CI.mat[, 1]
 bootstrapped.results.df$Upper.90.CI <- CI.mat[, 2]
 bootstrapped.results.df$Data.mean <- data.means.v 
+if (mfx.on.posi.median) {
+  colnames(bootstrapped.results.df)[colnames(bootstrapped.results.df)=="Data.mean"] <- "Data.median|x>0"
+}
 
 
 
@@ -244,16 +304,17 @@ r.sq.list[[target.crop]]<- quadFuncEst(  "y01",
 
 
 library("stargazer")
+library("xtable")
 
 for ( i in 1:length(bootstrapped.marg.results.ls) ) {
 
   crop.english<- c("Potatoes", "Maize", "Barley", "Wheat", "Fava Beans")
 
-  test <- stargazer(bootstrapped.marg.results.ls[[i]], 
-  title=paste0("Marginal Product and Output Elasticities for ", crop.english[i], 
-  ", $R^2$ for model is ", round(r.sq.list[[i]], digits=3)),
-  summary=FALSE, rownames=FALSE, align=TRUE, no.space=TRUE,
-  out = paste0("/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Marginal products/table", i, ".tex" ))
+#  test <- stargazer(bootstrapped.marg.results.ls[[i]], 
+#  title=paste0("Marginal Product and Output Elasticities for ", crop.english[i], 
+#  ", $R^2$ for model is ", round(r.sq.list[[i]], digits=3)),
+#  summary=FALSE, rownames=FALSE, align=TRUE, no.space=TRUE,
+#  out = paste0("/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Marginal products/table", i, ".tex" ))
   
 
   
@@ -264,12 +325,33 @@ for ( i in 1:length(bootstrapped.marg.results.ls) ) {
   caption.placement="top")
   
   xtab.output <- paste(xtab.output, "\\vspace{2em}")
-
-  cat(xtab.output, sep="\n",
-  file=paste0("/Users/travismcarthur/Downloads/MargProd/table", i, ".tex" ))
+  if (mfx.on.posi.median) {
+    cat(xtab.output, sep="\n",
+      file=paste0("/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Marginal products/tableatmedian", i, ".tex" ))
+  } else {
+  	if (mean.of.MP) {
+      cat(xtab.output, sep="\n",
+        file=paste0("/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Marginal products/tablemeanofMP", i, ".tex" ))  	
+  	} else {
+      cat(xtab.output, sep="\n",
+        file=paste0("/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Marginal products/table", i, ".tex" ))
+  	}
+  }
   # thanks to http://stackoverflow.com/questions/7160754/adding-a-horizontal-line-between-the-rows-in-a-latex-table-using-r-xtable?rq=1
   
 }
+
+
+# END CODE
+
+
+
+
+
+
+
+
+
 
 
   

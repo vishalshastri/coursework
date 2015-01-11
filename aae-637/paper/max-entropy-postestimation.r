@@ -39,12 +39,21 @@ library("numDeriv")
 
 # GAMS.nonlinear.results<- readLines("/Users/travismcarthur/Desktop/Dropbox/entropytest.lst")
 
-GAMS.nonlinear.results<- readLines(paste0(GAMS.projdir, "GMEnonlinear", strsplit(target.crop, " ")[[1]][1], 
-   formatC(bootstrap.iter, width = 5, flag = "0"), ".lst"))
-
-
 GAMS.nonlinear.results<- readLines(paste0(GAMS.projdir, "GMElinear", strsplit(target.crop, " ")[[1]][1], 
    formatC(bootstrap.iter, width = 5, flag = "0"), ".lst"))
+
+
+
+GAMS.nonlinear.results<- readLines(paste0(GAMS.projdir, "GMElineartesttest.lst"))
+
+
+
+
+GAMS.nonlinear.results<- readLines(paste0(GAMS.projdir, "sgmGMEnonlinear", strsplit(target.crop, " ")[[1]][1], 
+   formatC(bootstrap.iter, width = 5, flag = "0"), ".lst"))
+
+
+
 
 
 
@@ -86,7 +95,7 @@ prob.numbers <- GAMS.nonlinear.results[which(!is.na(GAMS.nonlinear.results.extra
 
 # GAMS.nonlinear.results<- readLines("/Users/travismcarthur/Desktop/Dropbox/entropytest.lst")
 
-GAMS.nonlinear.results<- readLines(paste0(GAMS.projdir, "GMElinear", # "GMEnonlinear", 
+GAMS.nonlinear.results<- readLines(paste0(GAMS.projdir, "sgmGMEnonlinear", # "GMEnonlinear", 
 strsplit(target.crop, " ")[[1]][1], 
    formatC(bootstrap.iter, width = 5, flag = "0"), ".lst"))
 
@@ -138,11 +147,15 @@ error.weight.eq.ls<-list()
 
 for ( i in 1:length(all.eqns) ) {
   
-  err.weight.temp.df <- read.table(paste0(GAMS.projdir, "GMElinear",  # "GMEnonlinear", 
+#  err.weight.temp.df <- read.table(paste0(GAMS.projdir, "GMElineartesttest.lst"), 
+#    skip = begin.err.weight[i] + 3,  nrows= nrow(combined.df))
+    # "/Users/travismcarthur/Desktop/Dropbox/entropytest.lst"
+    err.weight.temp.df <- read.table(
+  paste0(GAMS.projdir, "sgmGMEnonlinear",  # "GMEnonlinear", 
   strsplit(target.crop, " ")[[1]][1], 
    formatC(bootstrap.iter, width = 5, flag = "0"), ".lst"), 
-    skip = begin.err.weight[i] + 3,  nrows= nrow(combined.df))
-    # "/Users/travismcarthur/Desktop/Dropbox/entropytest.lst"
+   skip = begin.err.weight[i] + 3 ,  nrows= nrow(combined.df))  
+   #    skip = begin.err.weight[i] + 3,  nrows= nrow(combined.df))  
 
   error.weight.eq.ls[[i]] <- err.weight.temp.df[, -1 ]
 
@@ -151,6 +164,7 @@ for ( i in 1:length(all.eqns) ) {
 names(error.weight.eq.ls) <- all.eqns
 
 
+names(err.support.dem.eqns) <- paste0("dem", 1:length(err.support.dem.eqns))
 
 
 error.collapsed.eq.ls <- list()
@@ -163,7 +177,9 @@ for ( i in all.eqns ) {
       # c(-round( max(ln.E.data) * 5 ), 0, round( max(ln.E.data) * 5 ))
   } else {
      error.collapsed.eq.ls[[i]] <- as.matrix(error.weight.eq.ls[[i]]) %*% 
-     share.err.support
+     err.support.dem.eqns[[i]]
+     #demand.err.support
+     #share.err.support
       # c(-10, 0, 10) 
   }
   
@@ -174,7 +190,16 @@ big.sigma <- cov(do.call( cbind, error.collapsed.eq.ls))
 
 error.collapsed.eq.df <- do.call( cbind, error.collapsed.eq.ls)
 
-summary(rowSums(error.collapsed.eq.df[, 2:7]))
+
+for ( i in 1:N) {
+  cat(paste0(i, ": ", max(get(paste0("x", lead.zero(i)))/y01), "\n"))
+}
+
+summary(error.collapsed.eq.df)
+
+
+#summary(rowSums(error.collapsed.eq.df[, 2:7]))
+summary(rowSums(error.collapsed.eq.df))
 
 
       Min.    1st Qu.     Median       Mean    3rd Qu.       Max. 

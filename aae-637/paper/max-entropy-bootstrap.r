@@ -4,7 +4,14 @@
 ## source("/Users/travismcarthur/git/coursework/aae-637/paper/initial-data-setup.r")
 
 
+functional.form <- "SGM" # OR TRANSLOG
 
+if (functional.form =="SGM") {
+  include.censored.cost <- TRUE
+}
+
+price.trim.quantile <- 0.99
+demand.var.trim.quantile <- 0.95
 
 
 local.source.evaluation <- FALSE
@@ -71,7 +78,7 @@ library(Matrix)
 load(saved.workspace.path)
 
 
-target.top.crop.number <- 5
+target.top.crop.number <- 2
 
 #Papa (patatas)    3155 
 #Maiz combined   1838 
@@ -96,7 +103,9 @@ source(paste0(code.dir, "build-model-extract-parcels.r"))
 
 combined.df <- data.frame(mget(c("y01", paste0("x", lead.zero(1:N)), 
   paste0("w", lead.zero(1:N)),  paste0("q", lead.zero(1:J)) )))
-  
+
+if (functional.form =="TRANSLOG") {
+
 region.matrix.df <-   as.data.frame(region.matrix)
 
 
@@ -129,6 +138,7 @@ for ( i in 1:N) {
 
 scale.vars.on.orig.data <- TRUE
 
+}
 
 
 
@@ -157,7 +167,20 @@ time.counter <- c()
 
 bootstrap.iter <- 0
 
-for ( bootstrap.iter in 0) {
+
+
+
+
+
+
+
+
+
+
+
+
+
+# for ( bootstrap.iter in 0) {
 
 if( bootstrap.iter==0 ) {
   bootstrap.selection.v <- TRUE
@@ -168,8 +191,12 @@ if( bootstrap.iter==0 ) {
 
 #for (target.top.crop.number in c(2,4,5)) {
 
-
-source(paste0(code.dir, "build-model-extract-parcels.r"))
+if (functional.form =="TRANSLOG") {
+  source(paste0(code.dir, "build-model-extract-parcels.r"))
+}
+if (functional.form =="SGM") {
+  source(paste0(code.dir, "sur-var-building.r"), local=local.source.evaluation)  
+}
 
 # If want to make censoring plots:
 # source("/Users/travismcarthur/git/coursework/aae-637/paper/analyze-summary-stats.r")
@@ -178,6 +205,7 @@ source(paste0(code.dir, "build-model-extract-parcels.r"))
 source(paste0(code.dir, "GAMS-construction-functions.r"))
 
 
+if (functional.form =="TRANSLOG") {
 
 cost.err.endpoint <- round(max(abs(resid(linear.sur.est.region)[grepl("cost", 
   names(resid(linear.sur.est.region)))])) * 1.4, digits=1)
@@ -199,19 +227,43 @@ other.param.endpoint <- round( max(abs(coef(linear.sur.est.region))) * 3 , digit
 
 other.param.support <- seq(from = -other.param.endpoint, to = other.param.endpoint, length.out=5)
 
+}
+
+
+if (functional.form =="SGM") {
+  other.param.endpoint <- round( max.abs.other.param * 2 , digits=1)
+
+  other.param.support <- seq(from = -other.param.endpoint, to = other.param.endpoint, length.out=5)
+}
+
 
 linear.GAMS.output <- TRUE
 
-source(paste0(code.dir, "GAMS-linear-construction.r"))
+if (functional.form =="TRANSLOG") {
+  source(paste0(code.dir, "GAMS-linear-construction.r"))
+}
 
+if (functional.form =="SGM") {
+  source(paste0(code.dir, "sgm-GAMS-linear-construction.r"))
+}
 
 # system(paste0("cd ", GAMS.projdir, "\n", "ls" ) )
 
+if (functional.form =="TRANSLOG") {
 run.linear.from.shell <-paste0("cd ", GAMS.projdir, "\n", 
    GAMS.exe.path, " ", 
    "GMElinear", strsplit(target.crop, " ")[[1]][1], 
    formatC(bootstrap.iter, width = 5, flag = "0"), ".gms", 
    " Ps=0 suppress=1")
+}
+
+if (functional.form =="SGM") {
+run.linear.from.shell <-paste0("cd ", GAMS.projdir, "\n", 
+   GAMS.exe.path, " ", 
+   "sgmGMElinear", strsplit(target.crop, " ")[[1]][1], 
+   formatC(bootstrap.iter, width = 5, flag = "0"), ".gms", 
+   " Ps=0 suppress=1")
+}
 
 system(run.linear.from.shell)
 
@@ -223,21 +275,41 @@ system(run.linear.from.shell)
 
 theta.param.support <- qlnorm(seq(.1, .999, length.out=13), meanlog= 0, sdlog = 1.5)
 theta.param.support <- theta.param.support/mean(theta.param.support)
+xi.param.support <- theta.param.support
 
 # plot(c(0,13), c(0,13))
 # rug(theta.param.support, col="red")
 
+if (functional.form =="TRANSLOG") {
+  source(paste0(code.dir, "GAMS-nonlinear-construction.r"))
+}
 
-source(paste0(code.dir, "GAMS-nonlinear-construction.r"))
-
-
+if (functional.form =="TRANSLOG") {
 run.nonlinear.from.shell <-paste0("cd ", GAMS.projdir, "\n", 
    GAMS.exe.path, " ", 
    "GMEnonlinear", strsplit(target.crop, " ")[[1]][1], 
    formatC(bootstrap.iter, width = 5, flag = "0"), ".gms", 
    " Ps=0 suppress=1")
+}
+
+if (functional.form =="SGM") {
+  source(paste0(code.dir, "sgm-GAMS-nonlinear-construction.r"))
+}
+
+if (functional.form =="SGM") {
+run.nonlinear.from.shell <-paste0("cd ", GAMS.projdir, "\n", 
+   GAMS.exe.path, " ", 
+   "sgmGMEnonlinear", strsplit(target.crop, " ")[[1]][1], 
+   formatC(bootstrap.iter, width = 5, flag = "0"), ".gms", 
+   " Ps=0 suppress=1")
+}
+
+
+
 
 system(run.nonlinear.from.shell)
+
+
 
 time.counter <- c(time.counter, Sys.time())
 save(time.counter, file=paste0(GAMS.projdir, strsplit(target.crop, " ")[[1]][1], 

@@ -1,17 +1,5 @@
 
 
-wages <- far.away.wages
-tau_n_i <- far.away.tau.mat
-N.countries=3
-K.goods=10000
-T_i = rep(1.5, N.countries)
-distn_theta=4
-L_n=rep(1,3)
-sigma=2
-ret.share.mat=FALSE
-
-
-
 # QUESTION 1(a)
 
 # install.packages("evd")
@@ -235,7 +223,7 @@ colnames(first.state.mat) <- c("Portlandia", "Levittown", "Potemkin")
 
 
 stargazer(first.state.mat, summary=FALSE, out.header = FALSE, out="/Users/travismcarthur/Desktop/Econ 871 Trade/Problem sets/PS3/table7.tex", 
-  rownames=TRUE, title=paste0("Risk sharing profile for $y=\\{2,5,2\\}$; $P(s) =", round(first.state.result[4], 3), "$."))
+  rownames=TRUE, title=paste0("Risk sharing profile for $y=\\{2,5,2\\}$; $p(s) =", round(first.state.result[4], 3), "$."))
 
 # QUESTION 2(c)
 
@@ -251,7 +239,7 @@ colnames(second.state.mat) <- c("Portlandia", "Levittown", "Potemkin")
 
 
 stargazer(second.state.mat, summary=FALSE, out.header = FALSE, out="/Users/travismcarthur/Desktop/Econ 871 Trade/Problem sets/PS3/table8.tex", 
-  rownames=TRUE, title=paste0("Risk sharing profile for $y=\\{1,2.5,1\\}$; $P(s) =", round(second.state.result[4], 3), "$."))
+  rownames=TRUE, title=paste0("Risk sharing profile for $y=\\{1,2.5,1\\}$; $p(s) =", round(second.state.result[4], 3), "$."))
 
 
 # QUESTION 2(d)
@@ -265,9 +253,12 @@ stargazer((second.state.mat[-3, ] / first.state.mat[-3, ] - 1)*100,
   rownames=TRUE, title="Percent change in consumption and endowment, first state to second state.")
 
 
+pow.util <- function(x, alpha) {x^(1-alpha)/(1-alpha)}
 
+plot(x=seq(1, 6, by=.01), y=pow.util(seq(1, 6, by=.01), 10), type="l", ylim=c(-1, 0))
 
-
+lines(x=seq(1, 6, by=.01), y=pow.util(seq(1, 6, by=.01), 5), col="blue")
+lines(x=seq(1, 6, by=.01), y=pow.util(seq(1, 6, by=.01), 2), col="red")
 
 
 

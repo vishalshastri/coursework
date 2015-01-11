@@ -36,12 +36,30 @@ price.to.trim <- c("x19.fertilizante.bs.kg", "x19.sem.comprada.bs.kg", "x19.abon
 # firm.df <- firm.df[!is.na(firm.df$hourly.tractor.rental), ]
 # only kills 2 obseravtions for maiz and zero for Barley
 
-price.trim.criteria <- apply(firm.df[, price.to.trim], 2, FUN=function(x) x < quantile(x, probs=0.99) )
+price.trim.criteria <- apply(firm.df[, price.to.trim], 2, FUN=function(x) x < quantile(x, probs=price.trim.quantile) )
 price.trim.criteria <- apply(price.trim.criteria, 1, FUN=all)
 firm.df <- firm.df[price.trim.criteria, ]
 
 
+if (functional.form =="SGM") {
 
+demand.var.to.trim <- c(
+  "x19.fertilizante.cantidad.kg",    
+  "x19.sem.comprada.cantidad.kg", 
+  "x19.abono.cantidad.kg", 
+  "x19.plagicidas.cantidad.kg",
+  "paid.hours.spread", "tractor.hrs.final")
+
+demand.var.trim.criteria <- apply(firm.df[, demand.var.to.trim]/firm.df$x19.produccion.obtenidad.kg, 2, 
+  FUN=function(x) x < quantile(x[x>0], probs=demand.var.trim.quantile) )
+# data.frame(a=1:10, b=101:110)/(1:10) is ok, so the above operation works
+demand.var.trim.criteria <- apply(demand.var.trim.criteria, 1, FUN=all)
+firm.df <- firm.df[demand.var.trim.criteria, ]
+
+}
+
+
+if (functional.form =="TRANSLOG") {
 
 uncensored.cost <- apply(firm.df[, c(
   "x19.fertilizante.cantidad.kg",    
@@ -54,6 +72,7 @@ uncensored.cost <- apply(firm.df[, c(
 )
 
 firm.df<- firm.df[uncensored.cost, ]
+}
 # try to see what happens when we eliminate censoring
 
 
@@ -63,13 +82,12 @@ firm.df<- firm.df[uncensored.cost, ]
 
 firm.df <- firm.df[bootstrap.selection.v, ]
 
-
+if (functional.form =="TRANSLOG") {
 # sur-var-building
 # linear-sur-building
 source(paste0(code.dir, "sur-var-building.r"), local=local.source.evaluation)
 source(paste0(code.dir, "linear-sur-building.r"), local=local.source.evaluation)
 source(paste0(code.dir, "nonlinear-sur-building.r"), local=local.source.evaluation)
-
 
 
 
@@ -163,7 +181,15 @@ nls.formula.ln.E.region <- ln.E
 
 #eval(parse(text=ln.E))
 
+}
 
+if (functional.form =="SGM") {
+
+  source(paste0(code.dir, "sgm-linear-sur-building.r"), local=local.source.evaluation)  
+  source(paste0(code.dir, "sur-var-building.r"), local=local.source.evaluation)  
+  source(paste0(code.dir, "sgm-tobit.r"), local=local.source.evaluation) 
+
+}
 
 
 
