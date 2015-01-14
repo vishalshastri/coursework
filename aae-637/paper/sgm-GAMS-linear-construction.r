@@ -73,9 +73,11 @@ log10_ceiling <- function(x) {
 # TRANSLOG }
 
 
-for (i in 1:length(demand.eqns)) {
+for (i in 1:N) {
   combined.df[, paste0("dem", i)] <- with(combined.df, eval(parse(text=paste0("x", lead.zero(i), "/y01" ) ) ))
 }
+
+combined.df[, paste0("dem", N+1)] <- E.y01.data
 
 
 

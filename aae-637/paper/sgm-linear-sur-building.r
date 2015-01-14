@@ -29,6 +29,14 @@ ln.sh.s.grid <- expand.grid( paste0("s.", lead.zero(1:N)),
 ln.sh.s.grid.2 <- do.call(paste0, ln.sh.s.grid)
 
 
+
+N.J.dim <- expand.grid(paste0(".", lead.zero(1:N)), paste0(".", lead.zero(1:J)))
+
+wn.qj <- expand.grid(paste0("w", lead.zero(1:N)), paste0("q", lead.zero(1:J), "/y01"))
+
+
+
+
 # LET "N" be the thing that we replace to get each 1,...,N equation
 
 first.term <- "b.y.N"
@@ -52,14 +60,56 @@ second.g.term.numerator <- paste0("(", paste0(ln.sh.s.grid.2, " * ", ln.sh.w.gri
 
 second.g.term <- paste0("(psi.N/2) * ", second.g.term.numerator, "/", psi.w.summation, "^2")
 
-demand.eqns.raw <- paste(first.g.term, second.g.term, first.term, second.term, third.term, 
-  fourth.term, fifth.term, sixth.term,   sep=" + ")
+demand.eqns.raw <- paste(first.g.term, " - ", second.g.term, " + ", first.term, " + ",
+ second.term, " + ", third.term, " + ", fourth.term, " + ", fifth.term, " + ", sixth.term)
   
 demand.eqns <- list()
 
 for ( i in 1:N) {
   demand.eqns[[i]] <- gsub("N", lead.zero(i), demand.eqns.raw)
 }
+
+
+# Now make full cost function
+
+
+cost.fn.g.term <- paste0("(1/2) * ", second.g.term.numerator, "/", psi.w.summation)
+
+
+cost.fn.first.term <- paste0("b.y.", lead.zero(1:N), " * w", lead.zero(1:N), collapse=" + ")
+cost.fn.second.term <- paste0("b.", lead.zero(1:N), "/y01", collapse= " + ")
+
+cost.fn.third.term <- paste0( "(",
+  paste0("beta.", lead.zero(1:N), " * w", lead.zero(1:N), collapse=" + "), ")",
+  " * b.y.y * y01" )
+
+cost.fn.fourth.term <- paste0("d", do.call(paste0, N.J.dim), " * ", wn.qj[[1]], " * ", wn.qj[[2]], collapse=" + " )
+
+cost.fn.fifth.term <- paste0("(", 
+  paste0("c.", lead.zero(1:J), " * q", lead.zero(1:J), collapse=" + "),
+  ")",
+  " * (",
+  paste0("delta.", lead.zero(1:N), " * w", lead.zero(1:N), collapse=" + "), ")")
+  
+  
+cost.fn.sixth.term <- paste0("(1/2) * (",
+  paste0("c", do.call(paste0, J.2.dim ), " * ", ln.sh.q.grid.2, collapse=" + "),
+  ")",
+  " * (",
+  paste0("eta.", lead.zero(1:N), " * w", lead.zero(1:N), collapse=" + "), ")")
+
+
+demand.eqns[[length(demand.eqns) + 1]] <- 
+  paste(cost.fn.g.term, cost.fn.first.term, cost.fn.second.term, cost.fn.third.term,
+    cost.fn.fourth.term, cost.fn.fifth.term, cost.fn.sixth.term, sep=" + ")
+
+
+# Ok, so the cost fn is going to be treated like any demand function
+
+
+
+
+
 
 
 # S matrix N-1 rank restriction:
@@ -194,8 +244,6 @@ demand.eqns.nonlinear <- lapply(demand.eqns, FUN=function(x) {
   x
 }
 )
-
-
 
 
 

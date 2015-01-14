@@ -78,7 +78,7 @@ library(Matrix)
 load(saved.workspace.path)
 
 
-target.top.crop.number <- 2
+target.top.crop.number <- 4
 
 #Papa (patatas)    3155 
 #Maiz combined   1838 

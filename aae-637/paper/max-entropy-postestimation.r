@@ -49,10 +49,12 @@ GAMS.nonlinear.results<- readLines(paste0(GAMS.projdir, "GMElineartesttest.lst")
 
 
 
+
+
 GAMS.nonlinear.results<- readLines(paste0(GAMS.projdir, "sgmGMEnonlinear", strsplit(target.crop, " ")[[1]][1], 
    formatC(bootstrap.iter, width = 5, flag = "0"), ".lst"))
 
-
+all.eqns <- paste0("dem", 1:length(demand.eqns))
 
 
 

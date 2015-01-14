@@ -166,6 +166,7 @@ ln.E.data <- unname(ln.E.data )
  # TODO: why are there some duplicated row names here (above)?
  
  
+E.y01.data <- (w01*x01 + w02*x02 + w03*x03 + w04*x04 + w05*x05 + w06*x06) / y01
  
 if (functional.form =="SGM") {
   mean.of.inputs <- colMeans(data.frame(mget(paste0("x", lead.zero(1:N)))))
