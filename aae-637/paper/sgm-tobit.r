@@ -3,7 +3,8 @@ err.support.dem.eqns <- list()
 
 max.abs.other.param <- 0
 
-max.num.iterations <- 30000
+#max.num.iterations <- 1
+max.num.iterations <- 100000
 
 eq.r.squared <- list()
 
@@ -124,10 +125,27 @@ max.abs.other.param <- max(c(max.abs.other.param, abs(regression.nls$par)))
 max.abs.other.param <- 30
 # just set to 30 for now
 
+if (synthetic.data) {
+  max.abs.other.param <- round(max(abs(synthetic.params)))
+}
+
 }
 
 
 
+CE.q.support.dem.eqns <- vector(mode="list", length=length(demand.eqns))
+CE.q.support.dem.eqns[] <- list(c(.05, .9, .05))
+
+
+# Adjusted R^2
+
+number.params <- length(unique(unlist(str_extract_all(unlist(demand.eqns), 
+"(s.[0-9][0-9].[0-9][0-9])|(b.y.[0-9][0-9])|(b.[0-9][0-9])|(b.y.y)|(d.[0-9][0-9].[0-9][0-9])|(c.[0-9][0-9] )|(c.[0-9][0-9].[0-9][0-9])"
+  ))
+))
+
+eq.adj.r.sq <- 1-(1-unlist(eq.r.squared))*(length(y01)-1)/(length(y01)-number.params-1)
+# formula from wikipedia page
 
 
 

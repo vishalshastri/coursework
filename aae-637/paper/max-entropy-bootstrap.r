@@ -6,6 +6,10 @@
 
 functional.form <- "SGM" # OR TRANSLOG
 
+synthetic.data <- TRUE
+
+#functional.form <- "TRANSLOG"
+
 if (functional.form =="SGM") {
   include.censored.cost <- TRUE
 }
@@ -21,8 +25,8 @@ dropped.cost.share.eq <- 10
 
 saved.workspace.path <- "/Users/travismcarthur/Desktop/Metrics (637)/Final paper/GAMS work/saved workspace.Rdata"
 
-saved.workspace.path <- "/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Rdata results files/saved workspace only inputsDF.Rdata"
-
+saved.workspace.path <- "/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Rdata results files/saved workspace only inputsDF with soil.Rdata"
+# with soil
 
 
 GAMS.projdir <-  "/Users/travismcarthur/Desktop/gamsdir/projdir/"
@@ -35,7 +39,7 @@ code.dir <- "/Users/travismcarthur/git/coursework/aae-637/paper/"
 
 if (Sys.info()['sysname']=="Linux") {
 
-saved.workspace.path <- "/home/c/cschmidt/TravisImInYourInternets/bootstrap-output/saved workspace.Rdata"
+saved.workspace.path <- "" # "/home/c/cschmidt/TravisImInYourInternets/bootstrap-output/saved workspace.Rdata" NEED TO FIX # saved workspace only inputsDF with soil.Rdata
 
 GAMS.projdir <-  "/home/c/cschmidt/TravisImInYourInternets/gamsdir/projdir/"
 
@@ -78,7 +82,7 @@ library(Matrix)
 load(saved.workspace.path)
 
 
-target.top.crop.number <- 4
+target.top.crop.number <- 5
 
 #Papa (patatas)    3155 
 #Maiz combined   1838 
@@ -246,6 +250,8 @@ if (functional.form =="TRANSLOG") {
 if (functional.form =="SGM") {
   source(paste0(code.dir, "sgm-GAMS-linear-construction.r"))
 }
+
+
 
 # system(paste0("cd ", GAMS.projdir, "\n", "ls" ) )
 

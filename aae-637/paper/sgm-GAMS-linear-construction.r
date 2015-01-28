@@ -156,12 +156,28 @@ for ( i in 1:length(err.support.dem.eqns)) {
 }
 
 
+CE.q.supp.string <- c()
+
+for ( i in 1:length(CE.q.support.dem.eqns)) {
+
+  CE.q.supp.string <- c(CE.q.supp.string, 
+    c(paste0("parameter ceqdemsupp", i, "(j)    support points "),
+    "/",
+    paste0(1:length(CE.q.support.dem.eqns[[i]]), "  ", CE.q.support.dem.eqns[[i]]),
+    "/;")
+  )
+}
+
+
+
+
 param.support.simple.lines <- c( # Eliminated theta here
 "parameter zother(m)    support points",
 "/",
 paste0(1:length(other.param.support), "  ", other.param.support),
 "/;",
-vdemsupp.string
+vdemsupp.string,
+CE.q.supp.string
 # TRANSLOG "parameter vcost(j)    support points ",
 # TRANSLOG "/",
 # TRANSLOG paste0(1:length(cost.err.support), "  ", cost.err.support),
@@ -197,6 +213,18 @@ for ( i in 1:length(demand.eqns))  {
   
 }
 # NOTE: maybe we do not want to same bounds on the error terms for each demand equation
+
+
+CE.q.support.lines <- c() 
+
+for ( i in 1:length(demand.eqns))  {
+
+  CE.q.support.lines <- c(CE.q.support.lines, 
+  paste0("parameter ceqdem", i, "(j)  support space for cross entropy;"),
+  paste0("ceqdem", i, "(j) = ceqdemsupp", i, "(j);")
+  )
+  
+}
 
 
 # all.params <- gsub("[.]", "", names(ln.E.start.vals)[!grepl("region", names(ln.E.start.vals))] )
@@ -300,8 +328,11 @@ variable.declaration.lines <- c("variables",
 objective.fn.lines <- c(
 paste0("-sum(m, p", all.params, "(m)*log(p", all.params, "(m)+1.e-8) )"),
 paste0("-sum((t,j), w", all.eqns, "(t,j)*log(w", all.eqns, "(t,j)+1.e-8) )"),
+paste0("+sum((t,j), w", all.eqns, "(t,j)*log(ceq", all.eqns, "(j)+1.e-8) )"),
 ";"
 )
+
+
 
 
 objective.fn.lines[1] <- paste0( "object..           h =e= ", objective.fn.lines[1])
@@ -674,11 +705,16 @@ set.seed(100)
 
 error.weights.lines <- c()
 
+#CE.q.support.dem.eqns
+
 for ( i in 1:length(all.eqns) ) {
   
-  err.weight.temp.df <- data.frame(A=jitter(rep(1/3, nrow(combined.df))),
-                                   B=jitter(rep(1/3, nrow(combined.df))),
-                                   C=jitter(rep(1/3, nrow(combined.df))))
+  err.weight.temp.df <- data.frame(A=jitter(rep(CE.q.support.dem.eqns[[i]][1],
+                                       nrow(combined.df))),
+                                   B=jitter(rep(CE.q.support.dem.eqns[[i]][2], 
+                                       nrow(combined.df))),
+                                   C=jitter(rep(CE.q.support.dem.eqns[[i]][3], 
+                                       nrow(combined.df))))
 
 #  err.weight.temp.df <- err.weight.temp.df[, -1 ]
   
@@ -755,11 +791,15 @@ parameter.display.lines <- c( paste0("display ", all.params, ".l;"),
 
 
 
+
+
+
+
 final.lines <- 
 c(
 "*Initial conditions",
 paste0("  p", all.params, ".l(m) = 1/MM;"),
-paste0("  w", all.eqns, ".l(t,j) = 1/JJ;"),
+# paste0("  w", all.eqns, ".l(t,j) = 1/JJ;"),
 Smat.initial.values,
 Cmat.initial.values,
 error.weights.lines,
@@ -807,6 +847,7 @@ completed.GAMS.file <-  c(
   param.support.simple.lines, " ", 
   greeks.support.simple.lines, " ",
   vsupport.lines, " ", 
+  CE.q.support.lines, " ",
   non.theta.param.support.lines, " ",  # Eliminated thetas here
   variable.declaration.lines, " ", 
   equation.declarations, " ",

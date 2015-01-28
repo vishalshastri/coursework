@@ -28,7 +28,7 @@
 #1.2
 #)
 
-
+#cost.err.support share.err.support
 
 
 #  bootstrap.iter <- 0
@@ -39,7 +39,7 @@ library("numDeriv")
 
 # GAMS.nonlinear.results<- readLines("/Users/travismcarthur/Desktop/Dropbox/entropytest.lst")
 
-GAMS.nonlinear.results<- readLines(paste0(GAMS.projdir, "GMElinear", strsplit(target.crop, " ")[[1]][1], 
+GAMS.nonlinear.results<- readLines(paste0(GAMS.projdir, "GMEnonlinear", strsplit(target.crop, " ")[[1]][1], 
    formatC(bootstrap.iter, width = 5, flag = "0"), ".lst"))
 
 
@@ -53,6 +53,10 @@ GAMS.nonlinear.results<- readLines(paste0(GAMS.projdir, "GMElineartesttest.lst")
 
 GAMS.nonlinear.results<- readLines(paste0(GAMS.projdir, "sgmGMEnonlinear", strsplit(target.crop, " ")[[1]][1], 
    formatC(bootstrap.iter, width = 5, flag = "0"), ".lst"))
+
+
+#GAMS.nonlinear.results<- readLines(paste0(GAMS.projdir,"sgmGMEnonlinearHaba00000 before soil and elev.lst"))
+
 
 all.eqns <- paste0("dem", 1:length(demand.eqns))
 
@@ -156,6 +160,7 @@ for ( i in 1:length(all.eqns) ) {
   paste0(GAMS.projdir, "sgmGMEnonlinear",  # "GMEnonlinear", 
   strsplit(target.crop, " ")[[1]][1], 
    formatC(bootstrap.iter, width = 5, flag = "0"), ".lst"), 
+#paste0(GAMS.projdir,"sgmGMEnonlinearHaba00000 before soil and elev.lst"),
    skip = begin.err.weight[i] + 3 ,  nrows= nrow(combined.df))  
    #    skip = begin.err.weight[i] + 3,  nrows= nrow(combined.df))  
 
@@ -180,8 +185,8 @@ for ( i in all.eqns ) {
   } else {
      error.collapsed.eq.ls[[i]] <- as.matrix(error.weight.eq.ls[[i]]) %*% 
      err.support.dem.eqns[[i]]
-     #demand.err.support
-     #share.err.support
+    # demand.err.support
+    # share.err.support
       # c(-10, 0, 10) 
   }
   
@@ -202,6 +207,265 @@ summary(error.collapsed.eq.df)
 
 #summary(rowSums(error.collapsed.eq.df[, 2:7]))
 summary(rowSums(error.collapsed.eq.df))
+
+
+
+
+
+
+# Now do asymptotic SE's for SGM:
+
+
+
+GAMS.nonlinear.results.params.full <- GAMS.nonlinear.results.params.numbers
+names(GAMS.nonlinear.results.params.full) <- GAMS.nonlinear.results.params.names
+#GAMS.nonlinear.results.params.full[ paste0("theta", lead.zero(N)) ] <- 1
+assign(paste0("xi", lead.zero(N)), 1)
+assign(paste0("theta", lead.zero(N)), 1)
+
+
+
+modified.ln.E.string <- ln.E.string # str_extract( ln.E.string, "log[(] [(]w01 / [(]w01 [*] theta01[)][)].*")
+
+region.tackon.clean <- iconv(region.tackon, to="ASCII//TRANSLIT")
+region.tackon.clean <- gsub("'", "", region.tackon.clean )
+region.tackon.clean <- gsub("[.]", "", region.tackon.clean )
+
+
+modified.ln.E.string <- gsub(pattern="[.]", replacement="", x=modified.ln.E.string )
+
+modified.ln.E.string<- paste0(modified.ln.E.string, " + ", region.tackon.clean)
+
+# modified.ln.E.string <- sub("log[(]", "", modified.ln.E.string)
+# modified.ln.E.string <- sub("[)]$", "", modified.ln.E.string) 
+
+#modified.ln.E.string.evaled.deriv <- (with(combined.w.params.df, eval(parse(text=modified.ln.E.string ))) -
+#  with(combined.w.params.for.deriv.df, eval(parse(text=modified.ln.E.string ))) ) / 1e-8
+  
+  
+  
+
+
+
+
+temp.deriv.fn <- function(x, data) { 
+    x <- c(as.list(x), as.list(data))
+    with(x, eval(parse(text=modified.ln.E.string )) )
+  }
+  
+temp.deriv.fn(  GAMS.nonlinear.results.params.full, as.data.frame(combined.df))
+
+modified.ln.E.string.evaled.deriv <- jacobian(temp.deriv.fn, 
+    x=GAMS.nonlinear.results.params.full, method="complex", 
+    data=as.data.frame(combined.df) )
+
+
+
+for ( i in 1:N) {
+  assign( paste0("inputmean", lead.zero(i)), mean.of.inputs[i])
+}
+
+modified.S.n.string.evaled.deriv <- list()
+
+# install.packages("numDeriv")
+library("numDeriv")
+
+
+
+for ( i in 1:(length(all.eqns)) ) {
+
+  modified.S.n.string <- str_extract( S.n[[i]], "~.*")
+
+  modified.S.n.string <- gsub(pattern="[.]", replacement="", x=modified.S.n.string )
+
+  modified.S.n.string <- sub("~", "", modified.S.n.string)
+  
+  temp.deriv.fn <- function(x, data) { 
+    x <- c(as.list(x), as.list(data))
+    with(x, eval(parse(text=gsub("[.]", "", modified.S.n.string #demand.eqns.nonlinear[[i]]
+    ) )) )
+    # This line seemed to have a serious bug from the translog form,
+    # where is ws just plugging in cost fn instaed of cost share eqns
+  }
+
+  modified.S.n.string.evaled.deriv[[i]] <- jacobian(temp.deriv.fn, 
+    x=GAMS.nonlinear.results.params.full, method="complex", 
+    data=as.data.frame(combined.df) )
+  
+  #(with(combined.w.params.df, eval(parse(text=modified.S.n.string ))) -
+  #with(combined.w.params.for.deriv.df, eval(parse(text=modified.S.n.string ))) ) / 1e-8
+
+
+}
+
+
+temp.deriv.fn(  GAMS.nonlinear.results.params.full, as.data.frame(combined.df))
+
+
+stacked.jacobian <- do.call(rbind, modified.S.n.string.evaled.deriv) 
+
+stacked.jacobian <- rbind(  modified.ln.E.string.evaled.deriv, 
+  do.call(rbind, modified.S.n.string.evaled.deriv) )
+
+
+# install.packages("matrixcalc")
+library("matrixcalc")
+
+is.positive.definite(big.sigma)
+#is.positive.definite(test.matrix)
+
+
+#param.covar.mat <-  solve(
+#  t( stacked.jacobian ) %*% 
+#    kronecker( solve(big.sigma), diag(nrow(combined.df)) ) %*% 
+#    stacked.jacobian
+#  )
+
+
+#stacked.jacobian.last.theta.dropped <- stacked.jacobian[, -ncol(stacked.jacobian)]
+
+
+param.covar.mat <-  solve(
+  t( stacked.jacobian ) %*% 
+    kronecker( solve(big.sigma), diag(nrow(combined.df)) ) %*% 
+    stacked.jacobian
+  , tol=.Machine$double.eps^2)
+# NOTE: reducing singularity tolerance to make it work
+
+
+round(t(t(GAMS.nonlinear.results.params.full /  sqrt(diag(param.covar.mat)) ) ), digits=2)
+
+round(t(t((GAMS.nonlinear.results.params.full-1) /  sqrt(diag(param.covar.mat) )) ), digits=2)[grepl("xi", names(GAMS.nonlinear.results.params.full))]
+
+
+round(t(t((GAMS.nonlinear.results.params.full-1) /  sqrt(diag(param.covar.mat) )) ), digits=2)[grepl("theta", names(GAMS.nonlinear.results.params.full))]
+
+
+
+param.covar.mat[grepl("xi", names(GAMS.nonlinear.results.params.full)),
+grepl("xi", names(GAMS.nonlinear.results.params.full))]
+
+param.covar.mat[grepl("theta", names(GAMS.nonlinear.results.params.full)),
+grepl("theta", names(GAMS.nonlinear.results.params.full))]
+
+cov2cor(param.covar.mat[grepl("xi", names(GAMS.nonlinear.results.params.full)),
+grepl("xi", names(GAMS.nonlinear.results.params.full))])
+
+library("aod")
+
+linear.combo <- rep(0, length(GAMS.nonlinear.results.params.full))
+linear.combo[names(GAMS.nonlinear.results.params.full)=="xi01"] <- 1
+linear.combo[names(GAMS.nonlinear.results.params.full)=="xi05"] <- -1
+
+wald.test(param.covar.mat, GAMS.nonlinear.results.params.full, L = t(matrix(linear.combo)))
+
+
+
+
+linear.combo <- rep(0, length(GAMS.nonlinear.results.params.full))
+linear.combo[names(GAMS.nonlinear.results.params.full)=="theta01"] <- 1
+linear.combo[names(GAMS.nonlinear.results.params.full)=="theta05"] <- -1
+
+wald.test(param.covar.mat, GAMS.nonlinear.results.params.full, L = t(matrix(linear.combo)))
+
+
+
+
+
+
+
+GAMS.nonlinear.results.params.full[grepl("theta", names(GAMS.nonlinear.results.params.full))]
+
+
+
+
+
+# OK, it is this one below that is not right, actually
+
+#linear.combo <- matrix(0, ncol=2, nrow=length(GAMS.nonlinear.results.params.full))
+#linear.combo[names(GAMS.nonlinear.results.params.full)=="xi01", 1] <- 1
+#linear.combo[names(GAMS.nonlinear.results.params.full)=="xi05", 2] <- -1
+
+
+#wald.test(param.covar.mat, GAMS.nonlinear.results.params.full, L = t(linear.combo))
+
+#wald.test(param.covar.mat, GAMS.nonlinear.results.params.full, 
+#  Terms=which(names(GAMS.nonlinear.results.params.full)=="xi05"))
+
+
+
+
+
+
+
+wald.test(param.covar.mat, GAMS.nonlinear.results.params.full, Terms=1)
+
+
+diag(param.covar.mat)
+
+
+eigen(t(stacked.jacobian ) %*% stacked.jacobian )
+
+solve(param.covar.mat, tol=.Machine$double.eps^2)
+
+
+
+GAMS.nonlinear.results.params.full[-length(GAMS.nonlinear.results.params.full)] /  diag(param.covar.mat)
+
+t(t(GAMS.nonlinear.results.params.full ))
+
+cat(diag(param.covar.mat), sep="\n")
+
+
+
+ testcols <- function(ee) {
+       ## split eigenvector matrix into a list, by columns
+       evecs <- split(zapsmall(ee$vectors),col(ee$vectors))
+       ## for non-zero eigenvalues, list non-zero evec components
+       mapply(function(val,vec) {
+           if (val!=0) NULL else which(vec!=0)
+       },zapsmall(ee$values),evecs)
+   }
+
+testcols(eigen(param.covar.mat))
+
+testcols(eigen(crossprod(stacked.jacobian )))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
       Min.    1st Qu.     Median       Mean    3rd Qu.       Max. 
@@ -452,6 +716,21 @@ resultant.param.probs.v <- eval(parse(text=paste0("c(", paste0(prob.numbers, col
 # rvhess = maxdouble
 
 # max(abs(do.call( cbind, error.collapsed.eq.ls)))
+
+
+coef.of.variation <- function(x) sd(x)/mean(x)
+
+coef.of.variation(w01)
+coef.of.variation(w02)
+coef.of.variation(w03)
+coef.of.variation(w04)
+coef.of.variation(w05)
+coef.of.variation(w06)
+
+
+
+
+
 
 
 

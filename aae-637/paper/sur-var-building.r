@@ -152,6 +152,10 @@ q03 = firm.df$ag.fam.labor.equiv.spread
 q03[q03 == 0] = .5
 
 
+q04 <- firm.df$soil.quality
+q05 <- firm.df$elevation
+
+
 if (log.plus.one.cost) {
   ln.E.data <- log(w01*x01 + w02*x02 + w03*x03 + w04*x04 + w05*x05 + w06*x06 + 1  )
 } else {

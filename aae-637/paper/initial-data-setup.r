@@ -10,7 +10,7 @@ inputs.df<- read.spss(paste0(work.dir, "bd68/2-AGRICOLA/Cultivos (Preg-19)/2.-EN
 colnames(inputs.df) <- tolower( make.names(gsub("[()]|[.]", "", attr(inputs.df, "variable.labels")) ) )
 
 
-tar -zcvf projdir10-28.tar.gz /home/c/cschmidt/TravisImInYourInternets/gamsdir/projdir
+# tar -zcvf projdir10-28.tar.gz /home/c/cschmidt/TravisImInYourInternets/gamsdir/projdir
 
 exclude.index <- is.na(inputs.df$x19.abono.cantidad.quintal) | 
   inputs.df$x19.superficie.cultivada.hectareas==0  
@@ -642,8 +642,309 @@ summary(inputs.df[, c("x19.fertilizante.bs.kg", "x19.sem.comprada.bs.kg", "x19.a
 
 
 
-save.image("/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Rdata results files/saved workspace only inputsDF.Rdata")
 
+######### BEGIN GEOG/SOIL WORK
+
+
+
+library("foreign")
+library("PBSmapping")
+# install.packages("rgdal", repos="http://cran.us.r-project.org", type = "source")
+# Warnings: as of now, must install rgdal from source
+# Ok, this is how i finally fixed it:
+# from http://cran.r-project.org/web/packages/rgdal/, download "OS X Snow Leopard binaries"
+# Then:
+# sudo R CMD INSTALL /Users/travismcarthur/Downloads/rgdal_0.9-1.tgz
+
+# May also have to do the following:
+# Accord to http://cran.r-project.org/web/packages/rgdal/ , must download GDAL from http://www.kyngchaos.com/software/frameworks
+# And then edit bash_profile in accordance with the GDAL readme file that
+# comes wit the kyngchaos install. input "gdal-config" in Terminal to
+# confirm GDAL has been installed
+# --configure-args='--with-gdal-config=/travismcarthur/local/bin/gdal-config'
+
+library("rgdal")
+
+# install.packages("splancs", repos="http://cran.us.r-project.org")
+library("splancs")
+
+work.dir <- "/Users/travismcarthur/Desktop/Metrics (637)/Final paper/"
+
+
+
+
+
+
+
+
+
+pob.shp<-importShapefile(paste0(work.dir, "centros_poblados.zip Folder/centros_poblados.shp"))
+
+
+#combine.localidades<-function(x) {
+#  ret<-x[1, ]
+#  ret$num.of.localidades<-nrow(x)
+#  ret$X <- sum(x$X * x$VIVIENDA)/sum(x$VIVIENDA)
+#  ret$Y <- sum(x$Y * x$VIVIENDA)/sum(x$VIVIENDA)
+#  ret$LOCALIDAD<-"combined localidades"
+#  ret$N_ZONLOC<-"combined localidades"
+#  ret
+#}
+
+
+#dup.indices<- duplicated(substr(pob.shp$COD_BD_CEN, 1, 11)) |
+#  duplicated(substr(pob.shp$COD_BD_CEN, 1, 11), fromLast=TRUE)
+
+#combined.localidades.ls<-by(pob.shp[dup.indices, ], INDICES=substr(pob.shp$COD_BD_CEN[dup.indices], 1, 11), FUN=combine.localidades)
+
+#combined.localidades.df<-do.call(rbind, combined.localidades.ls)
+
+#pob.shp.rev <- rbind(combined.localidades.df,
+#  cbind(pob.shp[!dup.indices, ], data.frame(num.of.localidades=rep(1, nrow(pob.shp[!dup.indices, ]))))
+#)
+
+#pob.shp.rev$comunidad.id<-substr(pob.shp.rev$COD_BD_CEN, 1, 11)
+
+
+#table(pob.shp.rev$CAT_LOC)
+#simplified.loc.cat <- as.character(pob.shp.rev$CAT_LOC)
+#simplified.loc.cat[simplified.loc.cat == "0-Capital"] <- "1-Urbana"
+#simplified.loc.cat[simplified.loc.cat == "3-Dispersa"] <- "3-7Dispersa"  
+#aggregate( pob.shp.rev$POB2001, by=list(simplified.loc.cat), FUN=median, na.rm=TRUE)
+
+
+
+pob.shp$comunidad.id<-substr(pob.shp$COD_BD_CEN, 1, 11)
+
+pob.shp$canton.full <- with(pob.shp , paste0(DEPTO, PROVIN, SECCION, CANTON))
+
+# village.geog.df<-pob.shp[pob.shp$comunidad.id %in% hogar01.df.ids, c("EID", "comunidad.id", "X", "Y", "VIVIENDA")]
+
+#install.packages("SDMTools", repos="http://cran.us.r-project.org")
+library("SDMTools")
+
+soil.qual.asc <- read.asc("/Users/travismcarthur/Desktop/Metrics (637)/Final paper/sq1.asc", gz = FALSE)
+
+
+#cellcentre.offset: numeric; vector with the smallest coordinates for
+#          each dimension
+#cellsize: numeric; vector with the cell size in each dimension
+#cells.dim: integer; vector with number of cells in each dimension
+
+soil.qual.grid.defn <- GridTopology(cellcentre.offset=
+  c(attr(soil.qual.asc,  "xll"), attr(soil.qual.asc,  "yll")), 
+  cellsize=rep(attr(soil.qual.asc,  "cellsize"), 2), 
+  cells.dim= rev(dim(soil.qual.asc))) # ok, this should be rev() by evidence in soil.bil@grid. This is crucial
+
+soil.qual.SP <- SpatialPixels(
+  SpatialPoints(as.data.frame(pob.shp[, c("X", "Y")])),
+  grid=soil.qual.grid.defn )
+
+# head(diff(soil.qual.SP@grid.index))
+
+#pob.shp$soil.qual <- c(soil.qual.asc)[soil.qual.SP@grid.index]
+# Reactivate this if we want the other measure
+
+
+
+
+soil.mdb <- read.csv("/Users/travismcarthur/Desktop/Metrics (637)/Final paper/HWSD.csv")
+# Used mdb-export command line tool to make csv.
+load(file=paste0( work.dir, "HWSD_RASTER/hwsd.Rdata"))
+
+
+#soil.shp<-importShapefile(paste0(work.dir, "DSMW/DSMW.shp"))
+
+#soil.bil<- readGDAL(paste0(work.dir, "HWSD_RASTER/hwsd.bil"))
+#save(file=paste0( work.dir, "HWSD_RASTER/hwsd.Rdata"),soil.bil)
+load(file=paste0( work.dir, "HWSD_RASTER/hwsd.Rdata"))
+
+#soil.mdb<-mdb.get(paste0("'", work.dir, "HWSD.mdb'"))
+
+
+
+villages.spatialpixels<-SpatialPixels(
+  SpatialPoints(as.data.frame(pob.shp[, c("X", "Y")])),
+  grid=soil.bil@grid)
+
+# max(crop.wide.df$fert.exp)!=crop.wide.df$fert.exp
+
+
+pob.shp$MU.GLOBAL<-soil.bil$band1[villages.spatialpixels@grid.index]
+
+colnames(soil.mdb) <- gsub("_", ".", colnames(soil.mdb))
+
+intersect(colnames(pob.shp), colnames(soil.mdb))
+
+pob.shp<-merge(pob.shp, soil.mdb[soil.mdb$SEQ==1, ], all.x=TRUE) # soil.mdb$HWSD_DATA[soil.mdb$HWSD_DATA$SEQ==1
+
+table(pob.shp$T.PH.H2O)
+table(pob.shp$AWC.CLASS)
+
+pob.shp$AWC.mm <- NA
+
+pob.shp$AWC.mm[pob.shp$AWC.CLASS==1] <- 150
+pob.shp$AWC.mm[pob.shp$AWC.CLASS==2] <- 125
+pob.shp$AWC.mm[pob.shp$AWC.CLASS==3] <- 100
+pob.shp$AWC.mm[pob.shp$AWC.CLASS==4] <-  75
+pob.shp$AWC.mm[pob.shp$AWC.CLASS==5] <-  50
+pob.shp$AWC.mm[pob.shp$AWC.CLASS==6] <-  15
+pob.shp$AWC.mm[pob.shp$AWC.CLASS==7] <-   0
+
+# see http://www.fao.org/docrep/018/aq361e/aq361e.pdf
+#1 150
+#2 125
+#3 100
+#4  75
+#5  50
+#6  15
+#7   0
+
+pob.shp$soil.qual <- with(pob.shp, 0.703450 + 0.420518 * AWC.mm/1000 - 0.008133 * (T.CEC.SOIL - T.TEB))
+
+# AWC is basically a percentage in the index paper
+
+#0.420518 water
+#-0.008133  pH
+#0.703450  constant
+
+# Index paper: http://www.jstor.org.ezproxy.library.wisc.edu/stable/pdfplus/1244331.pdf?acceptTC=true
+
+
+# The scientific community often expresses CEC of a soil as cmol/kg. This is centimoles (cmol) of charge per kilogram of soil. Many soil testing laboratories (and your textbook), however, express CEC as meq/100 g. This should not cause confusion since: 1 meq/100 g = 1 cmol/kg
+#http://www.public.iastate.edu/~teloynac/354ppcecsol.html
+
+# THIS IS THE KEY INSIGHT!:
+# 3.  Calculate exchangeable acidity in meq/100 g as follows.
+# Acidity (meq/100g) = CEC – (Ca + Mg + K + Na)
+# www.clemson.edu/sera6/soilcec_sikora4.doc
+
+# so acidity is CEC-TEB
+# There is a minor issue in that the database has measures for "soil" and "clay", so maybe a weighted average of them?
+
+summary(pob.shp$T.CEC.SOIL - pob.shp$T.TEB )
+
+
+mean.soil.qual <- mean(pob.shp$soil.qual, na.rm=TRUE)
+
+pob.shp$soil.qual[is.na(pob.shp$soil.qual)] <- mean.soil.qual
+
+soil.agg.v <- by(pob.shp[, c("soil.qual", "VIVIENDA")], INDICES=list(pob.shp$canton.full), 
+  FUN=function(x) {
+    weighted.mean(x[, 1], x[, 2], na.rm=TRUE)
+  }
+) 
+
+soil.agg.df <- data.frame(soil.quality = unclass(soil.agg.v), canton.full=attr(soil.agg.v, "dimnames")[[1]])
+
+table(pob.shp$T.CEC.SOIL)
+
+
+setdiff(inputs.df$canton.full, soil.agg.df$canton.full)
+
+
+inputs.df <- merge(inputs.df, soil.agg.df, all.x=TRUE)
+
+inputs.df$soil.quality[is.na(inputs.df$soil.quality)] <- mean.soil.qual
+# impute by mean
+
+
+
+
+
+
+
+
+
+pob.shp<-importShapefile(paste0(work.dir, "centros_poblados.zip Folder/centros_poblados.shp"))
+
+pob.shp$canton.full <- with(pob.shp , paste0(DEPTO, PROVIN, SECCION, CANTON))
+
+
+elev.dem1<-readGDAL(paste0(work.dir, "w060s10/W060S10.DEM"))
+elev.dem2<-readGDAL(paste0(work.dir, "w100s10/W100S10.DEM"))
+
+#hist(elev.dem2$band1)
+#image(elev.dem2["band1"])
+#max(village.geog.df$Y[village.geog.df$Y!=0])
+# Since this is south of -10 latitude, we don;t have to download additional elevation panels
+# TODO: Ok, now the max is actually -9.704484 and we are missing two villages, so we need to fix this
+
+keep.coords.1<-point.in.polygon(pob.shp$X , pob.shp$Y, bboxx(bbox(elev.dem1))[, 1], bboxx(bbox(elev.dem1))[, 2])==1
+
+villages.elev.1.spatialpixels<-SpatialPixels(
+  SpatialPoints(as.data.frame(pob.shp[keep.coords.1, c("X", "Y")])),
+  grid=elev.dem1@grid)
+
+elevation.df<-data.frame(EID=pob.shp[keep.coords.1, "EID"],
+  elevation=elev.dem1$band1[villages.elev.1.spatialpixels@grid.index], stringsAsFactors=FALSE)
+
+keep.coords.2<-point.in.polygon(pob.shp$X , pob.shp$Y, bboxx(bbox(elev.dem2))[, 1], bboxx(bbox(elev.dem2))[, 2])==1
+
+villages.elev.2.spatialpixels<-SpatialPixels(
+  SpatialPoints(as.data.frame(pob.shp[keep.coords.2, c("X", "Y")])),
+  grid=elev.dem2@grid)
+  
+
+
+
+elevation.df <- rbind(elevation.df,
+  data.frame(EID=pob.shp[keep.coords.2, "EID"],
+    elevation=elev.dem2$band1[villages.elev.2.spatialpixels@grid.index], stringsAsFactors=FALSE)
+  )
+# Weird textwrangler corruption is messing us up in the line above
+
+pob.shp <- merge(pob.shp, elevation.df, all.x=TRUE)
+
+
+
+mean.elevation <- mean(pob.shp$elevation, na.rm=TRUE)
+
+pob.shp$elevation[is.na(pob.shp$elevation)] <- mean.elevation
+
+elevation.agg.v <- by(pob.shp[, c("elevation", "VIVIENDA")], INDICES=list(pob.shp$canton.full), 
+  FUN=function(x) {
+    weighted.mean(x[, 1], x[, 2], na.rm=TRUE)
+  }
+) 
+
+elevation.agg.df <- data.frame(elevation = unclass(elevation.agg.v), canton.full=attr(elevation.agg.v, "dimnames")[[1]])
+
+
+
+
+setdiff(inputs.df$canton.full, elevation.agg.df$canton.full)
+
+
+inputs.df <- merge(inputs.df, elevation.agg.df, all.x=TRUE)
+
+inputs.df$elevation[is.na(inputs.df$elevation)] <- mean.elevation
+
+inputs.df$elevation <- inputs.df$elevation/1000
+# Change elevation to kilometers for the sake of scaling
+
+#hist(inputs.df$elevation)
+
+
+
+
+
+######### END GEOG WORK
+
+
+
+
+
+# rm(list=setdiff(ls(), keep.these))
+
+
+
+
+#save.image("/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Rdata results files/saved workspace only inputsDF with soil.Rdata")
+
+save(inputs.df, file="/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Rdata results files/saved workspace only inputsDF with soil.Rdata")
+
+# save.image("/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Rdata results files/saved workspace only inputsDF.Rdata")
 
 
 #x107.hrs.tractor.spread

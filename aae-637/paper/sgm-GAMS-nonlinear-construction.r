@@ -171,6 +171,19 @@ for ( i in 1:length(err.support.dem.eqns)) {
     "/;")
   )
 }
+
+CE.q.supp.string <- c()
+
+for ( i in 1:length(CE.q.support.dem.eqns)) {
+
+  CE.q.supp.string <- c(CE.q.supp.string, 
+    c(paste0("parameter ceqdemsupp", i, "(j)    support points "),
+    "/",
+    paste0(1:length(CE.q.support.dem.eqns[[i]]), "  ", CE.q.support.dem.eqns[[i]]),
+    "/;")
+  )
+}
+
  
 
 param.support.simple.lines <- c( # Eliminated theta here
@@ -182,7 +195,8 @@ paste0(1:length(xi.param.support), "  ", xi.param.support),
 "/",
 paste0(1:length(other.param.support), "  ", other.param.support),
 "/;",
-vdemsupp.string
+vdemsupp.string,
+CE.q.supp.string
 # TRANSLOG "parameter vcost(j)    support points ",
 # TRANSLOG "/",
 # TRANSLOG paste0(1:length(cost.err.support), "  ", cost.err.support),
@@ -212,6 +226,16 @@ for ( i in 1:length(demand.eqns))  {
 # NOTE: maybe we do not want to same bounds on the error terms for each demand equation - this has been fixed above
 
 
+CE.q.support.lines <- c() 
+
+for ( i in 1:length(demand.eqns))  {
+
+  CE.q.support.lines <- c(CE.q.support.lines, 
+  paste0("parameter ceqdem", i, "(j)  support space for cross entropy;"),
+  paste0("ceqdem", i, "(j) = ceqdemsupp", i, "(j);")
+  )
+  
+}
 
 
 
@@ -317,8 +341,13 @@ objective.fn.lines <- c(
 paste0("-sum(m, p", all.params[!grepl("xi", all.params)], "(m)*log(p", all.params[!grepl("xi", all.params)], "(m)+1.e-8) )"),
 paste0("-sum(h, p", all.params[grepl("xi", all.params)], "(h)*log(p", all.params[grepl("xi", all.params)], "(h)+1.e-8) )"),
 paste0("-sum((t,j), w", all.eqns, "(t,j)*log(w", all.eqns, "(t,j)+1.e-8) )"),
+paste0("+sum((t,j), w", all.eqns, "(t,j)*log(ceq", all.eqns, "(j)+1.e-8) )"),
 ";"
 )
+
+
+
+
 
 
 objective.fn.lines[1] <- paste0( "object..           g =e= ", objective.fn.lines[1])
@@ -891,6 +920,9 @@ Smat.start.vals.mat <- as.matrix(Smat.start.vals.mat[, -1])
 
 Smat.initiation.v <- Smat.start.vals.mat
 Smat.initiation.v[upper.tri(Smat.initiation.v)] <- 0
+Smat.initiation.v[is.na(Smat.initiation.v)] <- 0
+# sometimes zeros come back as blanks from GAMS, so need above line
+
 Smat.initiation.v <- c(Smat.initiation.v)
 
 Smat.initiation.grid <- expand.grid(1:(N-1), 1:(N-1))
@@ -906,10 +938,11 @@ Cmat.start.vals.mat <- read.fwf(
     nrows= J)
     
 Cmat.start.vals.mat <- as.matrix(Cmat.start.vals.mat[, -1])
-    
+
 
 Cmat.initiation.v <- Cmat.start.vals.mat
 Cmat.initiation.v[upper.tri(Cmat.initiation.v)] <- 0
+Cmat.initiation.v[ is.na(Cmat.initiation.v)] <- 0
 Cmat.initiation.v <- c(Cmat.initiation.v)
 
 Cmat.initiation.grid <- expand.grid(1:J, 1:J)
@@ -1064,6 +1097,7 @@ completed.GAMS.file <-  c(
   param.support.simple.lines, " ", 
   greeks.support.simple.lines, " ",
   vsupport.lines, " ", 
+  CE.q.support.lines, " ",
   non.theta.param.support.lines, " ", 
   xi.param.support.lines, " ", 
   variable.declaration.lines, " ", 

@@ -220,6 +220,140 @@ save.image(file="/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Rdata r
 
 # number of farms that have the same crop in multiple plots
        
+num.same.crops <- 0 
+
+
+
+
+
+for ( i in inputs.df$folio) {
+
+  if( any(duplicated(inputs.df[inputs.df$folio==i & inputs.df$x19.codigo==top.crops[1],  "x19.mes.siembra"])) ) {
+  
+    x19.fertilizante.cantidad
+    num.same.crops <-  num.same.crops + 1
+  }
+
+}
+
+
+
+inputs.df[inputs.df$folio==i, ]
+
+test.agg <- aggregate( x19.fertilizante.cantidad ~ folio + x19.codigo + x19.mes.siembra, data=inputs.df, 
+  FUN=function(x) ifelse(any(x==0) & any(x!=0), 1, 0) )
+
+test.agg[test.agg$x19.fertilizante.cantidad==1, ]
+
+test.agg2 <- aggregate( x19.fertilizante.cantidad ~ folio + x19.codigo + x19.mes.siembra, data=inputs.df, 
+  FUN=function(x) ifelse(sum(duplicated(x))!=(length(x)-1), 1, 0) )
+
+
+t(inputs.df[inputs.df$folio=="2020142016" & inputs.df$x19.codigo=="Papa (patatas) ", ])
+
+
+
+
+
+x19.abono.cantidad                    
+x19.abono.bs 
+
+sort(unique(inputs.df$x19.abono.bs ))
+
+table(inputs.df$x19.abono.cantidad > 0 & (is.na(inputs.df$x19.abono.bs.quintal) | inputs.df$x19.abono.bs.quintal==0))
+table(inputs.df$x19.abono.cantidad > 0 )
+
+table(inputs.df$x19.fertilizante.cantidad > 0 & (is.na(inputs.df$x19.fertilizante.bs.quintal) | inputs.df$x19.fertilizante.bs.quintal==0))
+table(inputs.df$x19.fertilizante.cantidad > 0 )
+
+table(inputs.df$x19.plagicidas.cantidad > 0 & (is.na(inputs.df$x19.plagicidas.bs.quintal) | inputs.df$x19.plagicidas.bs.quintal==0))
+table(inputs.df$x19.plagicidas.cantidad > 0 )
+
+#!! prices not imputing properly - should take price from the same farm
+
+
+inputs.df[inputs.df$folio=="2020142016" , c("x19.fertilizante.bs.quintal", "x19.fertilizante.bs.kg")]
+
+
+
+sum(inputs.df$x19.fertilizante.cantidad) / sum(inputs.df$x19.superficie.cultivada.hectareas)
+
+
+##################
+
+require("rgdal") # requires sp, will use proj.4 if installed
+  require("maptools")
+  require("ggplot2")
+  require("plyr")
+  
+setwd("/Users/travismcarthur/Desktop/Metrics (637)/Final paper/1155/")
+
+# Thanks to https://github.com/hadley/ggplot2/wiki/plotting-polygon-shapefiles
+nation.shp = readOGR(dsn=".", layer="bolivia")
+nation.shp@data$id = rownames(nation.shp@data)
+nation.points = fortify(nation.shp, region="id")
+fert.price.agg <- aggregate( x19.fertilizante.bs.kg ~ provincia.full, data=inputs.df, FUN=median)
+wage.agg <- aggregate( hourly.wage ~ provincia.full, data=inputs.df, FUN=median)
+tractor.price.agg <- aggregate( hourly.tractor.rental ~ provincia.full, data=inputs.df, FUN=median)
+# TODO: may want to restrict this to "itself" imputation levels
+
+
+nation.shp@data$provincia.full <- paste0(substr( nation.shp@data$DCODE, 4, 5), substr( nation.shp@data$DCODE, 7,8))
+
+nation.shp@data <- merge(nation.shp@data, wage.agg, all.x=TRUE)
+nation.shp@data <- merge(nation.shp@data, fert.price.agg, all.x=TRUE)
+nation.shp@data <- merge(nation.shp@data, tractor.price.agg, all.x=TRUE)
+
+
+nation.df = join(nation.points, nation.shp@data, by="id")
+
+require(gridExtra)
+
+plot1 <- ggplot(nation.df) + 
+  aes(long,lat,group=group,fill=hourly.tractor.rental) + 
+  geom_polygon() +
+#  geom_path(color="white") +
+  coord_equal()
+  
+plot2 <-ggplot(nation.df) + 
+  aes(long,lat,group=group,fill=x19.fertilizante.bs.kg) + 
+  geom_polygon() +
+#  geom_path(color="white") +
+  coord_equal()
+
+plot3 <-ggplot(nation.df) + 
+  aes(long,lat,group=group,fill=hourly.wage) + 
+  geom_polygon() +
+#  geom_path(color="white") +
+  coord_equal()
+
+grid.arrange(plot1, plot2, plot3, ncol=2)
+
+
+# How to save to disk
+ # draw your plots
+# plot1 <- ggplot(...) # this specifies your first plot
+# plot2 <- ggplot(...) # this specifies your second plot
+# plot3 <- ggplot(...) # this specifies your third plot
+
+ #merge all three plots within one grid (and visualize this)
+# grid.arrange(plot1, plot2, plot3, nrow=3) #arranges plots within grid
+
+ #save
+# g <- arrangeGrob(plot1, plot2, plot3, nrow=3) #generates g
+# ggsave(file="whatever.pdf", g) #saves g
+
+
+
+
+  
+   +
+  scale_fill_brewer("Utah Ecoregion")
+
+
+
+
+
 
 
 
