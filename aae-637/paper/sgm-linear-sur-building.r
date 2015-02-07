@@ -77,7 +77,7 @@ cost.fn.g.term <- paste0("(1/2) * ", second.g.term.numerator, "/", psi.w.summati
 
 
 cost.fn.first.term <- paste0("b.y.", lead.zero(1:N), " * w", lead.zero(1:N), collapse=" + ")
-cost.fn.second.term <- paste0("b.", lead.zero(1:N), "/y01", collapse= " + ")
+cost.fn.second.term <- paste0("b.", lead.zero(1:N), " * w", lead.zero(1:N), "/y01", collapse= " + ")
 
 cost.fn.third.term <- paste0( "(",
   paste0("beta.", lead.zero(1:N), " * w", lead.zero(1:N), collapse=" + "), ")",
@@ -217,9 +217,6 @@ demand.eqns <- lapply(demand.eqns, FUN=function(x) {
 
 
 
-
-
-
 #s.06.01
 #psi.01
 #b.y.06
@@ -245,11 +242,10 @@ demand.eqns.nonlinear <- lapply(demand.eqns, FUN=function(x) {
 }
 )
 
-
-
-
-
-
+if ( !include.cost.fn) {
+  demand.eqns <- demand.eqns[-length(demand.eqns)]
+  demand.eqns.nonlinear <- demand.eqns.nonlinear[-length(demand.eqns.nonlinear)]
+}
 
 
 

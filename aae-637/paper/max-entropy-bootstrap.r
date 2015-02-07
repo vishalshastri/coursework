@@ -6,7 +6,27 @@
 
 functional.form <- "SGM" # OR TRANSLOG
 
-synthetic.data <- TRUE
+
+synthetic.data <-TRUE
+if (!exists("global.max.seed")) { global.max.seed <- 0}
+do.SUR <- FALSE
+include.cost.fn <- TRUE
+only.cost.fn <- TRUE
+generate.synth.data.from.cost.fn <- TRUE
+start.at.true.xi <- FALSE
+start.nonlin.from.ignorance <- TRUE
+
+if (!synthetic.data) { 
+  intended.seed <- 100 
+  start.nonlin.from.ignorance <- FALSE
+  do.SUR <- TRUE
+  include.cost.fn <- TRUE
+  only.cost.fn <- FALSE
+  generate.synth.data.from.cost.fn <- FALSE
+  start.at.true.xi <- FALSE
+}
+
+# do.SUR <- TRUE
 
 #functional.form <- "TRANSLOG"
 
@@ -82,7 +102,7 @@ library(Matrix)
 load(saved.workspace.path)
 
 
-target.top.crop.number <- 5
+target.top.crop.number <- 4
 
 #Papa (patatas)    3155 
 #Maiz combined   1838 
@@ -200,6 +220,9 @@ if (functional.form =="TRANSLOG") {
 }
 if (functional.form =="SGM") {
   source(paste0(code.dir, "sur-var-building.r"), local=local.source.evaluation)  
+    if (synthetic.data) {
+    source(paste0(code.dir, "synthetic-data.r"), local=local.source.evaluation)
+  }
 }
 
 # If want to make censoring plots:
@@ -237,17 +260,28 @@ other.param.support <- seq(from = -other.param.endpoint, to = other.param.endpoi
 if (functional.form =="SGM") {
   other.param.endpoint <- round( max.abs.other.param * 2 , digits=1)
 
-  other.param.support <- seq(from = -other.param.endpoint, to = other.param.endpoint, length.out=5)
+  other.param.support <- seq(from = -other.param.endpoint, to = other.param.endpoint, length.out=3)
+  # NOTE: I changed this to 3
 }
 
 
 linear.GAMS.output <- TRUE
 
+
+
+if (only.cost.fn) {
+  demand.eqns <- demand.eqns[length(demand.eqns)]
+  demand.eqns.nonlinear <- demand.eqns.nonlinear[length(demand.eqns.nonlinear)]
+}
+
+
+
+
 if (functional.form =="TRANSLOG") {
   source(paste0(code.dir, "GAMS-linear-construction.r"))
 }
 
-if (functional.form =="SGM") {
+if (functional.form =="SGM" & !start.nonlin.from.ignorance) {
   source(paste0(code.dir, "sgm-GAMS-linear-construction.r"))
 }
 
@@ -271,8 +305,9 @@ run.linear.from.shell <-paste0("cd ", GAMS.projdir, "\n",
    " Ps=0 suppress=1")
 }
 
-system(run.linear.from.shell)
-
+if (!start.nonlin.from.ignorance) {
+  system(run.linear.from.shell)
+}
 
 
 # elapsed 0:08:19.548
@@ -282,6 +317,8 @@ system(run.linear.from.shell)
 theta.param.support <- qlnorm(seq(.1, .999, length.out=13), meanlog= 0, sdlog = 1.5)
 theta.param.support <- theta.param.support/mean(theta.param.support)
 xi.param.support <- theta.param.support
+#xi.param.support <- c(-8, 1, 10)
+# NOTE: Changing support dratically
 
 # plot(c(0,13), c(0,13))
 # rug(theta.param.support, col="red")
@@ -317,12 +354,12 @@ system(run.nonlinear.from.shell)
 
 
 
-time.counter <- c(time.counter, Sys.time())
-save(time.counter, file=paste0(GAMS.projdir, strsplit(target.crop, " ")[[1]][1], 
-  "bootstrapcounter.Rdata"))
+#time.counter <- c(time.counter, Sys.time())
+#save(time.counter, file=paste0(GAMS.projdir, strsplit(target.crop, " ")[[1]][1], 
+#  "bootstrapcounter.Rdata"))
 
 
-}
+#}
 
 
 # }

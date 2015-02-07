@@ -302,6 +302,7 @@ cov.var.declarations  <- cov.var.declarations[cov.var.declarations!= ""]
   
 cov.var.declarations <- paste0("  ", cov.var.declarations,  "    SUR covar parameter")
 
+if (!do.SUR) { cov.var.declarations <- c() }
   
 
 variable.declaration.lines <- c("variables",
@@ -503,6 +504,7 @@ covar.SUR.v <- strwrap( covar.SUR.v, indent=1, exdent=19, width=80)
 
 covar.SUR.lines <- covar.SUR.v
 
+if (!do.SUR) { covar.SUR.lines <- c() }
 
 cov.rest.declarations <- paste0( "restrcov", expand.grid(1:length(all.eqns), 1:length(all.eqns))[, 1],
   expand.grid(1:length(all.eqns), 1:length(all.eqns))[, 2] )
@@ -513,7 +515,7 @@ diag(cov.rest.declarations.mat) <- ""
 cov.rest.declarations <- cov.rest.declarations.mat
 cov.rest.declarations  <- cov.rest.declarations[cov.rest.declarations != ""]
 
-
+if (!do.SUR) { cov.rest.declarations <- c() }
 
 
 
@@ -703,7 +705,8 @@ equation.declarations <- c(
 
 set.seed(100)
 
-error.weights.lines <- c()
+error.weights.lines <- vector("character", nrow(combined.df) * 3)
+
 
 #CE.q.support.dem.eqns
 
@@ -722,13 +725,16 @@ for ( i in 1:length(all.eqns) ) {
   
   for ( j in 1:nrow(err.grid)) {
   
-    error.weights.lines  <- c(error.weights.lines, paste0(" w", all.eqns[i], ".l(\"", err.grid[j, 2], "\",\"",  
+    error.weights.lines[j + (i-1)*nrow(combined.df)]  <- paste0(" w", all.eqns[i], ".l(\"", err.grid[j, 2], "\",\"",  
       err.grid[j, 1], "\") = ", err.weight.temp.df[err.grid[j, 2] , err.grid[j, 1]], ";")
-    )
+    
     
   }
 
 }
+
+
+
 
 
 
@@ -778,12 +784,16 @@ diag(cov.var.display.mat) <- ""
 cov.var.display <- cov.var.display.mat
 cov.var.display  <- cov.var.display[cov.var.display!= ""]  
 
+cov.var.display  <- paste0("display ", cov.var.display, ".l;")
+
+if (!do.SUR) { cov.var.display <- c() }
+
 
   
 parameter.display.lines <- c( paste0("display ", all.params, ".l;"),
   paste0("display p", all.params, ".l;"),
   paste0("display w", all.eqns, ".l;"),
-  paste0("display ", cov.var.display, ".l;"),
+  cov.var.display ,
   paste0("display Smat.l"),
   paste0("display Cmat.l")
 #  paste0("display errorrelax.l")

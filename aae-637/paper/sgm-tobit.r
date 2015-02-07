@@ -3,8 +3,8 @@ err.support.dem.eqns <- list()
 
 max.abs.other.param <- 0
 
-#max.num.iterations <- 1
-max.num.iterations <- 100000
+max.num.iterations <- 1
+# max.num.iterations <- 100000
 
 eq.r.squared <- list()
 
@@ -126,7 +126,7 @@ max.abs.other.param <- 30
 # just set to 30 for now
 
 if (synthetic.data) {
-  max.abs.other.param <- round(max(abs(synthetic.params)))
+  max.abs.other.param <- round(max(abs(synthetic.params))) * 2
 }
 
 }
@@ -134,7 +134,13 @@ if (synthetic.data) {
 
 
 CE.q.support.dem.eqns <- vector(mode="list", length=length(demand.eqns))
-CE.q.support.dem.eqns[] <- list(c(.05, .9, .05))
+#CE.q.support.dem.eqns[] <- list(c(.05, .9, .05))
+CE.q.support.dem.eqns[] <- list(c(.30, .40, .30))
+
+if (only.cost.fn) { 
+  err.support.dem.eqns <- err.support.dem.eqns[length(err.support.dem.eqns)] 
+  CE.q.support.dem.eqns <- CE.q.support.dem.eqns[length(CE.q.support.dem.eqns)]
+}
 
 
 # Adjusted R^2

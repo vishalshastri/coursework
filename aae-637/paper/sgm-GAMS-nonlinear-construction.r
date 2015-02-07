@@ -81,12 +81,16 @@ log10_ceiling <- function(x) {
 
 # TRANSLOG }
 
+if ( !only.cost.fn) {
+  for (i in 1:N) {
+	combined.df[, paste0("dem", i)] <- with(combined.df, eval(parse(text=paste0("x", lead.zero(i), "/y01" ) ) ))
+  }
 
-for (i in 1:N) {
-  combined.df[, paste0("dem", i)] <- with(combined.df, eval(parse(text=paste0("x", lead.zero(i), "/y01" ) ) ))
+  combined.df[, paste0("dem", N+1)] <- E.y01.data
+  
+} else {
+  combined.df[, paste0("dem", 1)] <- E.y01.data
 }
-
-combined.df[, paste0("dem", N+1)] <- E.y01.data
 
 
 
@@ -94,6 +98,8 @@ combined.df[, paste0("dem", N+1)] <- E.y01.data
 
 # combined.df <- scale(combined.df, center=FALSE)
 # This was bad bad
+
+combined.df
 
 
 top.before.data <- c(
@@ -307,7 +313,7 @@ cov.var.declarations  <- cov.var.declarations[cov.var.declarations!= ""]
   
 cov.var.declarations <- paste0("  ", cov.var.declarations,  "    SUR covar parameter")
 
-
+if (!do.SUR) { cov.var.declarations <- c() }
 
 
 variable.declaration.lines <- c("variables",
@@ -571,6 +577,8 @@ covar.SUR.v <- strwrap( covar.SUR.v, indent=1, exdent=19, width=80)
 
 covar.SUR.lines <- covar.SUR.v
 
+if (!do.SUR) { covar.SUR.lines <- c() }
+
 
 cov.rest.declarations <- paste0( "restrcov", expand.grid(1:length(all.eqns), 1:length(all.eqns))[, 1],
   expand.grid(1:length(all.eqns), 1:length(all.eqns))[, 2] )
@@ -581,6 +589,8 @@ diag(cov.rest.declarations.mat) <- ""
 cov.rest.declarations <- cov.rest.declarations.mat
 cov.rest.declarations  <- cov.rest.declarations[cov.rest.declarations != ""]
 
+
+if (!do.SUR) { cov.rest.declarations <- c() }
 
 
 double.s.params<- unique(unlist(str_extract_all(gsub("[.]", "", unlist(demand.eqns)), "s[0-9]{4}")))
@@ -782,6 +792,12 @@ start.vals.lines <- paste0("xi", lead.zero(1:(N-1)), ".l = 1;")
 # start.vals.lines <- paste0("xi", lead.zero(1:(N-1)), ".l = 0;")
 # added this to have correct (non-zero) starting vals for theta
 
+if ( start.at.true.xi ) {
+  start.vals.lines <- paste0("xi", lead.zero(1:(N-1)), ".l = ", 
+    synthetic.params[grepl("xi", names(synthetic.params)) ][-N], ";")
+}
+
+
 for ( i in 1:length(prob.names)) {
 
   start.vals.lines <- c( start.vals.lines, 
@@ -805,6 +821,9 @@ end.err.weight  <- grep(paste0("^", nrow(combined.df), " "), GAMS.linear.results
 
 error.weights.lines <- c()
 
+
+if ( !start.nonlin.from.ignorance) {
+
 for ( i in 1:length(all.eqns) ) {
   
   err.weight.temp.df <- read.table( paste0(GAMS.projdir, "sgmGMElinear", strsplit(target.crop, " ")[[1]][1], 
@@ -822,6 +841,8 @@ for ( i in 1:length(all.eqns) ) {
     )
     
   }
+
+}
 
 }
 
@@ -855,6 +876,42 @@ xi.weight.grid<- expand.grid(1:(N-1), 1:length(xi.param.support))
 
 xi.weight.lines <-  paste0("pxi", lead.zero(xi.weight.grid[,1]), ".l(\"", xi.weight.grid[,2], 
   "\") = 1/", length(xi.param.support),";")
+
+if ( start.at.true.xi ) {
+
+xi.weight.lines <- c()
+
+library("alabama")
+
+for ( i in 1:(N-1) ) {
+
+  desired.xi <- synthetic.params[grepl("xi", names(synthetic.params)) ][i]
+
+  max.ent.fn <- function(x) {
+    if (any(x<=0)) {return(500) }
+    sum(x * log(x))
+    
+  }
+
+  max.ent.constraints <- function(x) {
+    c(sum(x) - 1, x %*% xi.param.support - desired.xi)
+  }
+
+  maxed.xi.weight <- auglag(par=rep(1/length(xi.param.support), length(xi.param.support)), 
+    fn=max.ent.fn, heq=max.ent.constraints)$par
+    
+  xi.weight.lines <-  c(xi.weight.lines,
+    paste0("pxi", lead.zero(i), ".l(\"", 1:length(xi.param.support), 
+       "\") = ",  maxed.xi.weight    ,";")
+    )
+  
+}
+
+
+}
+
+  
+  
 
 #theta.weight.lines 
 
@@ -1013,6 +1070,314 @@ param.starting.vals <- paste0(GAMS.linear.results.params.names, ".l = ", GAMS.li
 
 
 
+if ( start.nonlin.from.ignorance) {
+
+
+
+ start.vals.lines <- c( paste0("xi", lead.zero(1:(N-1)), ".l = 1;"), 
+   paste0("  p", all.params[!grepl("xi", all.params)], ".l(m) = 1/MM;"),
+   paste0("  p", all.params[grepl("xi", all.params)], ".l(h) = 1/HH;")  )
+
+ 
+
+set.seed(global.max.seed)
+
+Smat.initiation.v <- matrix(rnorm((N-1)^2), nrow=N-1)
+Smat.initiation.v[upper.tri(Smat.initiation.v)] <- 0
+Smat.initiation.v <- c(Smat.initiation.v)
+
+Smat.initiation.grid <- expand.grid(1:(N-1), 1:(N-1))
+
+Smat.initial.values <- paste0("Smat.L(\"", Smat.initiation.grid[, 1], "\",\"", Smat.initiation.grid[, 2], "\") =  ", Smat.initiation.v, ";")
+
+
+#set.seed(100)
+
+Cmat.initiation.v <- matrix(rnorm(J^2), nrow=J)
+Cmat.initiation.v[upper.tri(Cmat.initiation.v)] <- 0
+Cmat.initiation.v <- c(Cmat.initiation.v)
+
+Cmat.initiation.grid <- expand.grid(1:J, 1:J)
+
+Cmat.initial.values <- paste0("Cmat.L(\"", Cmat.initiation.grid[, 1], "\",\"", Cmat.initiation.grid[, 2], "\") =  ", Cmat.initiation.v, ";")
+
+
+#set.seed(100)
+
+
+
+
+# Trying to deal with issue where SUR does crazy things
+
+#set.seed(100)
+
+error.weights.lines <- vector("character", nrow(combined.df) * 3)
+
+
+#CE.q.support.dem.eqns
+
+for ( i in 1:length(all.eqns) ) {
+
+
+  
+  err.weight.temp.df <- data.frame(A=jitter(rep(CE.q.support.dem.eqns[[i]][1],
+                                       nrow(combined.df))),
+                                   B=jitter(rep(CE.q.support.dem.eqns[[i]][2], 
+                                       nrow(combined.df))),
+                                   C=jitter(rep(CE.q.support.dem.eqns[[i]][3], 
+                                       nrow(combined.df))))
+
+#  err.weight.temp.df <- err.weight.temp.df[, -1 ]
+  
+  err.grid <- expand.grid( 1:3, 1:nrow(combined.df))
+  
+  for ( j in 1:nrow(err.grid)) {
+  
+    error.weights.lines[j + (i-1)*nrow(combined.df)]  <- paste0(" w", all.eqns[i], ".l(\"", err.grid[j, 2], "\",\"",  
+      err.grid[j, 1], "\") = ", err.weight.temp.df[err.grid[j, 2] , err.grid[j, 1]], ";")
+    
+    
+  }
+
+}
+
+
+
+
+
+if (global.max.seed!=0 ) {
+
+
+
+#all.params.set.aside <- unique(unlist(str_extract_all(unlist(demand.eqns.nonlinear), 
+#"(xi.[0-9][0-9])|(s.[0-9][0-9].[0-9][0-9])|(b.y.[0-9][0-9])|(b.[0-9][0-9])|(b.y.y)|(d.[0-9][0-9].[0-9][0-9])|(c.[0-9][0-9] )|(c.[0-9][0-9].[0-9][0-9])"
+#  ))
+#)
+
+
+
+
+#all.params.set.aside <- gsub("( )|([.])", "", all.params.set.aside)
+#all.params.set.aside <- all.params.set.aside[!grepl(paste0("xi", lead.zero(N)), all.params.set.aside)]
+
+#all.params.set.aside <- c(all.params.set.aside[!grepl("xi", all.params.set.aside)],
+#  all.params.set.aside[grepl("xi", all.params.set.aside)])
+
+#param.starting.vals <- paste0(all.params.set.aside[!grepl("xi", all.params.set.aside)], ".l = ", 
+#  rnorm(sum(!grepl("xi", all.params.set.aside))), ";")
+  
+#param.starting.vals <- c(param.starting.vals, 
+#  paste0(all.params.set.aside[grepl("xi", all.params.set.aside)], ".l = ", 
+#  rlnorm(sum(grepl("xi", all.params.set.aside))), ";") )
+  
+  
+
+#chosen.global.search.params <- as.numeric(gsub("(.+=)|(;)", "", param.starting.vals))
+
+#names(chosen.global.search.params) <- all.params.set.aside
+
+
+# Above is only method to choose params. Below is new method, adopted from the synthetic params
+
+
+all.params.set.aside <- unique(unlist(str_extract_all(unlist(demand.eqns), 
+"(s.[0-9][0-9].[0-9][0-9])|(b.y.[0-9][0-9])|(b.[0-9][0-9])|(b.y.y)|(d.[0-9][0-9].[0-9][0-9])|(c.[0-9][0-9] )|(c.[0-9][0-9].[0-9][0-9])"
+  ))
+)
+
+all.params.set.aside  <- gsub("([.])|( )", "", all.params.set.aside )
+
+
+chosen.global.search.params <- rnorm(length(c(all.params.set.aside, paste0("xi", lead.zero(1:N))))) 
+chosen.global.search.params <- as.numeric(chosen.global.search.params)
+names(chosen.global.search.params) <- c(all.params.set.aside, paste0("xi", lead.zero(1:N)))
+
+synthetic.S.mat <- matrix(0, N-1, N-1)
+synthetic.T.mat <- matrix(0, N-1, N-1)
+
+# synthetic.S.mat[lower.tri(synthetic.S.mat, diag=TRUE)] <-  names(  chosen.global.search.params[1:(N*(N-1)/2)] )
+# A-ok
+
+synthetic.T.mat[lower.tri(synthetic.T.mat, diag=TRUE)] <- rnorm((N*(N-1)/2))
+
+synthetic.S.mat <-  - synthetic.T.mat %*% t(synthetic.T.mat)
+
+chosen.global.search.params[1:(N*(N-1)/2)] <- synthetic.S.mat[lower.tri(synthetic.S.mat, diag=TRUE)] 
+
+
+synthetic.C.mat <- matrix(0, J, J)
+synthetic.A.mat <- matrix(0, J, J)
+
+chosen.global.search.params <- chosen.global.search.params[names(chosen.global.search.params)!="c0202"] 
+
+chosen.global.search.params <- c(chosen.global.search.params[1:grep(paste0("c01", lead.zero(J)), names(chosen.global.search.params))], 0, 
+  chosen.global.search.params[(grep(paste0("c01", lead.zero(J)), names(chosen.global.search.params))+1):length(chosen.global.search.params)])
+
+names(chosen.global.search.params)[grep(paste0("c01", lead.zero(J)), names(chosen.global.search.params))+1] <- "c0202"
+# Because "c0202" appear out of order, must fix it with these two lines above
+
+
+
+synthetic.A.mat[lower.tri(synthetic.A.mat, diag=TRUE)] <- rnorm((J*(J+1)/2))
+
+synthetic.C.mat <-   synthetic.A.mat %*% t(synthetic.A.mat)
+
+chosen.global.search.params[grepl("c[0-9]{4}", names(chosen.global.search.params))] <- synthetic.C.mat[lower.tri(synthetic.C.mat, diag=TRUE)] 
+
+chosen.global.search.params <- chosen.global.search.params[!grepl(paste0("xi", lead.zero(N)), names(chosen.global.search.params))]
+
+chosen.global.search.params[grepl("xi", names(chosen.global.search.params))] <- rlnorm(N-1)
+
+while ( any(chosen.global.search.params[grepl("xi", names(chosen.global.search.params))] > 10) ) {
+  which.invalid<- which(chosen.global.search.params[grepl("xi", names(chosen.global.search.params))] > 10)
+  chosen.global.search.params[grepl("xi", names(chosen.global.search.params))][which.invalid] <- rlnorm(length(which.invalid))
+}
+
+
+
+chosen.global.search.params[grepl("(b[0-9][0-9])|((by[0-9][0-9]))", names(chosen.global.search.params))] <- 
+  rlnorm(sum(grepl("(b[0-9][0-9])|(by[0-9][0-9])", names(chosen.global.search.params))))
+
+
+chosen.global.search.params[grepl("byy", names(chosen.global.search.params))] <- 
+  rlnorm(sum(grepl("byy", names(chosen.global.search.params))))
+
+# NOTE: Some of these params are chosen to have good theoretical properties,
+# and they mimic the properties in the synthetic params
+
+
+
+
+
+
+error.weights.lines <- vector("character", nrow(combined.df) * 3)
+
+library("alabama")
+
+for ( i in 1:length(all.eqns) ) {
+
+  stopifnot(length(all.eqns)==1) # will have to mess with LHS var if we are not only doing cost fn
+  # This includes  E.y01.data below
+
+  assign(paste0("xi", lead.zero(N)), 1)
+
+  rhs.to.set.error.term    <- with(as.list(chosen.global.search.params) ,
+      eval(parse(text=gsub("[.]", "", demand.eqns.nonlinear[[i]])))) 
+      
+  err.term.maxed.ent.ls <- vector("list", length(rhs.to.set.error.term))
+  
+  for ( k in 1:length(rhs.to.set.error.term) ) {
+
+	desired.param.val <- (E.y01.data - rhs.to.set.error.term  )[k]
+	desired.param.val <- ifelse( E.y01.data[k]==0 & rhs.to.set.error.term[k]<0, 0 ,  desired.param.val)
+
+	max.ent.fn <- function(x) {
+	  if (any(x<=0)) {return(500) }
+	  sum(x * log(x)) - sum(x * log( CE.q.support.dem.eqns[[i]]  )) 
+	
+	}
+  
+	max.ent.constraints <- function(x) {
+		err.off <- x %*% err.support.dem.eqns[[i]] - desired.param.val
+		c((sum(x) - 1)*100000, err.off)
+		# We scale the equality so that it has "same weight" as the inaccuraccy of the param
+		# This avoids the problem where the optimization basically ignores the
+		# constraint of having a prob that adds to 1
+		# OK, nevermind, that turned out to be a  problem
+	  }
+	maxed.param.weight <- auglag(par=rep(1/length(err.support.dem.eqns[[i]]), length(err.support.dem.eqns[[i]])), 
+		fn=max.ent.fn, 
+		hin=function(x) {x*100000},
+		heq=max.ent.constraints,
+		control.outer=list(trace=FALSE))$par
+	  
+	err.term.maxed.ent.ls[[k]] <- maxed.param.weight
+  }
+  
+  # NOTE: The above may be fragile if the estimated error terms go out of the error support
+  # This operation doesn't 100% get us there since a few error weights come back negitive
+ 
+  err.weight.temp.df <- do.call(rbind, err.term.maxed.ent.ls)
+
+#  err.weight.temp.df <- err.weight.temp.df[, -1 ]
+  
+  err.grid <- expand.grid( 1:3, 1:nrow(combined.df))
+  
+  for ( j in 1:nrow(err.grid)) {
+  
+    error.weights.lines[j + (i-1)*nrow(combined.df)]  <- paste0(" w", all.eqns[i], ".l(\"", err.grid[j, 2], "\",\"",  
+      err.grid[j, 1], "\") = ", err.weight.temp.df[err.grid[j, 2] , err.grid[j, 1]], ";")
+    
+    
+  }
+
+}
+
+
+
+
+
+
+
+
+xi.weight.lines <- c()
+start.vals.lines <- c()
+
+library("alabama")
+
+for ( i in 1:length(chosen.global.search.params) ) {
+
+  desired.param.val <- chosen.global.search.params[i]
+
+  max.ent.fn <- function(x) {
+    if (any(x<=0)) {return(500) }
+    sum(x * log(x))
+    
+  }
+  
+  if (grepl("xi", names(chosen.global.search.params)[i])) {
+    max.ent.constraints <- function(x) {
+      c(sum(x) - 1, x %*% xi.param.support - desired.param.val)
+    }
+    maxed.param.weight <- auglag(par=rep(1/length(xi.param.support), length(xi.param.support)), 
+        fn=max.ent.fn, heq=max.ent.constraints,
+        hin=function(x) {x*100000},
+		control.outer=list(trace=FALSE))$par
+  } else {
+    max.ent.constraints <- function(x) {
+      c(sum(x) - 1, x %*% other.param.support - desired.param.val)
+    }
+    maxed.param.weight <- auglag(par=rep(1/length(other.param.support), length(other.param.support)), 
+        fn=max.ent.fn, heq=max.ent.constraints,
+        hin=function(x) {x*100000},
+		control.outer=list(trace=FALSE))$par
+  }
+  
+
+
+    
+  start.vals.lines <-  c(start.vals.lines,
+    paste0("p", names(chosen.global.search.params)[i], ".l(\"", 1:length(maxed.param.weight), 
+       "\") = ",  maxed.param.weight ,";")
+    )
+  
+}
+
+
+if (global.max.seed==0) { param.starting.vals<- c() }
+
+cat(param.starting.vals, sep="\n")
+
+}
+
+}
+
+
+
+
+
+
+
 final.lines <- 
 c(
 "*Initial conditions",
@@ -1074,14 +1439,15 @@ diag(cov.var.display.mat) <- ""
 cov.var.display <- cov.var.display.mat
 cov.var.display  <- cov.var.display[cov.var.display!= ""]  
 
+cov.var.display  <- paste0("display ", cov.var.display, ".l;")
 
-
+if (!do.SUR) { cov.var.display  <- c() }
 
 
 parameter.display.lines <- c( paste0("display ", all.params, ".l;"),
   paste0("display p", all.params, ".l;"),
   paste0("display w", all.eqns, ".l;"),
-  paste0("display ", cov.var.display, ".l;"),
+  cov.var.display,
   paste0("display Smat.l"),
   paste0("display Cmat.l")
 #  paste0("display errorrelax.l")
