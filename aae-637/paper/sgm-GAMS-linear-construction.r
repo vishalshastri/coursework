@@ -72,12 +72,17 @@ log10_ceiling <- function(x) {
 # TRANSLOG   combined.df[, paste0("s", i)] <- with(combined.df, eval( parse(text=gsub("~.*$", "", S.n[[i]]) ) ))
 # TRANSLOG }
 
+if ( !only.cost.fn) {
+  for (i in 1:N) {
+	combined.df[, paste0("dem", i)] <- with(combined.df, eval(parse(text=paste0("x", lead.zero(i), "/y01" ) ) ))
+  }
 
-for (i in 1:N) {
-  combined.df[, paste0("dem", i)] <- with(combined.df, eval(parse(text=paste0("x", lead.zero(i), "/y01" ) ) ))
+  combined.df[, paste0("dem", N+1)] <- E.y01.data
+  
+} else {
+  combined.df[, paste0("dem", 1)] <- E.y01.data
 }
 
-combined.df[, paste0("dem", N+1)] <- E.y01.data
 
 
 
@@ -307,10 +312,10 @@ if (!do.SUR) { cov.var.declarations <- c() }
 
 variable.declaration.lines <- c("variables",
   paste0("  ", all.params, "   parameters to be estimated"),
-  "  Smat(ss,sss)   S matrix to make cost function concave",
-  "  SmatT(sss,ss)   transpose of S matrix to make cost function concave",
-  "  Cmat(cc,ccc)   C matrix to make cost function convex in fixed inputs",
-  "  CmatT(ccc,cc)   transpose of C matrix to make cost function convex in fixed inputs",
+ifelse(concave.in.prices,  "  Smat(ss,sss)   S matrix to make cost function concave", ""),
+ifelse(concave.in.prices,   "  SmatT(sss,ss)   transpose of S matrix to make cost function concave", ""),
+ifelse(convex.in.f.inputs,  "  Cmat(cc,ccc)   C matrix to make cost function convex in fixed inputs", ""),
+ifelse(convex.in.f.inputs,  "  CmatT(ccc,cc)   transpose of C matrix to make cost function convex in fixed inputs", ""),
 #  "  errorrelax(t) small value to accomodate the zero error adding up restriction",
   cov.var.declarations,
   paste0("  p", all.params, "(m)    probability corresponding param"),
@@ -673,6 +678,17 @@ Cmat.transpose.restriction.declare <- "restrCmattrans"
 
 
 
+if (!convex.in.f.inputs) {
+  convex.restriction.declare <- ""
+  Cmat.transpose.restriction.declare <- ""
+}
+
+if (!concave.in.prices) {
+  concave.restriction.declare <- ""
+  Smat.transpose.restriction.declare <- ""
+}
+
+
 
 
 
@@ -794,15 +810,21 @@ parameter.display.lines <- c( paste0("display ", all.params, ".l;"),
   paste0("display p", all.params, ".l;"),
   paste0("display w", all.eqns, ".l;"),
   cov.var.display ,
-  paste0("display Smat.l"),
-  paste0("display Cmat.l")
+ifelse(concave.in.prices,   paste0("display Smat.l"), ""),
+ifelse(convex.in.f.inputs,  paste0("display Cmat.l"), "")
 #  paste0("display errorrelax.l")
   )
 
 
 
 
+if (!convex.in.f.inputs) {
+  Cmat.initial.values <- ""
+}
 
+if (!concave.in.prices) {
+  Smat.initial.values <- ""
+}
 
 
 final.lines <- 
@@ -849,6 +871,17 @@ error.weights.lines,
 # Help from http://support.gams.com/doku.php?id=gams:how_do_i_reduce_the_size_of_my_listing_.lst_file
 # on reducing size of list file
 
+if (!convex.in.f.inputs) {
+ convex.restriction.defn  <- ""
+ Cmat.transpose.restriction.defn <- "" 
+}
+
+if (!concave.in.prices) {
+ concave.restriction.defn  <- ""
+ Smat.transpose.restriction.defn <- "" 
+
+}
+
 
 completed.GAMS.file <-  c(
   top.before.data, " ", 
@@ -868,8 +901,8 @@ completed.GAMS.file <-  c(
   prob.weight.error.lines, " ", 
   concave.restriction.defn, " ",
   Smat.transpose.restriction.defn, " ",
-  convex.restriction.defn, " ",
-  Cmat.transpose.restriction.defn, " ",
+  convex.restriction.defn,
+  Cmat.transpose.restriction.defn,
 #  restriction.that.err.sum.to.zero.defn, " ",
 #  errorrelaxrestrict.defn, " ",
   covar.SUR.lines,

@@ -7,7 +7,8 @@
 functional.form <- "SGM" # OR TRANSLOG
 
 
-synthetic.data <-TRUE
+#synthetic.data <-TRUE
+ synthetic.data <-FALSE
 if (!exists("global.max.seed")) { global.max.seed <- 0}
 do.SUR <- FALSE
 include.cost.fn <- TRUE
@@ -15,16 +16,37 @@ only.cost.fn <- TRUE
 generate.synth.data.from.cost.fn <- TRUE
 start.at.true.xi <- FALSE
 start.nonlin.from.ignorance <- TRUE
+convex.in.f.inputs <- FALSE
+concave.in.prices <- TRUE
 
 if (!synthetic.data) { 
   intended.seed <- 100 
-  start.nonlin.from.ignorance <- FALSE
+  start.nonlin.from.ignorance <- TRUE
+  global.max.seed <- 5
   do.SUR <- TRUE
   include.cost.fn <- TRUE
   only.cost.fn <- FALSE
   generate.synth.data.from.cost.fn <- FALSE
   start.at.true.xi <- FALSE
 }
+
+
+
+target.top.crop.number <- 5
+
+#Papa (patatas)    3155 
+#Maiz combined   1838 
+#Cebada combined   950 
+#Trigo             475 
+#Haba (verde)       641 
+#Oca               240 
+#Arveja (verde)     217 
+#Hoja de coca       363 
+#Arroz con cascara          264
+#Quinua            284 
+
+
+
 
 # do.SUR <- TRUE
 
@@ -36,6 +58,7 @@ if (functional.form =="SGM") {
 
 price.trim.quantile <- 0.99
 demand.var.trim.quantile <- 0.95
+#demand.var.trim.quantile <- 1
 
 
 local.source.evaluation <- FALSE
@@ -49,7 +72,7 @@ saved.workspace.path <- "/Users/travismcarthur/Desktop/Metrics (637)/Final paper
 # with soil
 
 
-GAMS.projdir <-  "/Users/travismcarthur/Desktop/gamsdir/projdir/"
+GAMS.projdir <-  "/Users/travismcarthur/Desktop/gamsdir/projdir2/"
 
 GAMS.exe.path <- "/Applications/GAMS/gams24.1_osx_x64_64_sfx/gams"
 
@@ -101,19 +124,6 @@ library(Matrix)
 
 load(saved.workspace.path)
 
-
-target.top.crop.number <- 4
-
-#Papa (patatas)    3155 
-#Maiz combined   1838 
-#Cebada combined   950 
-#Trigo             475 
-#Haba (verde)       641 
-#Oca               240 
-#Arveja (verde)     217 
-#Hoja de coca       363 
-#Arroz con cascara          264
-#Quinua            284 
 
 
 
@@ -175,7 +185,7 @@ set.seed(100)
 nrow(firm.df)
 
 
-bootstrap.replications.v <- 1201:1500
+bootstrap.replications.v <- 1:1500
 # 0:300 301:600 601:900 901:1200 1201:1500
 # condor_R max-entropy-bootstrap.r bootmaiz1.log &
 
@@ -204,7 +214,8 @@ bootstrap.iter <- 0
 
 
 
-# for ( bootstrap.iter in 0) {
+#for ( bootstrap.iter in c(0, bootstrap.replications.v)) {
+for ( bootstrap.iter in 0) {
 
 if( bootstrap.iter==0 ) {
   bootstrap.selection.v <- TRUE
@@ -215,15 +226,15 @@ if( bootstrap.iter==0 ) {
 
 #for (target.top.crop.number in c(2,4,5)) {
 
-if (functional.form =="TRANSLOG") {
+#if (functional.form =="TRANSLOG") {
   source(paste0(code.dir, "build-model-extract-parcels.r"))
-}
-if (functional.form =="SGM") {
-  source(paste0(code.dir, "sur-var-building.r"), local=local.source.evaluation)  
+#}
+#if (functional.form =="SGM") {
+#  source(paste0(code.dir, "sur-var-building.r"), local=local.source.evaluation)  
     if (synthetic.data) {
     source(paste0(code.dir, "synthetic-data.r"), local=local.source.evaluation)
   }
-}
+#}
 
 # If want to make censoring plots:
 # source("/Users/travismcarthur/git/coursework/aae-637/paper/analyze-summary-stats.r")
@@ -266,6 +277,7 @@ if (functional.form =="SGM") {
 
 
 linear.GAMS.output <- TRUE
+# linear.GAMS.output <- FALSE
 
 
 
@@ -359,7 +371,7 @@ system(run.nonlinear.from.shell)
 #  "bootstrapcounter.Rdata"))
 
 
-#}
+}
 
 
 # }

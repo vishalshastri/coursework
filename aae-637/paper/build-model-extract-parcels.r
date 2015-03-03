@@ -37,6 +37,7 @@ price.to.trim <- c("x19.fertilizante.bs.kg", "x19.sem.comprada.bs.kg", "x19.abon
 # only kills 2 obseravtions for maiz and zero for Barley
 
 price.trim.criteria <- apply(firm.df[, price.to.trim], 2, FUN=function(x) x < quantile(x, probs=price.trim.quantile) )
+# <=
 price.trim.criteria <- apply(price.trim.criteria, 1, FUN=all)
 firm.df <- firm.df[price.trim.criteria, ]
 
@@ -49,11 +50,30 @@ demand.var.to.trim <- c(
   "x19.abono.cantidad.kg", 
   "x19.plagicidas.cantidad.kg",
   "paid.hours.spread", "tractor.hrs.final")
+  
+
+
 
 demand.var.trim.criteria <- apply(firm.df[, demand.var.to.trim]/firm.df$x19.produccion.obtenidad.kg, 2, 
   FUN=function(x) x < quantile(x[x>0], probs=demand.var.trim.quantile) )
 # data.frame(a=1:10, b=101:110)/(1:10) is ok, so the above operation works
+# <=
+# Also include the cost fn itself:
+
+temp.E.y01.data <- (firm.df$x19.fertilizante.cantidad.kg * firm.df$x19.fertilizante.bs.kg +
+  firm.df$x19.sem.comprada.cantidad.kg * firm.df$x19.sem.comprada.bs.kg +
+  firm.df$tractor.hrs.final * firm.df$hourly.tractor.rental +
+  firm.df$x19.plagicidas.cantidad.kg * firm.df$x19.plagicidas.bs.kg +
+  firm.df$paid.hours.spread * firm.df$hourly.wage +
+  firm.df$x19.abono.cantidad.kg * firm.df$x19.abono.bs.kg) / firm.df$x19.produccion.obtenidad.kg
+
+temp.demand.var.trim.criteria <- temp.E.y01.data < quantile(temp.E.y01.data[temp.E.y01.data>0], probs=demand.var.trim.quantile)
+# <=
+
+#demand.var.trim.criteria <- cbind(demand.var.trim.criteria, temp.demand.var.trim.criteria)
+
 demand.var.trim.criteria <- apply(demand.var.trim.criteria, 1, FUN=all)
+
 firm.df <- firm.df[demand.var.trim.criteria, ]
 
 }

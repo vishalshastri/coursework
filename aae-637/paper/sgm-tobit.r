@@ -134,8 +134,8 @@ if (synthetic.data) {
 
 
 CE.q.support.dem.eqns <- vector(mode="list", length=length(demand.eqns))
-#CE.q.support.dem.eqns[] <- list(c(.05, .9, .05))
-CE.q.support.dem.eqns[] <- list(c(.30, .40, .30))
+CE.q.support.dem.eqns[] <- list(c(.05, .9, .05))
+#CE.q.support.dem.eqns[] <- list(c(.30, .40, .30))
 
 if (only.cost.fn) { 
   err.support.dem.eqns <- err.support.dem.eqns[length(err.support.dem.eqns)] 

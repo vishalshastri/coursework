@@ -8,12 +8,12 @@ code.dir <- "/Users/travismcarthur/git/coursework/aae-637/paper/"
 
 
 
-intended.seed <-  17
+intended.seed <-  58
 
 gme.obj.value.v <- vector("numeric", 100)
 param.est.ls <- vector("list", 100)
 
-for (global.max.seed in 1:100) {
+for (global.max.seed in 1) {
 
 
 source(paste0(code.dir, "max-entropy-bootstrap.r"))

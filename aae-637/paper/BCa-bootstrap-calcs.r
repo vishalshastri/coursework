@@ -6,14 +6,18 @@ local.source.evaluation <- TRUE
 dropped.cost.share.eq <- 10
 # anything >6 means that no equation gets dropped
 
+functional.form <- "SGM" # OR TRANSLOG
+
+theta.or.xi <-  ifelse(functional.form=="SGM", "xi", "theta")
+
 
 #condor.gams.dir <- "/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Condor/10-19-projdir/home/c/cschmidt/TravisImInYourInternets/gamsdir/projdir/"
 
-#condor.gams.dir <- "/Users/travismcarthur/Desktop/gamsdir/projdir/"
+condor.gams.dir <- "/Users/travismcarthur/Desktop/gamsdir/projdir/"
 
-condor.gams.dir <- "/Users/travismcarthur/Desktop/Condor/10-28-projdir/home/c/cschmidt/TravisImInYourInternets/gamsdir/projdir/"
+#condor.gams.dir <- "/Users/travismcarthur/Desktop/Condor/10-28-projdir/home/c/cschmidt/TravisImInYourInternets/gamsdir/projdir/"
 
-target.top.crop.number <- 2
+target.top.crop.number <- 4
 
 
 listed.files <- list.files(condor.gams.dir )
@@ -29,7 +33,15 @@ for ( target.top.crop.number in c(2, 4, 5)) {
 
 # target.top.crop.number <- 5
 
-target.estimation <- c( "GMEnonlinearPapa", "GMEnonlinearMaiz", "GMEnonlinearCebada",  "GMEnonlinearTrigo", "GMEnonlinearHaba")[target.top.crop.number]
+if (functional.form=="TRANSLOG") {
+  target.estimation <- c( "GMEnonlinearPapa", "GMEnonlinearMaiz", "GMEnonlinearCebada",  "GMEnonlinearTrigo", "GMEnonlinearHaba")[target.top.crop.number]
+}
+
+if (functional.form=="SGM") {
+  target.estimation <- c( "sgmGMEnonlinearPapa", "sgmGMEnonlinearMaiz", "sgmGMEnonlinearCebada",  "sgmGMEnonlinearTrigo", "sgmGMEnonlinearHaba")[target.top.crop.number]
+}
+
+
 
 
 target.files <- listed.files[grepl( paste0(target.estimation, "[0-9]{5}[.]lst") , listed.files)]
@@ -70,7 +82,7 @@ names(GAMS.nonlinear.results.params.full) <- GAMS.nonlinear.results.params.names
 bootstrapped.all.params.ls[[bootstrap.iter]] <- GAMS.nonlinear.results.params.full
 
 bootstrapped.thetas.ls[[bootstrap.iter]] <- 
-  GAMS.nonlinear.results.params.full[grepl("theta", names(GAMS.nonlinear.results.params.full))]
+  GAMS.nonlinear.results.params.full[grepl(theta.or.xi, names(GAMS.nonlinear.results.params.full))]
   
 
 }
@@ -185,6 +197,18 @@ bootstrapped.thetas.df <- as.data.frame(do.call(rbind, bootstrapped.thetas.ls))
 
 
 library(lattice)
+
+
+
+
+histogram( ~ xi01 + xi02 + xi03 + xi04 + xi05, data = bootstrapped.thetas.df,
+    xlab = "Height (inches)", type = "density",
+    panel = function(x) {
+        panel.histogram(x, breaks=NULL, nint= 20)
+#        panel.mathdensity(dmath = dnorm, col = "black",
+#            args = list(mean=mean(x),sd=sd(x)))
+    },
+    )
 
 
 

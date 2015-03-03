@@ -320,8 +320,8 @@ variable.declaration.lines <- c("variables",
   paste0("  ", all.params, "   parameters to be estimated"),
   "  Smat(ss,sss)   S matrix to make cost function concave",
   "  SmatT(sss,ss)   transpose of S matrix to make cost function concave",
-  "  Cmat(cc,ccc)   C matrix to make cost function convex in fixed inputs",
-  "  CmatT(ccc,cc)   transpose of C matrix to make cost function convex in fixed inputs",
+ifelse(convex.in.f.inputs,  "  Cmat(cc,ccc)   C matrix to make cost function convex in fixed inputs", ""),
+ifelse(convex.in.f.inputs,  "  CmatT(ccc,cc)   transpose of C matrix to make cost function convex in fixed inputs", ""),
 #  "  errorrelax(t) small value to accomodate the zero error adding up restriction",
   cov.var.declarations,
   paste0("  p", all.params[!grepl("xi", all.params)], "(m)    probability corresponding param"),
@@ -734,7 +734,10 @@ Cmat.transpose.restriction.declare <- "restrCmattrans"
 
 
 
-
+if (!convex.in.f.inputs) {
+  convex.restriction.declare <- ""
+  Cmat.transpose.restriction.declare <- ""
+}
 
 
 equation.declarations <- c(
@@ -972,6 +975,8 @@ Smat.start.vals.mat <- read.fwf(
     skip = (grep("VARIABLE Smat.L", GAMS.linear.results)+3),  
     nrows= N-1)
     
+
+    
 Smat.start.vals.mat <- as.matrix(Smat.start.vals.mat[, -1])
     
 
@@ -982,10 +987,14 @@ Smat.initiation.v[is.na(Smat.initiation.v)] <- 0
 
 Smat.initiation.v <- c(Smat.initiation.v)
 
+if ( any(grepl("(Cmat)|(TIME)", gsub(" ", "", Smat.initiation.v)))) { Smat.initiation.v <- 0 }
+# This is to deal with cse when whole matrix is zeroes
+
 Smat.initiation.grid <- expand.grid(1:(N-1), 1:(N-1))
 
 Smat.initial.values <- paste0("Smat.L(\"", Smat.initiation.grid[, 1], "\",\"", Smat.initiation.grid[, 2], "\") =  ", Smat.initiation.v, ";")
 
+if(convex.in.f.inputs) {
 
 Cmat.start.vals.mat <- read.fwf( 
   file=paste0(GAMS.projdir, "sgmGMElinear", strsplit(target.crop, " ")[[1]][1], 
@@ -1002,12 +1011,16 @@ Cmat.initiation.v[upper.tri(Cmat.initiation.v)] <- 0
 Cmat.initiation.v[ is.na(Cmat.initiation.v)] <- 0
 Cmat.initiation.v <- c(Cmat.initiation.v)
 
+if ( any(grepl("TIME", gsub(" ", "", Cmat.initiation.v)))) { Cmat.initiation.v <- 0 }
+
 Cmat.initiation.grid <- expand.grid(1:J, 1:J)
 
 Cmat.initial.values <- paste0("Cmat.L(\"", Cmat.initiation.grid[, 1], "\",\"", Cmat.initiation.grid[, 2], "\") =  ", Cmat.initiation.v, ";")
 
 
-
+} else {
+  Cmat.initial.values <- ""
+}
 
 
 
@@ -1240,13 +1253,14 @@ chosen.global.search.params[grepl("(b[0-9][0-9])|((by[0-9][0-9]))", names(chosen
 
 
 chosen.global.search.params[grepl("byy", names(chosen.global.search.params))] <- 
-  rlnorm(sum(grepl("byy", names(chosen.global.search.params))))
+  - rlnorm(sum(grepl("byy", names(chosen.global.search.params)))) / 100000
+  # byy tends to have very low values in estimation, so divide by 100000
 
 # NOTE: Some of these params are chosen to have good theoretical properties,
 # and they mimic the properties in the synthetic params
 
 
-
+param.starting.vals <- paste0(names(chosen.global.search.params), ".l = ", chosen.global.search.params, ";")
 
 
 
@@ -1256,8 +1270,9 @@ library("alabama")
 
 for ( i in 1:length(all.eqns) ) {
 
-  stopifnot(length(all.eqns)==1) # will have to mess with LHS var if we are not only doing cost fn
+#  stopifnot(length(all.eqns)==1) # will have to mess with LHS var if we are not only doing cost fn
   # This includes  E.y01.data below
+  # I've fixed this now
 
   assign(paste0("xi", lead.zero(N)), 1)
 
@@ -1266,10 +1281,18 @@ for ( i in 1:length(all.eqns) ) {
       
   err.term.maxed.ent.ls <- vector("list", length(rhs.to.set.error.term))
   
+  
+  if ( i == length(all.eqns)) {
+    lhs.temp <- E.y01.data
+  } else {
+    lhs.temp <- get(paste0("x", lead.zero(i)))/y01
+  }
+  
+  
   for ( k in 1:length(rhs.to.set.error.term) ) {
 
-	desired.param.val <- (E.y01.data - rhs.to.set.error.term  )[k]
-	desired.param.val <- ifelse( E.y01.data[k]==0 & rhs.to.set.error.term[k]<0, 0 ,  desired.param.val)
+	desired.param.val <- (lhs.temp - rhs.to.set.error.term  )[k]
+	desired.param.val <- ifelse( lhs.temp[k]==0 & rhs.to.set.error.term[k]<0, 0 ,  desired.param.val)
 
 	max.ent.fn <- function(x) {
 	  if (any(x<=0)) {return(500) }
@@ -1368,15 +1391,19 @@ if (global.max.seed==0) { param.starting.vals<- c() }
 
 cat(param.starting.vals, sep="\n")
 
-}
+# Problem: with random starting values, almost all error terms go as far negi as possible. 
+# May be an issue with byy too high, or others too high
 
 }
 
+}
 
 
 
 
-
+if (!convex.in.f.inputs) { 
+  Cmat.initial.values <- ""
+}
 
 final.lines <- 
 c(
@@ -1449,12 +1476,15 @@ parameter.display.lines <- c( paste0("display ", all.params, ".l;"),
   paste0("display w", all.eqns, ".l;"),
   cov.var.display,
   paste0("display Smat.l"),
-  paste0("display Cmat.l")
+ifelse(convex.in.f.inputs,  paste0("display Cmat.l"), "")
 #  paste0("display errorrelax.l")
   )
 
 
-
+if (!convex.in.f.inputs) {
+  Cmat.transpose.restriction.defn <- ""
+  convex.restriction.defn <- ""
+}
 
 completed.GAMS.file <-  c(
   top.before.data, " ", 

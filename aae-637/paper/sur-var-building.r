@@ -178,6 +178,12 @@ if (functional.form =="SGM") {
   for ( i in 1:N) {
     assign( paste0("inputmean.", lead.zero(i)), mean.of.inputs[i])
   }
+  
+    for ( i in 1:N) {
+    assign( paste0("inputmean", lead.zero(i)), mean.of.inputs[i])
+  }
+  # edit above may not work with synthetic data generation.
+  
 }
 
  

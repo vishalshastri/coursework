@@ -95,11 +95,14 @@ prob.numbers <- GAMS.nonlinear.results[which(!is.na(GAMS.nonlinear.results.extra
 
 
 
-
-
-
+########################
+###### ACTUALLY, START HERE
+########################
 
 # GAMS.nonlinear.results<- readLines("/Users/travismcarthur/Desktop/Dropbox/entropytest.lst")
+
+
+all.eqns <- paste0("dem", 1:length(demand.eqns))
 
 GAMS.nonlinear.results<- readLines(paste0(GAMS.projdir, "sgmGMEnonlinear", # "GMEnonlinear", 
 strsplit(target.crop, " ")[[1]][1], 
@@ -115,6 +118,12 @@ GAMS.nonlinear.results.params.names <- gsub("[.]L", "", str_extract(GAMS.nonline
 
 GAMS.nonlinear.results.params.numbers <- as.numeric(gsub("  parameters to be estimated", "",
   str_extract(GAMS.nonlinear.results.params, "[^ ]*  parameters to be estimated") ) )
+
+GAMS.nonlinear.results.params.full <- GAMS.nonlinear.results.params.numbers
+names(GAMS.nonlinear.results.params.full) <- GAMS.nonlinear.results.params.names
+
+
+
 
 
 
@@ -217,24 +226,23 @@ summary(rowSums(error.collapsed.eq.df))
 
 
 
-GAMS.nonlinear.results.params.full <- GAMS.nonlinear.results.params.numbers
-names(GAMS.nonlinear.results.params.full) <- GAMS.nonlinear.results.params.names
+
 #GAMS.nonlinear.results.params.full[ paste0("theta", lead.zero(N)) ] <- 1
 assign(paste0("xi", lead.zero(N)), 1)
 assign(paste0("theta", lead.zero(N)), 1)
 
 
 
-modified.ln.E.string <- ln.E.string # str_extract( ln.E.string, "log[(] [(]w01 / [(]w01 [*] theta01[)][)].*")
+# TRANSLOG modified.ln.E.string <- ln.E.string # str_extract( ln.E.string, "log[(] [(]w01 / [(]w01 [*] theta01[)][)].*")
 
-region.tackon.clean <- iconv(region.tackon, to="ASCII//TRANSLIT")
-region.tackon.clean <- gsub("'", "", region.tackon.clean )
-region.tackon.clean <- gsub("[.]", "", region.tackon.clean )
+# TRANSLOG region.tackon.clean <- iconv(region.tackon, to="ASCII//TRANSLIT")
+# TRANSLOG region.tackon.clean <- gsub("'", "", region.tackon.clean )
+# TRANSLOG region.tackon.clean <- gsub("[.]", "", region.tackon.clean )
 
 
-modified.ln.E.string <- gsub(pattern="[.]", replacement="", x=modified.ln.E.string )
+# TRANSLOG modified.ln.E.string <- gsub(pattern="[.]", replacement="", x=modified.ln.E.string )
 
-modified.ln.E.string<- paste0(modified.ln.E.string, " + ", region.tackon.clean)
+# TRANSLOG modified.ln.E.string<- paste0(modified.ln.E.string, " + ", region.tackon.clean)
 
 # modified.ln.E.string <- sub("log[(]", "", modified.ln.E.string)
 # modified.ln.E.string <- sub("[)]$", "", modified.ln.E.string) 
@@ -274,15 +282,15 @@ library("numDeriv")
 
 for ( i in 1:(length(all.eqns)) ) {
 
-  modified.S.n.string <- str_extract( S.n[[i]], "~.*")
+#  modified.S.n.string <- str_extract( S.n[[i]], "~.*")
 
-  modified.S.n.string <- gsub(pattern="[.]", replacement="", x=modified.S.n.string )
+#  modified.S.n.string <- gsub(pattern="[.]", replacement="", x=modified.S.n.string )
 
-  modified.S.n.string <- sub("~", "", modified.S.n.string)
+#  modified.S.n.string <- sub("~", "", modified.S.n.string)
   
   temp.deriv.fn <- function(x, data) { 
     x <- c(as.list(x), as.list(data))
-    with(x, eval(parse(text=gsub("[.]", "", modified.S.n.string #demand.eqns.nonlinear[[i]]
+    with(x, eval(parse(text=gsub("[.]", "", demand.eqns.nonlinear[[i]] #modified.S.n.string #demand.eqns.nonlinear[[i]]
     ) )) )
     # This line seemed to have a serious bug from the translog form,
     # where is ws just plugging in cost fn instaed of cost share eqns
@@ -327,10 +335,11 @@ is.positive.definite(big.sigma)
 
 param.covar.mat <-  solve(
   t( stacked.jacobian ) %*% 
-    kronecker( solve(big.sigma), diag(nrow(combined.df)) ) %*% 
+    kronecker( solve(big.sigma/nrow(combined.df)), diag(nrow(combined.df)) ) %*% 
     stacked.jacobian
   , tol=.Machine$double.eps^2)
 # NOTE: reducing singularity tolerance to make it work
+# is it solve(big.sigma/nrow(combined.df)) or solve(big.sigma)?
 
 
 round(t(t(GAMS.nonlinear.results.params.full /  sqrt(diag(param.covar.mat)) ) ), digits=2)
@@ -345,6 +354,9 @@ round(t(t((GAMS.nonlinear.results.params.full-1) /  sqrt(diag(param.covar.mat) )
 param.covar.mat[grepl("xi", names(GAMS.nonlinear.results.params.full)),
 grepl("xi", names(GAMS.nonlinear.results.params.full))]
 
+sqrt(diag(param.covar.mat[grepl("xi", names(GAMS.nonlinear.results.params.full)),
+grepl("xi", names(GAMS.nonlinear.results.params.full))]))
+
 param.covar.mat[grepl("theta", names(GAMS.nonlinear.results.params.full)),
 grepl("theta", names(GAMS.nonlinear.results.params.full))]
 
@@ -353,13 +365,15 @@ grepl("xi", names(GAMS.nonlinear.results.params.full))])
 
 library("aod")
 
+for ( i in 2:(N-1)) {
+
 linear.combo <- rep(0, length(GAMS.nonlinear.results.params.full))
 linear.combo[names(GAMS.nonlinear.results.params.full)=="xi01"] <- 1
-linear.combo[names(GAMS.nonlinear.results.params.full)=="xi05"] <- -1
+linear.combo[names(GAMS.nonlinear.results.params.full)==paste0("xi", lead.zero(i))] <- -1
 
-wald.test(param.covar.mat, GAMS.nonlinear.results.params.full, L = t(matrix(linear.combo)))
+print(wald.test(param.covar.mat, GAMS.nonlinear.results.params.full, L = t(matrix(linear.combo))))
 
-
+}
 
 
 linear.combo <- rep(0, length(GAMS.nonlinear.results.params.full))
@@ -373,8 +387,139 @@ wald.test(param.covar.mat, GAMS.nonlinear.results.params.full, L = t(matrix(line
 
 
 
+GAMS.nonlinear.results.params.full[grepl("xi", names(GAMS.nonlinear.results.params.full))]
 
 GAMS.nonlinear.results.params.full[grepl("theta", names(GAMS.nonlinear.results.params.full))]
+
+
+
+colMeans(modified.S.n.string.evaled.deriv[[1]][, grepl("xi", names(GAMS.nonlinear.results.params.full))])
+colMeans(modified.S.n.string.evaled.deriv[[2]][, grepl("xi", names(GAMS.nonlinear.results.params.full))])
+colMeans(modified.S.n.string.evaled.deriv[[3]][, grepl("xi", names(GAMS.nonlinear.results.params.full))])
+colMeans(modified.S.n.string.evaled.deriv[[4]][, grepl("xi", names(GAMS.nonlinear.results.params.full))])
+colMeans(modified.S.n.string.evaled.deriv[[5]][, grepl("xi", names(GAMS.nonlinear.results.params.full))])
+colMeans(modified.S.n.string.evaled.deriv[[6]][, grepl("xi", names(GAMS.nonlinear.results.params.full))])
+colMeans(modified.S.n.string.evaled.deriv[[7]][, grepl("xi", names(GAMS.nonlinear.results.params.full))])
+
+
+distort.cost.input.mat <- matrix(NA, ncol=(length(all.eqns)-1), nrow=nrow(combined.df))
+
+for ( i in 1:(length(all.eqns)-1)) {
+  distort.cost.input.mat[, i] <- get(paste0("w", lead.zero(i))) * with(as.list(GAMS.nonlinear.results.params.full), 
+    eval(parse(text=gsub("[.]", "", demand.eqns.nonlinear[[i]]))))
+    # From eqn 9 of Kumbhakar 1992, the airline one
+
+}
+
+non.distort.cost.input.mat <- matrix(NA, ncol=(length(all.eqns)-1), nrow=nrow(combined.df))
+
+for ( i in 1:(length(all.eqns)-1)) {
+  non.distort.cost.input.mat[, i] <-  get(paste0("w", lead.zero(i))) * with(as.list(GAMS.nonlinear.results.params.full), 
+    eval(parse(text=gsub("[.]", "", demand.eqns[[i]]))))
+    # From eqn 9 of Kumbhakar 1992, the airline one
+}
+
+
+summary(  y01 * rowSums(distort.cost.input.mat) - y01 * rowSums(non.distort.cost.input.mat) )
+# Multiply by y01 since the output of demand.eqns is the demand divided by y01. We want quantity demanded.
+# Cost in Bolivianos
+
+summary( (y01 * rowSums(distort.cost.input.mat) - y01 * rowSums(non.distort.cost.input.mat) ) /
+  y01 * rowSums(non.distort.cost.input.mat)    ) 
+# Percent increase in (predicted) cost
+
+
+
+
+summary(E.y01.data * y01)
+# total cost based on actual data
+
+
+
+#GAMS.nonlinear.results.params.full[ paste0("theta", lead.zero(N)) ] <- 1
+assign(paste0("xi", lead.zero(N)), 1)
+assign(paste0("theta", lead.zero(N)), 1)
+
+# Below is same thing, but non-neg constraints are imposed:
+
+distort.cost.input.mat <- matrix(NA, ncol=(length(all.eqns)-1), nrow=nrow(combined.df))
+
+for ( i in 1:(length(all.eqns)-1)) {
+  distort.cost.input.mat[, i] <- get(paste0("w", lead.zero(i))) * with(as.list(GAMS.nonlinear.results.params.full), 
+    eval(parse(text=gsub("[.]", "", demand.eqns.nonlinear[[i]]))))
+    # From eqn 9 of Kumbhakar 1992, the airline one
+  distort.cost.input.mat[, i] <- ifelse(distort.cost.input.mat[, i]>0, distort.cost.input.mat[, i], 0)
+
+}
+
+non.distort.cost.input.mat <- matrix(NA, ncol=(length(all.eqns)-1), nrow=nrow(combined.df))
+
+for ( i in 1:(length(all.eqns)-1)) {
+  non.distort.cost.input.mat[, i] <-  get(paste0("w", lead.zero(i))) * with(as.list(GAMS.nonlinear.results.params.full), 
+    eval(parse(text=gsub("[.]", "", demand.eqns[[i]]))))
+    # From eqn 9 of Kumbhakar 1992, the airline one
+   non.distort.cost.input.mat[, i] <- ifelse( non.distort.cost.input.mat[, i]>0 ,  non.distort.cost.input.mat[, i], 0)
+}
+
+
+summary(  y01 * rowSums(distort.cost.input.mat) - y01 * rowSums(non.distort.cost.input.mat) )
+# Multiply by y01 since the output of demand.eqns is the demand divided by y01. We want quantity demanded.
+# Cost in Bolivianos
+# rowSums(distort.cost.input.mat) - rowSums(non.distort.cost.input.mat)
+
+summary( (y01 * rowSums(distort.cost.input.mat) - y01 * rowSums(non.distort.cost.input.mat) ) /
+  y01 * rowSums(non.distort.cost.input.mat)    ) 
+# Percent increase in (predicted) cost
+# Ok, so these values are not all posi since the non-negativity constraints mess up the 
+# thing. We can have a few inputs hit non-neg constraints, and then the remaining 
+# inputs happen to not result in the non-distort cost being lower than the distort cost.
+
+
+
+#### Now just do input demand, not cost:
+
+distort.cost.input.mat <- matrix(NA, ncol=(length(all.eqns)-1), nrow=nrow(combined.df))
+
+for ( i in 1:(length(all.eqns)-1)) {
+  distort.cost.input.mat[, i] <-  y01 * with(as.list(GAMS.nonlinear.results.params.full), 
+    eval(parse(text=gsub("[.]", "", demand.eqns.nonlinear[[i]]))))
+    # From eqn 9 of Kumbhakar 1992, the airline one
+  distort.cost.input.mat[, i] <- ifelse(distort.cost.input.mat[, i]>0, distort.cost.input.mat[, i], 0)
+
+}
+
+non.distort.cost.input.mat <- matrix(NA, ncol=(length(all.eqns)-1), nrow=nrow(combined.df))
+
+for ( i in 1:(length(all.eqns)-1)) {
+  non.distort.cost.input.mat[, i] <-   y01 * with(as.list(GAMS.nonlinear.results.params.full), 
+    eval(parse(text=gsub("[.]", "", demand.eqns[[i]]))))
+    # From eqn 9 of Kumbhakar 1992, the airline one
+   non.distort.cost.input.mat[, i] <- ifelse( non.distort.cost.input.mat[, i]>0 ,  non.distort.cost.input.mat[, i], 0)
+}
+
+
+summary(  as.data.frame(distort.cost.input.mat - non.distort.cost.input.mat) )
+# Multiply by y01 since the output of demand.eqns is the demand divided by y01. We want quantity demanded.
+# Cost in Bolivianos
+
+summary(  as.data.frame(distort.cost.input.mat - non.distort.cost.input.mat)/as.data.frame(distort.cost.input.mat) )
+# Percent increase in (predicted) cost
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
