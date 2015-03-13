@@ -98,19 +98,13 @@ firm.df<- firm.df[uncensored.cost, ]
 
 
 
+
+
+
 # NOTE: BELOW IS WHERE BOOTSTRAPPING HAPPENS
 
 firm.df <- firm.df[bootstrap.selection.v, ]
 
-if (functional.form =="TRANSLOG") {
-# sur-var-building
-# linear-sur-building
-source(paste0(code.dir, "sur-var-building.r"), local=local.source.evaluation)
-if (synthetic.data) {
-  source(paste0(code.dir, "synthetic-data.r"), local=local.source.evaluation)
-}
-source(paste0(code.dir, "linear-sur-building.r"), local=local.source.evaluation)
-source(paste0(code.dir, "nonlinear-sur-building.r"), local=local.source.evaluation)
 
 
 
@@ -135,6 +129,20 @@ region <- factor(region)
 table(region)
 
 # Make region01 be the actual variable, and then the name of the region be the parameter name 
+
+
+
+
+if (functional.form =="TRANSLOG") {
+# sur-var-building
+# linear-sur-building
+source(paste0(code.dir, "sur-var-building.r"), local=local.source.evaluation)
+if (synthetic.data) {
+  source(paste0(code.dir, "synthetic-data.r"), local=local.source.evaluation)
+}
+source(paste0(code.dir, "linear-sur-building.r"), local=local.source.evaluation)
+source(paste0(code.dir, "nonlinear-sur-building.r"), local=local.source.evaluation)
+
 
 region.matrix <- model.matrix(ln.E.data ~ region, data=firm.df)[, -1] # take out intercept
 

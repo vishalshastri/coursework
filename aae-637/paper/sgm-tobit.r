@@ -5,6 +5,11 @@ max.abs.other.param <- 0
 
 max.num.iterations <- 1
 # max.num.iterations <- 100000
+ 
+# demand.eqns.saved <- demand.eqns
+# demand.eqns[[length(demand.eqns)]] <- paste0("intercept + ", demand.eqns[[length(demand.eqns)]])
+# targ.eqn <- length(demand.eqns)
+# demand.eqns <- demand.eqns.saved
 
 eq.r.squared <- list()
 
@@ -19,6 +24,7 @@ all.params.tobit <- unique(unlist(str_extract_all(demand.eqns[[targ.eqn]],
 )
 
 all.params.tobit <- gsub(" ", "", all.params.tobit )
+#all.params.tobit <- c( "intercept", all.params.tobit)
 
 
 tobit.loglik <- function(param)  {
@@ -108,6 +114,9 @@ eq.r.squared[[targ.eqn]] <- 1 - regression.nls$value/(ifelse(targ.eqn == (N + 1)
 
 # since if the actual value is zero and the predicted value is neg, then we have made a
 # correct prediction under the entropy max framework
+
+# 0.1044225
+# 0.06704967
 
 #err.support.dem.eqns[[targ.eqn]] <- round( c(-max.resid, 0, max.resid) * 1.5, digits=4)
 # times 2 since we want to be conservative with our error support bounds

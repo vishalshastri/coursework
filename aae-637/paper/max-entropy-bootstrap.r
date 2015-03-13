@@ -32,7 +32,16 @@ if (!synthetic.data) {
 
 
 
-target.top.crop.number <- 5
+target.top.crop.number <- 1
+
+#Including zero cost:
+#Potatoes	4,058
+#Maize	3,440
+#Barley	2,048
+#Wheat	1,647
+#Fava Beans	1,484
+
+
 
 #Papa (patatas)    3155 
 #Maiz combined   1838 
@@ -183,6 +192,8 @@ set.seed(100)
 #bootstrap.replications <- 1
 #bootstrap.replications <- 1500
 nrow(firm.df)
+nrow(inputs.df)
+length(unique(inputs.df$folio))
 
 
 bootstrap.replications.v <- 1:1500
