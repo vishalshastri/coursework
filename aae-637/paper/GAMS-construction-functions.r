@@ -78,15 +78,15 @@ row.names(raw.first.df) <- paste0( " ", format(1:nrow(raw.first.df), justify="ri
 
 colnames(raw.first.df)[1] <- paste0(paste0(rep(" ", max(nchar(row.names(raw.first.df)))), collapse=""), colnames(raw.first.df)[1])
 
-#file <- tempfile()
+file <- tempfile()
 
- processed.first.df <- write.fwf(raw.first.df, file="", 
+write.fwf(raw.first.df, file=file, 
   append=FALSE, quote=FALSE, sep="    ", na="", justify="right", width = c(max(nchar(row.names(raw.first.df))), 10,10,10,10),
   rownames=TRUE, rowCol="")
 
-#processed.first.df <- readLines(file)
+processed.first.df <- readLines(file)
 
-#unlink(file)
+unlink(file)
 
 
 #"/Users/travismcarthur/Desktop/Metrics (637)/Final paper/GAMS work/fwf test.gms"

@@ -152,8 +152,10 @@ q03 = firm.df$ag.fam.labor.equiv.spread
 q03[q03 == 0] = .5
 
 
-q04 <- firm.df$soil.quality
-q05 <- firm.df$elevation
+q04 <- c(unname(firm.df$soil.quality))
+q05 <- c(unname(firm.df$elevation))
+q06 <- c(unname(firm.df$mean.ann.rain.5yr)) / 100 # Rescaling rainfall 
+# Stripping out some unwanted attributes
 
 
 if (log.plus.one.cost) {

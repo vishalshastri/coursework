@@ -3,7 +3,7 @@ err.support.dem.eqns <- list()
 
 max.abs.other.param <- 0
 
-max.num.iterations <- 1
+ max.num.iterations <- 1
 # max.num.iterations <- 100000
  
 # demand.eqns.saved <- demand.eqns
@@ -12,6 +12,7 @@ max.num.iterations <- 1
 # demand.eqns <- demand.eqns.saved
 
 eq.r.squared <- list()
+total.sum.sq <- list()
 
 
 for (targ.eqn in 1:length(demand.eqns) ) {
@@ -79,7 +80,7 @@ regression.nls <- optim( par    = jitter(
                  ifelse(grepl("b[.]y[.][0-9][0-9]", all.params.tobit), 
                    ifelse(targ.eqn == (N + 1),  mean(E.y01.data), 
                      mean(get(paste0("x", lead.zero(targ.eqn)))/y01)),
-                    0)),
+                    0)), # On second thought, I don't know that these starting values make any sense
 			   fn      = nls.sgm ,
 			   method  = "BFGS", #"Nelder-Mead", # "BFGS",
                control = list(fnscale = 1, trace=5, maxit=max.num.iterations))  
@@ -111,6 +112,8 @@ predicted.nls <- TRUE
 
 eq.r.squared[[targ.eqn]] <- 1 - regression.nls$value/(ifelse(targ.eqn == (N + 1),  var(E.y01.data), 
                      var(get(paste0("x", lead.zero(targ.eqn)))/y01)) * length(y01))
+                     
+total.sum.sq[[targ.eqn]] <- regression.nls$value
 
 # since if the actual value is zero and the predicted value is neg, then we have made a
 # correct prediction under the entropy max framework
@@ -171,6 +174,21 @@ eq.adj.r.sq <- 1-(1-unlist(eq.r.squared))*(length(y01)-1)/(length(y01)-number.pa
 #  nls.sgm(regression.nls$par)[
 #    !(get(paste0("x", lead.zero(targ.eqn)))/y01==0 & nls.sgm(regression.nls$par)<0)
 #  ][3142]
+
+
+
+RSS1 <-  c(3.95364407988811, 122.586766251204, 0.0255702929891928, 7.4822874336831, 
+1047.56614851172, 2566.60282431995, 24345.3581430516) # input stuff from other regression
+RSS2 <- unlist(total.sum.sq)
+p1 <- 54 # input stuff from other regression
+p2 <-  number.params
+nobs.rss <- length(w01)
+
+two.modes.f.stat <- ((RSS1-RSS2) / (p2 - p1)) / (RSS2/(nobs.rss-p2))
+# Formula from http://en.wikipedia.org/wiki/F-test#Regression_problems
+
+1 - pf(two.modes.f.stat, p2-p1, nobs.rss-p2 )
+# ABbve is p-value for F test
 
 
 

@@ -18,10 +18,12 @@ start.at.true.xi <- FALSE
 start.nonlin.from.ignorance <- TRUE
 convex.in.f.inputs <- FALSE
 concave.in.prices <- TRUE
+# NOTE: J, i.e. number of fixed inputs, is set via sgm-linear-sur-building.r
 
 if (!synthetic.data) { 
   intended.seed <- 100 
-  start.nonlin.from.ignorance <- TRUE
+  start.nonlin.from.ignorance <- FALSE
+#  start.nonlin.from.ignorance <- TRUE
   global.max.seed <- 5
   do.SUR <- TRUE
   include.cost.fn <- TRUE

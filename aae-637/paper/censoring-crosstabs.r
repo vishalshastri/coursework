@@ -11,9 +11,14 @@ start.nonlin.from.ignorance <- TRUE
 convex.in.f.inputs <- FALSE
 concave.in.prices <- TRUE
 
+M <- 1
+N <- 6
+J <- 6
 
-saved.workspace.path <- "/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Rdata results files/saved workspace only inputsDF with soil.Rdata"
-# with soil
+
+#saved.workspace.path <- "/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Rdata results files/saved workspace only inputsDF with soil.Rdata"
+saved.workspace.path <- "/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Rdata results files/saved workspace only inputsDF with soil and rain.Rdata"
+# with soil and rain
 
 library("foreign")
 work.dir <- "/Users/travismcarthur/Desktop/Metrics (637)/Final paper/"
@@ -139,6 +144,28 @@ library(ggplot2)
 output.path <- "/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Descriptive plots/"
 
 
+temp.plot <- ggplot(stacked.firm.df, aes(mean.ann.rain.5yr, as.numeric(x19.fertilizante.cantidad > 0))) +
+  stat_smooth() + geom_point() +
+  ggtitle("Proportion of fert use by mean growing season rainfall, 5 crops aggregated") +
+  theme( axis.title.y = element_blank())
+  
+ggsave(filename = paste0(output.path, "Fert by rainfall aggregated.pdf"), plot = temp.plot)
+
+temp.plot <- ggplot(stacked.firm.df, aes(mean.ann.rain.5yr, as.numeric(x19.fertilizante.cantidad > 0), colour=which.crop)) +
+  stat_smooth() + geom_point() +
+  ggtitle("Proportion of fert use by mean growing season rainfall") +
+  theme( axis.title.y = element_blank())
+
+#method="loess"
+# I guess I should just keep the default
+
+ggsave(filename = paste0(output.path, "Fert by rainfall disaggregated.pdf"), plot = temp.plot)
+
+
+
+
+
+
 temp.plot <- ggplot(stacked.firm.df, aes(elevation, as.numeric(x19.fertilizante.cantidad > 0))) +
   stat_smooth() + geom_point() +
   ggtitle("Proportion of fert use by elevation (km), 5 crops aggregated") +
@@ -182,7 +209,7 @@ temp.plot <- ggplot(stacked.firm.df, aes(log(x19.superficie.cultivada.hectareas)
   ggtitle("Proportion of fert use by plot area, 5 crops aggregated") +
   theme( axis.title.y = element_blank())
   
-ggsave(filename = paste0(output.path, "Fert by plot area disaggregated.pdf"), plot = temp.plot)
+ggsave(filename = paste0(output.path, "Fert by plot area aggregated.pdf"), plot = temp.plot)
 
 temp.plot <- ggplot(stacked.firm.df, aes(log(x19.superficie.cultivada.hectareas), as.numeric(x19.fertilizante.cantidad > 0), colour=which.crop)) +
   stat_smooth() + geom_point() +
@@ -264,19 +291,19 @@ ggsave(filename = paste0(output.path, "Fert by organic fert price disaggregated.
 
 temp.plot <- ggplot(stacked.firm.df, aes(x19.plagicidas.bs.kg, as.numeric(x19.fertilizante.cantidad > 0))) +
   stat_smooth() + geom_point() +
-  ggtitle("Proportion of fert use by plaguicida price (Bolivianos/kg), 5 crops aggregated") +
+  ggtitle("Proportion of fert use by plagicida price (Bolivianos/kg), 5 crops aggregated") +
   theme( axis.title.y = element_blank())
 
-ggsave(filename = paste0(output.path, "Fert by plaguicida price aggregated.pdf"), plot = temp.plot)
+ggsave(filename = paste0(output.path, "Fert by plagicida price aggregated.pdf"), plot = temp.plot)
 
 
 temp.plot <- ggplot(stacked.firm.df, aes(x19.plagicidas.bs.kg, 
   as.numeric(x19.fertilizante.cantidad > 0), colour=which.crop)) +
   stat_smooth() + geom_point() +
-  ggtitle("Proportion of fert use by plaguicida price (Bolivianos/kg)") +
+  ggtitle("Proportion of fert use by plagicida price (Bolivianos/kg)") +
   theme( axis.title.y = element_blank())
 
-ggsave(filename = paste0(output.path, "Fert by plaguicida price disaggregated.pdf"), plot = temp.plot)
+ggsave(filename = paste0(output.path, "Fert by plagicida price disaggregated.pdf"), plot = temp.plot)
 
 
 temp.plot <- ggplot(stacked.firm.df, aes(hourly.wage, as.numeric(x19.fertilizante.cantidad > 0))) +
@@ -376,7 +403,7 @@ c( "agroproductive zone",
 "planting month",
 "positive amount of purchased seed",
 "used tractor",
-"positive amount of plaguicidas",
+"positive amount of plagicidas",
 "positive amount of hired labor",
 "positive amount of organic fertilizer"
 )
@@ -610,7 +637,7 @@ col.par = function(n) sample(seq(0.3, 1, length.out=50),n); cols = rainbow(26, s
 
 n.zonas <- length(unique(agro.zone.df$ZONA_AGROP))
 
-ggplot(agro.zone.df) + 
+rainbow.map.plot<- ggplot(agro.zone.df) + 
   aes(long,lat,group=group,fill=ZONA_AGROP) + 
   geom_polygon() +
 #  geom_path(color="white") +
@@ -626,10 +653,57 @@ ggplot(agro.zone.df) +
 
 #  scale_fill_brewer(brewer.pal(length(unique(agro.zone.df$ZONA_AGROP)), "Set1"))
 
+ggsave(filename = paste0(output.path, "Rainbow region map.pdf"), plot = rainbow.map.plot)
+
+
+#palette = "spectral"
 
 
 
-palette = "spectral"
+crop.prod.by.occupation <- aggregate(x19.produccion.obtenidad.kg ~  x12.su.ocupacion.principal.es.agropecuaria + which.crop  , 
+  data=stacked.firm.df, FUN=sum, na.rm=TRUE)
+
+crop.prod.by.occupation <- crop.prod.by.occupation[crop.prod.by.occupation[, 1]!="S/D", ]
+
+crop.prod.by.occupation <- reshape(crop.prod.by.occupation, timevar="x12.su.ocupacion.principal.es.agropecuaria",idvar="which.crop", direction="wide")
+
+crop.prod.by.occupation$perc.grown.by.farmers.by.profession <- with(crop.prod.by.occupation, 
+  100 * crop.prod.by.occupation$x19.produccion.obtenidad.kg.Si / 
+    (x19.produccion.obtenidad.kg.Si + x19.produccion.obtenidad.kg.No)
+  )
+
+crop.prod.by.occupation
+
+# Now do the same thing with survey weights:
+
+
+crop.prod.by.occupation <- aggregate(I(x19.produccion.obtenidad.kg*factor.de.expansión) ~  x12.su.ocupacion.principal.es.agropecuaria + which.crop  , 
+  data=stacked.firm.df, FUN=sum, na.rm=TRUE)
+# I hope I() works
+
+crop.prod.by.occupation <- crop.prod.by.occupation[crop.prod.by.occupation[, 1]!="S/D", ]
+names(crop.prod.by.occupation)[3] <- "x19.produccion.obtenidad.kg"
+
+crop.prod.by.occupation <- reshape(crop.prod.by.occupation, timevar="x12.su.ocupacion.principal.es.agropecuaria",idvar="which.crop", direction="wide")
+
+crop.prod.by.occupation$perc.grown.by.farmers.by.profession <- with(crop.prod.by.occupation, 
+  100 * crop.prod.by.occupation$x19.produccion.obtenidad.kg.Si / 
+    (x19.produccion.obtenidad.kg.Si + x19.produccion.obtenidad.kg.No)
+  )
+
+crop.prod.by.occupation
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -659,6 +733,198 @@ fert.ftable$percentage.use <- round(100*fert.ftable$Uses/(fert.ftable$Uses + fer
 
 
 str(test.ftable)
+
+
+
+
+
+
+target.top.crop.number <- 1
+source(paste0(code.dir, "build-model-extract-parcels.r"))
+
+library("effects")
+
+price.lm <- lm( x01 ~ (w01 + w02 + w03 + w04 + w05 + w06 + y01 + I(y01^2))^2 + 
+  I(w01^2) + I(w02^2) + I(w03^2) + I(w04^2) + I(w05^2) + I(w06^2) +
+  (q01 + q02 + q03)^2  , subset=x01>0   
+   )
+summary(price.lm)
+
+plot(Effect("w01", price.lm), ask = FALSE, rescale.axis = FALSE)
+
+
+plot(Effect("w06", price.lm), ask = FALSE, rescale.axis = FALSE)
+
+
+price.lm <- lm( x19.fertilizante.bs.kg ~ elevation, data=stacked.firm.df)
+summary(price.lm )
+
+target.price <- "x19.abono.bs.kg"
+
+ggplot(stacked.firm.df, aes(elevation, get(target.price))) +
+  geom_point()  + stat_smooth() +
+  ggtitle("") +
+  theme( axis.title.y = element_blank())
+
+#w01 = firm.df$x19.fertilizante.bs.kg
+#w02 = firm.df$x19.sem.comprada.bs.kg
+#w03 = firm.df$hourly.tractor.rental
+#w04 = firm.df$x19.plagicidas.bs.kg
+#w05 = firm.df$hourly.wage
+#w06 = firm.df$x19.abono.bs.kg
+
+
+
+
+
+
+
+glm( ~ s(x0)+ s(x1)+s(x2)+s(x3),family=Gamma(link=log)
+
+price.lm <- lm( x19.fertilizante.cantidad.kg ~ x19.fertilizante.bs.kg + elevation, data=stacked.firm.df)
+summary(price.lm )
+
+
+price.lm <- lm( x19.plagicidas.cantidad.kg ~ x19.plagicidas.bs.kg + elevation, data=stacked.firm.df)
+summary(price.lm )
+
+
+price.lm <- lm( x19.sem.comprada.cantidad.kg ~ x19.sem.comprada.bs.kg + elevation, data=stacked.firm.df)
+summary(price.lm )
+
+
+price.lm <- glm( x19.fertilizante.cantidad.kg>0 ~ x19.fertilizante.bs.kg*which.crop + elevation , family=binomial(link=probit), data=stacked.firm.df)
+summary(price.lm )
+
+
+price.lm <- glm( x19.fertilizante.cantidad.kg>0 ~ x19.fertilizante.bs.kg*which.crop + elevation , family=binomial(link=probit), data=stacked.firm.df)
+summary(price.lm )
+
+
+price.lm <- lm( x19.sem.comprada.cantidad.kg ~ which.crop + elevation + mean.ann.rain.5yr, data=stacked.firm.df)
+summary(price.lm )
+
+
+stacked.firm.df$which.crop <- as.factor(stacked.firm.df$which.crop)
+
+price.lm <- glm( x19.fertilizante.cantidad.kg>0 ~ which.crop *(poly(elevation, 2)  + 
+  poly(mean.ann.rain.5yr, 2) + poly(soil.quality, 2)) , family=binomial(link=probit), data=stacked.firm.df)
+summary(price.lm )
+
+cor(predict(price.lm), stacked.firm.df$x19.fertilizante.cantidad.kg>0)
+
+library("effects")
+plot(Effect("mean.ann.rain.5yr", price.lm), ask = FALSE, rescale.axis = FALSE)
+plot(Effect("soil.quality", price.lm), ask = FALSE, rescale.axis = FALSE)
+plot(Effect("elevation", price.lm), ask = FALSE, rescale.axis = FALSE)
+
+
+price.lm <- glm( x19.fertilizante.cantidad.kg>0 ~ which.crop  , family=binomial(link=probit), data=stacked.firm.df)
+summary(price.lm )
+
+cor(predict(price.lm), stacked.firm.df$x19.fertilizante.cantidad.kg>0)
+
+
+
+
+
+mean(stacked.firm.df$mean.ann.rain.5yr)
+
+
+price.lm <- glm( x19.fertilizante.cantidad.kg>0 ~ (x19.fertilizante.bs.kg + 
+  I(x19.fertilizante.bs.kg^2))* which.crop  , 
+  family=binomial(link=probit), data=stacked.firm.df)
+summary(price.lm )
+
+
+price.lm <- glm( x19.fertilizante.cantidad.kg>0 ~ x19.fertilizante.bs.kg + 
+  I(x19.fertilizante.bs.kg^2)  , 
+  family=binomial(link=probit), data=stacked.firm.df)
+summary(price.lm )
+
+
+# install.packages("mfx")
+library("mfx")
+
+#price.mfx <-  probitmfx(formula=x19.fertilizante.cantidad.kg>0 ~  
+#  poly(x19.fertilizante.bs.kg, 2, raw = TRUE) , data=stacked.firm.df)
+#price.mfx
+# Above is no good
+
+# install.packages("effects")
+library("effects")
+
+stacked.firm.df$which.crop.factor <- factor(stacked.firm.df$which.crop)
+
+price.mfx <- glm( x19.fertilizante.cantidad.kg>0 ~
+  poly(x19.fertilizante.bs.kg, 2, raw = TRUE)* which.crop.factor  , 
+  family=binomial(link=probit), data=stacked.firm.df)
+
+plot(Effect("x19.fertilizante.bs.kg", price.mfx), ask = FALSE, rescale.axis = FALSE)
+
+
+
+plot(allEffects(price.mfx), ask = FALSE, rescale.axis = FALSE)
+
+
+
+
+
+#price.lm <- glm( x19.fertilizante.cantidad.kg>0 ~ (x19.fertilizante.bs.kg + 
+#  I(x19.fertilizante.bs.kg^2))* I(gsub("Bar", "X", which.crop))  ,  # This is good for quickly reveling the factor
+#  family=binomial(link=probit), data=stacked.firm.df)
+#summary(price.lm )
+
+
+
+
+price.lm <- lm( x19.fertilizante.cantidad.kg ~ (x19.fertilizante.bs.kg + I(x19.fertilizante.bs.kg^2))*which.crop   ,data=stacked.firm.df[stacked.firm.df$x19.fertilizante.cantidad.kg>0, ])
+summary(price.lm )
+
+
+
+price.lm <- lm( x19.fertilizante.cantidad.kg >0 ~ (x19.fertilizante.bs.kg + I(x19.fertilizante.bs.kg^2))*which.crop   ,data=stacked.firm.df)
+summary(price.lm )
+
+
+price.lm <- lm( x19.fertilizante.cantidad.kg >0 ~ x19.fertilizante.bs.kg ,data=stacked.firm.df)
+summary(price.lm )
+
+
+
+
+
+prop.table(table(stacked.firm.df$x12.su.ocupacion.principal.es.agropecuaria))
+
+
+
+
+#Join PDF's:
+# http://gotofritz.net/blog/howto/joining-pdf-files-in-os-x-from-the-command-line/
+
+
+# Input in terminal: 
+cd '/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Descriptive plots/'
+"/System/Library/Automator/Combine PDF Pages.action/Contents/Resources/join.py" -o 'Fert crosstabs combined.pdf' *.pdf
+
+
+
+
+
+
+
+summary(lm( y01 ~ (x01 + x02 + x03 + x04 + x05 + x06 + q01 + q02 + q03)^2 
+ + I(x01^2) + I(x02^2) + I(x03^2) + I(x04^2) + I(x05^2) + I(x06^2) + I(q01^2) + I(q02^2) + I(q03^2) 
+# + I(x01>0) + I(x02>0) + I(x03>0) + I(x04>0) + I(x05>0) + I(x06>0) + I(q01>0) + I(q02>0) + I(q03>0) 
+))
+
+
+
+
+summary(lm( y01 ~ (I(x01>0) + I(x02>0) + I(x03>0) + I(x04>0) + I(x05>0) + I(x06>0) )^6
+))
+
+
 
 
 
@@ -800,4 +1066,13 @@ table( stacked.firm.df$x19.plagicidas.cantidad > 0,  stacked.firm.df$x19.plagici
 table( stacked.firm.df$x19.sem.comprada.cantidad > 0,  stacked.firm.df$x19.semilla.comprada.bs >0 )
 
 
+
+test.unif <- runif(10000, 0, 2)
+cor(test.unif, test.unif^2)
+# Result is 0.967993 !
+test.unif <- runif(10000, 0, 1000)
+cor(test.unif, test.unif^2)
+
+test.unif <- runif(10000, -1, 1)
+cor(test.unif, test.unif^2)
 

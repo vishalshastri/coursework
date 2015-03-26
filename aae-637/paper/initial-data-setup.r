@@ -926,6 +926,126 @@ inputs.df$elevation <- inputs.df$elevation/1000
 #hist(inputs.df$elevation)
 
 
+library("foreign")
+library("PBSmapping")
+library("sp")
+#work.dir <- "/Users/travismcarthur/Desktop/Metrics (637)/Final paper/"
+
+
+
+precip.coords<-read.fortran(paste0(work.dir, "Global2011P/precip.2000"), 
+  format=c("F8.3", "F8.3", "12F8.1"))[, c(1,2)]
+  
+precip.coords[,1]<-precip.coords[,1]*1000
+precip.coords[,2]<-precip.coords[,2]*1000
+
+# 2001-2006
+target.precip.years <- 2001:2006
+# SO get: 2001-2002, 2002-2003, 2003-2004, 2004-2005, 2005-2006 growing season
+
+precip.ls<-list()
+
+for ( i in as.character(target.precip.years)) {
+  precip.ls[[i]]<-read.fortran(paste0(work.dir, "Global2011P/precip.", i), 
+    format=c("F8.3", "F8.3", "12F8.1"))[, -c(1,2)]
+    
+}
+
+#TODO: REALLY UNCLEAR ABOUT THE SCALE of rainfall values. MAY HAVE TO MULTIPLY THesE VALUES TO GET RIGHT SCALE. http://climate.geog.udel.edu/~climate/html_pages/Global2011/Precip_revised_3.02/README.GlobalTsP2011.html
+
+precip.years<-as.character(target.precip.years)
+
+precip.disag.ls<-list()
+
+for ( i in 2:length(precip.years) ) {
+
+  precip.temp.1<-precip.ls[[precip.years[i-1]]]
+  precip.temp.2<-precip.ls[[precip.years[i]]]
+  precip.disag.ls[[ paste0("rain.grow.season.", precip.years[i])]] <- 
+    rowSums(precip.temp.1[, 10:12]) + rowSums(precip.temp.1[, 1:4])
+  # NOTE: This only gets the rain during the growing season, which actually 
+}
+
+
+precip.disag.df<-as.data.frame(do.call(cbind, precip.disag.ls))
+
+precip.df<-do.call(cbind, precip.ls[as.character(target.precip.years)])
+
+precip.df<-rowSums(precip.df)/(length(target.precip.years))
+
+#all(precip.ls[[1]][,1]==precip.ls[[2]][,1] &
+#  precip.ls[[1]][,1]==precip.ls[[3]][,1] &
+#  precip.ls[[1]][,1]==precip.ls[[4]][,1] &
+#  precip.ls[[1]][,1]==precip.ls[[5]][,1] 
+#)
+
+#all(precip.ls[[1]][,2]==precip.ls[[2]][,2] &
+#  precip.ls[[1]][,2]==precip.ls[[3]][,2] &
+#  precip.ls[[1]][,2]==precip.ls[[4]][,2] &
+#  precip.ls[[1]][,2]==precip.ls[[5]][,2] 
+#)
+# This test is passed
+
+
+rain.grid<-GridTopology(cellcentre.offset=c(-179.75, -89.75), cellsize=c(.5, .5), cells.dim=c(4*2*180, 4*2*90))
+
+rain.pixels <- SpatialPixels(SpatialPoints(precip.coords) , grid=rain.grid )
+
+
+
+
+
+
+#pob.shp<-importShapefile(paste0(work.dir, "centros_poblados.zip Folder/centros_poblados.shp"))
+
+#pob.shp$canton.full <- with(pob.shp , paste0(DEPTO, PROVIN, SECCION, CANTON))
+
+
+villages.spatialpixels.rain<-SpatialPixels(
+  SpatialPoints(as.data.frame(pob.shp[, c("X", "Y")])),
+  grid=rain.grid)
+
+pob.shp$rain.grid.index<-villages.spatialpixels.rain@grid.index
+
+precip.df<-cbind(
+  data.frame(rain.grid.index=rain.pixels@grid.index, mean.ann.rain.5yr=precip.df),
+  precip.disag.df
+)
+
+
+pob.shp <- merge(pob.shp, precip.df, all.x=TRUE)
+
+mean.rainfall <- mean(pob.shp$mean.ann.rain.5yr, na.rm=TRUE)
+
+pob.shp$mean.ann.rain.5yr[is.na(pob.shp$mean.ann.rain.5yr)] <- mean.rainfall
+
+rainfall.agg.v <- by(pob.shp[, c("mean.ann.rain.5yr", "VIVIENDA")], INDICES=list(pob.shp$canton.full), 
+  FUN=function(x) {
+    weighted.mean(x[, 1], x[, 2], na.rm=TRUE)
+  }
+) 
+
+rainfall.agg.df <- data.frame(mean.ann.rain.5yr = unclass(rainfall.agg.v), canton.full=attr(rainfall.agg.v, "dimnames")[[1]])
+
+
+setdiff(inputs.df$canton.full, rainfall.agg.df$canton.full)
+
+
+attributes(rainfall.agg.df$mean.ann.rain.5yr) <- NULL
+
+inputs.df <- merge(inputs.df, rainfall.agg.df, all.x=TRUE)
+
+inputs.df$mean.ann.rain.5yr[is.na(inputs.df$mean.ann.rain.5yr)] <- mean.rainfall
+
+# inputs.df$elevation <- inputs.df$elevation/1000
+
+
+
+
+
+
+
+
 
 
 
@@ -942,7 +1062,9 @@ inputs.df$elevation <- inputs.df$elevation/1000
 
 #save.image("/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Rdata results files/saved workspace only inputsDF with soil.Rdata")
 
-save(inputs.df, file="/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Rdata results files/saved workspace only inputsDF with soil.Rdata")
+# save(inputs.df, file="/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Rdata results files/saved workspace only inputsDF with soil.Rdata")
+
+save(inputs.df, file="/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Rdata results files/saved workspace only inputsDF with soil and rain.Rdata")
 
 # save.image("/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Rdata results files/saved workspace only inputsDF.Rdata")
 

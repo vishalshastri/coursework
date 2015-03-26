@@ -100,11 +100,11 @@ prob.numbers <- GAMS.nonlinear.results[which(!is.na(GAMS.nonlinear.results.extra
 ########################
 
 # GAMS.nonlinear.results<- readLines("/Users/travismcarthur/Desktop/Dropbox/entropytest.lst")
-
+# GAMS.projdir <- "/Users/travismcarthur/Desktop/gamsdir/projdir/"
 
 all.eqns <- paste0("dem", 1:length(demand.eqns))
 
-GAMS.nonlinear.results<- readLines(paste0(GAMS.projdir, "sgmGMEnonlinear", # "GMEnonlinear", 
+GAMS.nonlinear.results<- readLines(paste0(GAMS.projdir, "sgmGMEnonlinear" # "GMEnonlinear",  
 strsplit(target.crop, " ")[[1]][1], 
    formatC(bootstrap.iter, width = 5, flag = "0"), ".lst"))
 
@@ -261,11 +261,11 @@ temp.deriv.fn <- function(x, data) {
     with(x, eval(parse(text=modified.ln.E.string )) )
   }
   
-temp.deriv.fn(  GAMS.nonlinear.results.params.full, as.data.frame(combined.df))
+#temp.deriv.fn(  GAMS.nonlinear.results.params.full, as.data.frame(combined.df))
 
-modified.ln.E.string.evaled.deriv <- jacobian(temp.deriv.fn, 
-    x=GAMS.nonlinear.results.params.full, method="complex", 
-    data=as.data.frame(combined.df) )
+#modified.ln.E.string.evaled.deriv <- jacobian(temp.deriv.fn, 
+#    x=GAMS.nonlinear.results.params.full, method="complex", 
+#    data=as.data.frame(combined.df) )
 
 
 
@@ -374,6 +374,37 @@ linear.combo[names(GAMS.nonlinear.results.params.full)==paste0("xi", lead.zero(i
 print(wald.test(param.covar.mat, GAMS.nonlinear.results.params.full, L = t(matrix(linear.combo))))
 
 }
+
+
+# BELOW IS TEST OF WHETHER A GIVEN FIXED INPUT BELONGS IN THE REGRESSION
+
+which.fixed.input <- 6
+
+param.set <- names(GAMS.nonlinear.results.params.full)[
+  grepl(paste0("(d[0-9][0-9]0", which.fixed.input,
+    ")|(c0", which.fixed.input, 
+    "$)|(c0", which.fixed.input, 
+    "[0-9][0-9])|(c[0-9][0-9]0", which.fixed.input, 
+    ")"), names(GAMS.nonlinear.results.params.full))]
+
+
+fixed.input.wald.ls <- list()
+
+for ( i in 1:length(param.set)) {
+  linear.combo <- rep(0, length(GAMS.nonlinear.results.params.full))
+  linear.combo[names(GAMS.nonlinear.results.params.full)==param.set[i] ] <- 1
+  fixed.input.wald.ls[[i]] <- t(matrix(linear.combo))
+}
+fixed.input.wald.mat <- do.call(rbind, fixed.input.wald.ls)
+
+print(wald.test(param.covar.mat, GAMS.nonlinear.results.params.full, L = fixed.input.wald.mat))
+
+
+
+
+
+
+
 
 
 linear.combo <- rep(0, length(GAMS.nonlinear.results.params.full))
@@ -504,6 +535,80 @@ summary(  as.data.frame(distort.cost.input.mat - non.distort.cost.input.mat) )
 
 summary(  as.data.frame(distort.cost.input.mat - non.distort.cost.input.mat)/as.data.frame(distort.cost.input.mat) )
 # Percent increase in (predicted) cost
+
+
+
+
+# Correlation between actual and predicted values
+
+for ( i in 1:(length(demand.eqns.nonlinear)-1)) {
+  print(
+  cor(get(paste0("x", lead.zero(i))) / y01, # Actual
+    with(as.list(GAMS.nonlinear.results.params.full), 
+      eval(parse(text=gsub("[.]", "", demand.eqns.nonlinear[[i]])))) # Predicted
+  ))
+}
+print(
+ cor(E.y01.data, # Actual
+   with(as.list(GAMS.nonlinear.results.params.full), 
+     eval(parse(text=gsub("[.]", "", demand.eqns.nonlinear[[length(demand.eqns.nonlinear)]])))) # Predicted
+))
+
+
+
+# Among posi observations
+
+for ( i in 1:(length(demand.eqns.nonlinear)-1)) {
+  actual.temp <-  get(paste0("x", lead.zero(i))) / y01 # Actual
+  predicted.temp <-  with(as.list(GAMS.nonlinear.results.params.full), 
+      eval(parse(text=gsub("[.]", "", demand.eqns.nonlinear[[i]])))) # Predicted
+  print( cor(  actual.temp[actual.temp>0] ,  predicted.temp[actual.temp>0]))
+}
+
+actual.temp <-  E.y01.data  # Actual
+predicted.temp <-  with(as.list(GAMS.nonlinear.results.params.full),
+    eval(parse(text=gsub("[.]", "", demand.eqns.nonlinear[[length(demand.eqns.nonlinear)]])))) # Predicted
+print( cor(  actual.temp[actual.temp>0] ,  predicted.temp[actual.temp>0]))
+
+## Now taking logs of posi observations so that large outliers don't rule:
+
+
+# Among posi observations
+
+for ( i in 1:(length(demand.eqns.nonlinear)-1)) {
+  actual.temp <-  get(paste0("x", lead.zero(i))) / y01 # Actual
+  predicted.temp <-  with(as.list(GAMS.nonlinear.results.params.full), 
+      eval(parse(text=gsub("[.]", "", demand.eqns.nonlinear[[i]])))) # Predicted
+  print( cor(  log(actual.temp[actual.temp>0]) ,  log(predicted.temp[actual.temp>0]), use="complete.obs"))
+}
+
+actual.temp <-  E.y01.data  # Actual
+predicted.temp <-  with(as.list(GAMS.nonlinear.results.params.full),
+    eval(parse(text=gsub("[.]", "", demand.eqns.nonlinear[[length(demand.eqns.nonlinear)]])))) # Predicted
+print( cor(  log(actual.temp[actual.temp>0]) ,  log(predicted.temp[actual.temp>0]), use="complete.obs"))
+
+
+
+
+# Ch-sq on whether good prediction for posi vs. zero
+
+
+for ( i in 1:(length(demand.eqns.nonlinear)-1)) {
+  actual.temp <-  get(paste0("x", lead.zero(i))) / y01 # Actual
+  predicted.temp <-  with(as.list(GAMS.nonlinear.results.params.full), 
+      eval(parse(text=gsub("[.]", "", demand.eqns.nonlinear[[i]])))) # Predicted
+  print(mean(predicted.temp>0))
+  print(table(actual.temp>0 ,  predicted.temp>0))
+  print( chisq.test(  table(actual.temp>0 ,  predicted.temp>0)))
+}
+
+actual.temp <-  E.y01.data  # Actual
+predicted.temp <-  with(as.list(GAMS.nonlinear.results.params.full),
+    eval(parse(text=gsub("[.]", "", demand.eqns.nonlinear[[length(demand.eqns.nonlinear)]])))) # Predicted
+print(mean(predicted.temp>0))
+print(table(actual.temp>0 ,  predicted.temp>0))
+print( chisq.test(  table(actual.temp>0 ,  predicted.temp>0)))
+
 
 
 

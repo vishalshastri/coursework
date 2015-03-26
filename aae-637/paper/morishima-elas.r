@@ -207,6 +207,7 @@ mean(morishima.mat)
 
 
 
+library("numDeriv")
 
 allen.uzawa.e.s <- function(i, j, data, params, cost.fn.string, shadow=FALSE) {
 
@@ -265,6 +266,8 @@ allen.uzawa.e.s <- function(i, j, data, params, cost.fn.string, shadow=FALSE) {
   Cost.fn.value <- 
     with(c(as.list(params), as.list(data)), 
       eval(parse(text=gsub("[.]", "", paste0("y01 * (", cost.fn.string, ")")))))
+      
+ # cat(Cost.fn.value, "\n")
   
   Cost.fn.value * C_ij / (C_i * C_j) 
   
@@ -291,6 +294,49 @@ rowMeans(allen.uzawa.mat)
 # Row means are a good measure, I think
 
 mean(allen.uzawa.mat)
+
+
+colnames(allen.uzawa.mat) <-  c("Fert", "Seed", "Tractor", "Plagicidas", "Hired labor", "Organic fert")
+rownames(allen.uzawa.mat) <-  c("Fert", "Seed", "Tractor", "Plagicidas", "Hired labor", "Organic fert")
+
+
+library("xtable")
+
+xtab.output <- print(xtable(allen.uzawa.mat,
+  caption="Allen Uzawa elasticties of substitution for potatoes, evaluated at mean of data"))
+cat(xtab.output, sep="\n",
+      file=paste0("/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Descriptive plots/allen-uzawa-table.tex")
+      )
+
+
+
+
+  
+  ,
+    caption=paste0("Marginal Product and Output Elasticities for ", crop.english[i], 
+  "; $R^2$ for model is ", round(r.sq.list[[i]], digits=3))),
+  hline.after=0:nrow(bootstrapped.marg.results.ls[[i]]),
+  caption.placement="top")
+  
+  xtab.output <- paste(xtab.output, "\\vspace{2em}")
+  if (mfx.on.posi.median) {
+    cat(xtab.output, sep="\n",
+      file=paste0("/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Marginal products/tableatmedian", i, ".tex" ))
+  } 
+
+
+
+  xtab.output <- print(xtable(bootstrapped.marg.results.ls[[i]], ,
+    caption=paste0("Marginal Product and Output Elasticities for ", crop.english[i], 
+  "; $R^2$ for model is ", round(r.sq.list[[i]], digits=3))),
+  hline.after=0:nrow(bootstrapped.marg.results.ls[[i]]),
+  caption.placement="top")
+  
+  xtab.output <- paste(xtab.output, "\\vspace{2em}")
+  if (mfx.on.posi.median) {
+    cat(xtab.output, sep="\n",
+      file=paste0("/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Marginal products/tableatmedian", i, ".tex" ))
+  } 
 
 
 

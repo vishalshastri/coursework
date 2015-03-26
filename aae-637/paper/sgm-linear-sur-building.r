@@ -1,6 +1,5 @@
-M <- 1
-N <- 6
-J <- 3
+
+# USED TO HAVE M, N, J defined here
 
 eliminate.irrigation.colinear.sgm <- TRUE
 
