@@ -531,10 +531,10 @@ for ( i in 1:(length(all.eqns)-1)) {
 
 summary(  as.data.frame(distort.cost.input.mat - non.distort.cost.input.mat) )
 # Multiply by y01 since the output of demand.eqns is the demand divided by y01. We want quantity demanded.
-# Cost in Bolivianos
+# Demand in units
 
 summary(  as.data.frame(distort.cost.input.mat - non.distort.cost.input.mat)/as.data.frame(distort.cost.input.mat) )
-# Percent increase in (predicted) cost
+# Percent increase in (predicted) demand
 
 
 
@@ -562,7 +562,8 @@ for ( i in 1:(length(demand.eqns.nonlinear)-1)) {
   actual.temp <-  get(paste0("x", lead.zero(i))) / y01 # Actual
   predicted.temp <-  with(as.list(GAMS.nonlinear.results.params.full), 
       eval(parse(text=gsub("[.]", "", demand.eqns.nonlinear[[i]])))) # Predicted
-  print( cor(  actual.temp[actual.temp>0] ,  predicted.temp[actual.temp>0]))
+  print( cor(  actual.temp[actual.temp>0] ,  predicted.temp[actual.temp>0], method="spearman"))
+  # NOTE: Spearman means that the rank correlation is computed
 }
 
 actual.temp <-  E.y01.data  # Actual

@@ -4,7 +4,27 @@
 ## source("/Users/travismcarthur/git/coursework/aae-637/paper/initial-data-setup.r")
 
 
+
+target.top.crop.number <- 4
+
+#Including zero cost:
+#Potatoes	4,058
+#Maize	3,440
+#Barley	2,048
+#Wheat	1,647
+#Fava Beans	1,484
+
+M <- 1
+N <- 6
+# J <- 3
+ J <- 6
+
+
+
+
+
 functional.form <- "SGM" # OR TRANSLOG
+#functional.form <- "TRANSLOG"
 
 
 #synthetic.data <-TRUE
@@ -20,11 +40,13 @@ convex.in.f.inputs <- FALSE
 concave.in.prices <- TRUE
 # NOTE: J, i.e. number of fixed inputs, is set via sgm-linear-sur-building.r
 
+
+
 if (!synthetic.data) { 
   intended.seed <- 100 
   start.nonlin.from.ignorance <- FALSE
 #  start.nonlin.from.ignorance <- TRUE
-  global.max.seed <- 5
+  global.max.seed <- 4
   do.SUR <- TRUE
   include.cost.fn <- TRUE
   only.cost.fn <- FALSE
@@ -34,16 +56,7 @@ if (!synthetic.data) {
 
 
 
-target.top.crop.number <- 1
-
-#Including zero cost:
-#Potatoes	4,058
-#Maize	3,440
-#Barley	2,048
-#Wheat	1,647
-#Fava Beans	1,484
-
-
+# Only posi cost observations:
 
 #Papa (patatas)    3155 
 #Maiz combined   1838 
@@ -81,6 +94,9 @@ saved.workspace.path <- "/Users/travismcarthur/Desktop/Metrics (637)/Final paper
 
 saved.workspace.path <- "/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Rdata results files/saved workspace only inputsDF with soil.Rdata"
 # with soil
+
+saved.workspace.path <- "/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Rdata results files/saved workspace only inputsDF with soil and rain.Rdata"
+# with soil and rain and elevation
 
 
 GAMS.projdir <-  "/Users/travismcarthur/Desktop/gamsdir/projdir2/"
@@ -228,7 +244,7 @@ bootstrap.iter <- 0
 
 
 #for ( bootstrap.iter in c(0, bootstrap.replications.v)) {
-for ( bootstrap.iter in 0) {
+# for ( bootstrap.iter in 0) {
 
 if( bootstrap.iter==0 ) {
   bootstrap.selection.v <- TRUE
@@ -384,7 +400,7 @@ system(run.nonlinear.from.shell)
 #  "bootstrapcounter.Rdata"))
 
 
-}
+#}
 
 
 # }

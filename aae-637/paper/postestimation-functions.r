@@ -80,9 +80,7 @@ for ( i in 1:length(all.eqns) ) {
 #    skip = begin.err.weight[i] + 3,  nrows= nrow(combined.df))
     # "/Users/travismcarthur/Desktop/Dropbox/entropytest.lst"
     err.weight.temp.df <- read.table(
-  paste0(GAMS.projdir, "sgmGMEnonlinear",  # "GMEnonlinear", 
-  strsplit(target.crop, " ")[[1]][1], 
-   formatC(bootstrap.iter, width = 5, flag = "0"), ".lst"), 
+  paste0(GAMS.projdir, file.name), 
 #paste0(GAMS.projdir,"sgmGMEnonlinearHaba00000 before soil and elev.lst"),
    skip = begin.err.weight[i] + 3 ,  nrows= nrow(combined.df))  
    #    skip = begin.err.weight[i] + 3,  nrows= nrow(combined.df))  
@@ -269,21 +267,30 @@ ret
 ###### ESTIMATE DISTORTION COST
 ########################
 
-inef.cost.est <- function(GAMS.nonlinear.results.params.full) {
+inef.cost.est <- function(params=GAMS.nonlinear.results.params.full, data=combined.df) {
 
-distort.cost.input.mat <- matrix(NA, ncol=(length(all.eqns)-1), nrow=nrow(combined.df))
+## BE CAREFUL: This is a long with() statement
+
+with(data, {
+
+#GAMS.nonlinear.results.params.full[ paste0("theta", lead.zero(N)) ] <- 1
+assign(paste0("xi", lead.zero(N)), 1)
+assign(paste0("theta", lead.zero(N)), 1)
+
+
+distort.cost.input.mat <- matrix(NA, ncol=(length(all.eqns)-1), nrow=nrow(data))
 
 for ( i in 1:(length(all.eqns)-1)) {
-  distort.cost.input.mat[, i] <- get(paste0("w", lead.zero(i))) * with(as.list(GAMS.nonlinear.results.params.full), 
+  distort.cost.input.mat[, i] <- get(paste0("w", lead.zero(i))) * with(as.list(params), 
     eval(parse(text=gsub("[.]", "", demand.eqns.nonlinear[[i]]))))
     # From eqn 9 of Kumbhakar 1992, the airline one
 
 }
 
-non.distort.cost.input.mat <- matrix(NA, ncol=(length(all.eqns)-1), nrow=nrow(combined.df))
+non.distort.cost.input.mat <- matrix(NA, ncol=(length(all.eqns)-1), nrow=nrow(data))
 
 for ( i in 1:(length(all.eqns)-1)) {
-  non.distort.cost.input.mat[, i] <-  get(paste0("w", lead.zero(i))) * with(as.list(GAMS.nonlinear.results.params.full), 
+  non.distort.cost.input.mat[, i] <-  get(paste0("w", lead.zero(i))) * with(as.list(params), 
     eval(parse(text=gsub("[.]", "", demand.eqns[[i]]))))
     # From eqn 9 of Kumbhakar 1992, the airline one
 }
@@ -297,11 +304,138 @@ perc.inc.cost <-  (y01 * rowSums(distort.cost.input.mat) - y01 * rowSums(non.dis
   y01 * rowSums(non.distort.cost.input.mat)   
 # Percent increase in (predicted) cost
 
-ret <- list(level.inc.cost=level.inc.cost, perc.inc.cost=perc.inc.cost)
 
-ret
+# Below is same thing, but non-neg constraints are imposed:
+
+distort.cost.input.mat <- matrix(NA, ncol=(length(all.eqns)-1), nrow=nrow(data))
+
+for ( i in 1:(length(all.eqns)-1)) {
+  distort.cost.input.mat[, i] <- get(paste0("w", lead.zero(i))) * with(as.list(params), 
+    eval(parse(text=gsub("[.]", "", demand.eqns.nonlinear[[i]]))))
+    # From eqn 9 of Kumbhakar 1992, the airline one
+  distort.cost.input.mat[, i] <- ifelse(distort.cost.input.mat[, i]>0, distort.cost.input.mat[, i], 0)
 
 }
+
+non.distort.cost.input.mat <- matrix(NA, ncol=(length(all.eqns)-1), nrow=nrow(data))
+
+for ( i in 1:(length(all.eqns)-1)) {
+  non.distort.cost.input.mat[, i] <-  get(paste0("w", lead.zero(i))) * with(as.list(params), 
+    eval(parse(text=gsub("[.]", "", demand.eqns[[i]]))))
+    # From eqn 9 of Kumbhakar 1992, the airline one
+   non.distort.cost.input.mat[, i] <- ifelse( non.distort.cost.input.mat[, i]>0 ,  non.distort.cost.input.mat[, i], 0)
+}
+
+
+level.inc.cost.non.neg <- y01 * rowSums(distort.cost.input.mat) - y01 * rowSums(non.distort.cost.input.mat) 
+# Multiply by y01 since the output of demand.eqns is the demand divided by y01. We want quantity demanded.
+# Cost in Bolivianos
+# rowSums(distort.cost.input.mat) - rowSums(non.distort.cost.input.mat)
+
+perc.inc.cost.non.neg <-  (y01 * rowSums(distort.cost.input.mat) - y01 * rowSums(non.distort.cost.input.mat) ) /
+  y01 * rowSums(non.distort.cost.input.mat)     
+# Percent increase in (predicted) cost
+# Ok, so these values are not all posi since the non-negativity constraints mess up the 
+# thing. We can have a few inputs hit non-neg constraints, and then the remaining 
+# inputs happen to not result in the non-distort cost being lower than the distort cost.
+
+
+
+ret <- list(level.inc.cost=level.inc.cost, perc.inc.cost=perc.inc.cost, 
+  level.inc.cost.non.neg=level.inc.cost.non.neg, perc.inc.cost.non.neg=perc.inc.cost.non.neg)
+
+ret
+}
+)
+
+}
+
+
+
+########################
+###### ESTIMATE OPTIMAL INPUT DEMANDS
+########################
+
+inef.demand.est <- function(params=GAMS.nonlinear.results.params.full, data=combined.df) {
+
+
+with(data, { 
+
+assign(paste0("xi", lead.zero(N)), 1)
+assign(paste0("theta", lead.zero(N)), 1)
+
+#### Now just do input demand, not cost:
+
+distort.cost.input.mat <- matrix(NA, ncol=(length(all.eqns)-1), nrow=nrow(data))
+
+for ( i in 1:(length(all.eqns)-1)) {
+  distort.cost.input.mat[, i] <-  y01 * with(as.list(params), 
+    eval(parse(text=gsub("[.]", "", demand.eqns.nonlinear[[i]]))))
+    # From eqn 9 of Kumbhakar 1992, the airline one
+
+}
+
+non.distort.cost.input.mat <- matrix(NA, ncol=(length(all.eqns)-1), nrow=nrow(data))
+
+for ( i in 1:(length(all.eqns)-1)) {
+  non.distort.cost.input.mat[, i] <-   y01 * with(as.list(params), 
+    eval(parse(text=gsub("[.]", "", demand.eqns[[i]]))))
+    # From eqn 9 of Kumbhakar 1992, the airline one
+}
+
+
+
+# Below is same thing, but non-neg constraints are imposed:
+
+distort.cost.input.mat.non.neg <- matrix(NA, ncol=(length(all.eqns)-1), nrow=nrow(data))
+
+for ( i in 1:(length(all.eqns)-1)) {
+  distort.cost.input.mat.non.neg[, i] <-  y01 * with(as.list(params), 
+    eval(parse(text=gsub("[.]", "", demand.eqns.nonlinear[[i]]))))
+    # From eqn 9 of Kumbhakar 1992, the airline one
+  distort.cost.input.mat.non.neg[, i] <- ifelse(distort.cost.input.mat.non.neg[, i]>0, distort.cost.input.mat.non.neg[, i], 0)
+
+}
+
+non.distort.cost.input.mat.non.neg <- matrix(NA, ncol=(length(all.eqns)-1), nrow=nrow(data))
+
+for ( i in 1:(length(all.eqns)-1)) {
+  non.distort.cost.input.mat.non.neg[, i] <-   y01 * with(as.list(params), 
+    eval(parse(text=gsub("[.]", "", demand.eqns[[i]]))))
+    # From eqn 9 of Kumbhakar 1992, the airline one
+   non.distort.cost.input.mat.non.neg[, i] <- ifelse( non.distort.cost.input.mat.non.neg[, i]>0 ,  non.distort.cost.input.mat.non.neg[, i], 0)
+}
+
+
+
+
+ch.optimal.demand.levels <- as.data.frame(distort.cost.input.mat - non.distort.cost.input.mat) 
+# Multiply by y01 since the output of demand.eqns is the demand divided by y01. We want quantity demanded.
+# Demand in units
+names(ch.optimal.demand.levels) <- c("Fert", "Seed", "Tractor", "Plagicidas", "Hired labor", "Organic fert")
+
+ch.optimal.demand.perc <- as.data.frame(distort.cost.input.mat - non.distort.cost.input.mat)/as.data.frame(distort.cost.input.mat) 
+# Percent increase in (predicted) demand
+names(ch.optimal.demand.perc) <- c("Fert", "Seed", "Tractor", "Plagicidas", "Hired labor", "Organic fert")
+
+ch.optimal.demand.levels.non.neg <- as.data.frame(distort.cost.input.mat.non.neg - non.distort.cost.input.mat.non.neg) 
+# Multiply by y01 since the output of demand.eqns is the demand divided by y01. We want quantity demanded.
+# Demand in units
+names(ch.optimal.demand.levels.non.neg) <- c("Fert", "Seed", "Tractor", "Plagicidas", "Hired labor", "Organic fert")
+
+ch.optimal.demand.perc.non.neg <- as.data.frame(distort.cost.input.mat.non.neg - non.distort.cost.input.mat.non.neg)/as.data.frame(distort.cost.input.mat.non.neg) 
+# Percent increase in (predicted) demand
+names(ch.optimal.demand.perc.non.neg) <- c("Fert", "Seed", "Tractor", "Plagicidas", "Hired labor", "Organic fert")
+
+list(ch.optimal.demand.levels=ch.optimal.demand.levels, ch.optimal.demand.perc=ch.optimal.demand.perc,
+  ch.optimal.demand.levels.non.neg=ch.optimal.demand.levels.non.neg, ch.optimal.demand.perc.non.neg=ch.optimal.demand.perc.non.neg)
+}
+)
+
+}
+
+
+
 
 
 ########################
@@ -484,7 +618,7 @@ allen.uzawa.e.s.mat <- function(data=as.data.frame(t(colMeans(combined.df))),
   params=GAMS.nonlinear.results.params.full, 
   cost.fn.string=demand.eqns.nonlinear[[length(demand.eqns.nonlinear)]], shadow=FALSE) {
 
-allen.uzawa.matt <- matrix(NA, ncol=N, nrow=N)
+allen.uzawa.mat <- matrix(NA, ncol=N, nrow=N)
 
 for ( i in 1:N) {
   for (j in 1:N) {
@@ -552,6 +686,46 @@ demand.curve.slope <- function(i, data=as.data.frame(t(colMeans(combined.df))),
 
 
 
+########################
+###### DOUBLE-CHECKING CONCAVITY OF COST FUNCTION
+########################
+
+hessian.cost.fn <- function(data=as.data.frame(t(colMeans(combined.df))), 
+  params=GAMS.nonlinear.results.params.full, 
+  demand.fn.string=demand.eqns.nonlinear[[7]]) {
+
+  # All this is from eqn 1 of http://www.jstor.org/stable/pdf/1827940.pdf
+  
+  w_i <- unlist(data[names(data) %in%  paste0("w", lead.zero(1:N))])
+  
+#  cat(names(w_i), "\n") 
+  
+  assign(paste0("xi", lead.zero(N)), 1)
+  assign(paste0("theta", lead.zero(N)), 1)
+
+  temp.deriv.fn <- function(x, data) { 
+    x <- c(as.list(x), as.list(data))
+    with(x, eval(parse(text=gsub("[.]", "", paste0("y01 * (", demand.fn.string, ")")
+    # Must multiply by y01 since estimated cost function divided by y01
+    ) )) )
+  }
+
+  C_i_i <- hessian(
+    temp.deriv.fn, 
+    x=w_i,  method="complex", 
+    data=c(params[!names(params) %in%  paste0("w", lead.zero(1:N))], 
+      data[!names(data) %in%  paste0("w01", lead.zero(1:N))] ))
+
+  C_i_i
+}
+
+
+
+
+
+
+
+
 
 
 
@@ -585,8 +759,11 @@ cost.elast.output <- function(eval.point=mean(combined.df$y01),
     x=eval.point, method="complex", 
     data=c(params[names(params)!= "y01"], 
       data[names(data)!= "y01"]))
-
+  
+  # E.y01.data*y01 below since E.y01.data has been divided by y01 for estimation, but
+  # we have to re-tranform it to the cost data
   C_y * (mean(y01)/mean(E.y01.data*y01))
+  
 }
       
 
@@ -594,6 +771,53 @@ cost.elast.output <- function(eval.point=mean(combined.df$y01),
 
 ########################
 ###### ELASTICITY OF COST W.R.T. OUTPUT for all observations
+########################
+
+cost.elast.fixed.input.all.obs <- function(i=1, 
+  which.eqn=7,
+  eval.point=combined.df[, paste0("q", lead.zero(i)), drop=FALSE], 
+  data=combined.df, 
+  params=GAMS.nonlinear.results.params.full, 
+  demand.fn.string=demand.eqns.nonlinear[[which.eqn]]) {
+
+  # All this is from eqn 1 of http://www.jstor.org/stable/pdf/1827940.pdf
+  
+#  names(eval.point) <- "y01"
+  
+#  cat(names(w_i), "\n") 
+
+  
+  assign(paste0("xi", lead.zero(N)), 1)
+  assign(paste0("theta", lead.zero(N)), 1)
+
+  temp.deriv.fn <- function(x, data) { 
+    x <- c(as.list(x), as.list(data))
+    with(x, eval(parse(text=gsub("[.]", "", paste0("y01 * (", demand.fn.string, ")")
+    # Must multiply by y01 since estimated cost function divided by y01
+    ) )) )
+  }
+
+  C_y <- jacobian(
+    temp.deriv.fn, 
+    x=eval.point, method="complex", 
+    data=c(params[names(params)!= paste0("q", lead.zero(i))], 
+      data[names(data)!= paste0("q", lead.zero(i))] ))
+
+  LHS <- with(combined.df, get(paste0("dem", which.eqn)))*y01
+  # dem7 is fine for the cost function since that is the way it is entered into the GAMS estimation
+    
+      
+  # E.y01.data*y01 below since E.y01.data has been divided by y01 for estimation, but
+  # we have to re-tranform it to the cost data
+  C_y * get(paste0("q", lead.zero(i)))/LHS
+}
+      
+
+
+
+
+########################
+###### ELASTICITY OF COST W.R.T. an input for all observations
 ########################
 
 cost.elast.output.all.obs <- function(eval.point=combined.df[, "y01", drop=FALSE], 
@@ -630,6 +854,56 @@ cost.elast.output.all.obs <- function(eval.point=combined.df[, "y01", drop=FALSE
 
 
 
+########################
+###### GOODNESS OF FIT: CORRELATION BETWEEN POSI PREDICTED AND ACTUAL VALUES
+########################
+
+
+cor.pred.actual.posi <- function(params=GAMS.nonlinear.results.params.full) {
+
+  assign(paste0("xi", lead.zero(N)), 1)
+  assign(paste0("theta", lead.zero(N)), 1)
+
+# Among posi observations
+
+cor.mat <- matrix(NA, nrow=7, ncol=1)
+
+for ( i in 1:(length(demand.eqns.nonlinear)-1)) {
+  actual.temp <-  get(paste0("x", lead.zero(i))) / y01 # Actual
+  predicted.temp <-  with(as.list(params), 
+      eval(parse(text=gsub("[.]", "", demand.eqns.nonlinear[[i]])))) # Predicted
+  print( cor.mat[i, 1]  <- cor(  actual.temp[actual.temp>0] ,  predicted.temp[actual.temp>0], method="spearman"))
+  # NOTE: Spearman means that the rank correlation is computed
+}
+
+actual.temp <-  E.y01.data  # Actual
+predicted.temp <-  with(as.list(params),
+    eval(parse(text=gsub("[.]", "", demand.eqns.nonlinear[[length(demand.eqns.nonlinear)]])))) # Predicted
+print( cor.mat[7, 1] <- cor(  actual.temp[actual.temp>0] ,  predicted.temp[actual.temp>0]))
+
+rownames(cor.mat) <- c("Fert", "Seed", "Tractor", "Plagicidas", "Hired labor", "Organic fert", "Cost function")
+colnames(cor.mat) <- "$\\rho$"
+cor.mat
+
+}
+
+
+########################
+###### EXTRACTION OF SHADOW PRICE PARAMETERS
+########################
+
+
+shadow.price.params.extracted <- function(params=GAMS.nonlinear.results.params.full) {
+
+  shadow.mat <- matrix(c(params[grepl("xi", names(params))], 1), ncol=1)
+  
+  rownames(shadow.mat) <- c("Fert", "Seed", "Tractor", "Plagicidas", "Hired labor", "Organic fert")
+  colnames(shadow.mat) <- "value"
+  
+  shadow.mat <- shadow.mat[order(shadow.mat[, 1]), 1, drop=FALSE]
+  
+  shadow.mat
+}
 
 
 
@@ -646,24 +920,6 @@ cost.elast.output.all.obs <- function(eval.point=combined.df[, "y01", drop=FALSE
 if (!exists("do.data.prep")) {do.data.prep <- FALSE}
 
 if (do.data.prep) {
-
-
-
-
-target.top.crop.number <- 1
-
-#Including zero cost:
-#Potatoes	4,058
-#Maize	3,440
-#Barley	2,048
-#Wheat	1,647
-#Fava Beans	1,484
-
-M <- 1
-N <- 6
-J <- 3
-# J <- 6
-
 
 
 

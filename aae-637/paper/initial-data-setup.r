@@ -92,6 +92,12 @@ for (i in 1:nrow(inputs.df)) {
 if (inputs.df[i, paste0(target.input, ".impute.level")] %in% "itself") {next}
 
 for (impute.level in impute.levels) {
+  
+  if (target.input=="x19.sem.comprada.bs.kg") {
+    seed.switcher <- inputs.df$x19.codigo==inputs.df$x19.codigo[i]
+  } else {
+    seed.switcher <- TRUE
+  }
 
   if (impute.level=="nation") { 
     imputed.data.ls[[i]] <- c(unname(nation.input.averages[target.input]), impute.level)
@@ -99,11 +105,13 @@ for (impute.level in impute.levels) {
   }
   
   if(impute.level=="household") {
-    impute.data <- inputs.df[ inputs.df$folio==i & 
-         inputs.df[, paste0(target.input, ".impute.level")] %in% "itself" , target.input]
+    impute.data <- inputs.df[ inputs.df$folio==inputs.df$folio[i] & 
+         inputs.df[, paste0(target.input, ".impute.level")] %in% "itself" &
+         seed.switcher , target.input]
   } else {
     impute.data <- inputs.df[ inputs.df[, impute.level] == inputs.df[i, impute.level] & 
-         inputs.df[, paste0(target.input, ".impute.level")] %in% "itself" , target.input]
+         inputs.df[, paste0(target.input, ".impute.level")] %in% "itself" &
+         seed.switcher, target.input]
   }
   
   if (impute.level=="household" && length(impute.data)>0  ) {
@@ -135,7 +143,7 @@ for (impute.level in impute.levels) {
   
 }
  
- cat(i, "\n")
+ cat(target.input, i, impute.level, "\n")
   
 }
 
@@ -236,7 +244,7 @@ for (impute.level in impute.levels) {
   }
   
   if(impute.level=="household") {
-    impute.data <- mano.obra.df[ mano.obra.df$folio==i & 
+    impute.data <- mano.obra.df[ mano.obra.df$folio==mano.obra.df$folio[i] & 
          mano.obra.df[, paste0(target.input, ".impute.level")] %in% "itself" , target.input]
   } else {
     impute.data <- mano.obra.df[ mano.obra.df[, impute.level] == mano.obra.df[i, impute.level] & 
@@ -312,6 +320,7 @@ summary(tractor.aggregate <- aggregate( x107.hrs.tractor ~ folio, data=tractor.d
 
 mano.obra.df <- merge( mano.obra.df, tractor.aggregate, all=TRUE)
 
+intersect(names(mano.obra.df), names(inputs.df))
 
 inputs.df <- merge(inputs.df, mano.obra.df[, !colnames(mano.obra.df) %in% c("zona.agroproductiva", 
   "factor.de.expansión", "departamento", "provincia.full", "seccion.full",  "canton.full", 
@@ -393,6 +402,7 @@ tractor.reshaped <- merge(tractor.reshaped, tractor.df[
 
 colnames(tractor.reshaped)[colnames(tractor.reshaped)=="x104.indique.el.número.de.jornales.u.hrs.tractor"] <- "nro"
 # ****
+# Ok, changing this to "nro" makes sense if you look at the survey text.
 
 tractor.reshaped[is.na(tractor.reshaped)] <- 0
 
@@ -409,6 +419,8 @@ table(inputs.df$x19.prepara.el.suelo )
 table(inputs.df$x19.siembra.planta  )
 table(inputs.df$x19.labores.culturales )
 table(inputs.df$x19.cosecha )
+
+intersect(names(tractor.reshaped), names(inputs.df))
 
 inputs.df <- merge(inputs.df, tractor.reshaped, all.x=TRUE)
 
@@ -520,9 +532,9 @@ for (impute.level in impute.levels) {
   
   
   if(impute.level=="household") {
-    impute.data <- inputs.df[ inputs.df$folio==i & 
+    impute.data <- inputs.df[ inputs.df$folio==inputs.df$folio[i] & 
          inputs.df[, paste0(target.input, ".impute.level")] %in% "itself" , target.input]
-    impute.data <- impute.data / inputs.df[ inputs.df$folio==i & 
+    impute.data <- impute.data / inputs.df[ inputs.df$folio==inputs.df$folio[i] & 
          inputs.df[, paste0(target.input, ".impute.level")] %in% "itself" , "x19.superficie.cultivada.hectareas"]
          
   } else {
@@ -619,18 +631,20 @@ table(is.na(inputs.df$x19.produccion.obtenidad.kg))
 nation.input.averages.tractor <- apply(inputs.df[, c("hourly.tractor.rental"), drop=FALSE], 2, FUN=function(x) median(x[x>0], na.rm=TRUE) )
 
 inputs.df$hourly.tractor.rental[is.na(inputs.df$hourly.tractor.rental)] <- nation.input.averages.tractor
-
+# Ok, so this has no effect, since all of them were imputed at a higher level
 
 for ( i in c("x19.fertilizante.cantidad.kg", "x19.sem.comprada.cantidad.kg", 
   "x19.abono.cantidad.kg", "x19.plagicidas.cantidad.kg", "tractor.hrs.final") ) {
- 
+  print(mean(is.na(inputs.df[, i])))
   inputs.df[ is.na(inputs.df[, i]) , i] <- 0
   
 }
 
+# inputs.df.save.2 <- inputs.df
+
 inputs.df <- inputs.df[inputs.df$x19.produccion.obtenidad.kg>0 &
   !is.na(inputs.df$x19.produccion.obtenidad.kg), ] 
-
+# This removes crop failures
 
 
 summary(inputs.df[, c("x19.fertilizante.bs.kg", "x19.sem.comprada.bs.kg", "x19.abono.bs.kg", 
@@ -1038,12 +1052,6 @@ inputs.df <- merge(inputs.df, rainfall.agg.df, all.x=TRUE)
 inputs.df$mean.ann.rain.5yr[is.na(inputs.df$mean.ann.rain.5yr)] <- mean.rainfall
 
 # inputs.df$elevation <- inputs.df$elevation/1000
-
-
-
-
-
-
 
 
 

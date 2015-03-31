@@ -658,6 +658,28 @@ ggsave(filename = paste0(output.path, "Rainbow region map.pdf"), plot = rainbow.
 
 #palette = "spectral"
 
+#Join PDF's:
+# http://gotofritz.net/blog/howto/joining-pdf-files-in-os-x-from-the-command-line/
+
+
+# Input in terminal: 
+cd '/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Descriptive plots/'
+"/System/Library/Automator/Combine PDF Pages.action/Contents/Resources/join.py" -o 'Fert crosstabs combined.pdf' *.pdf
+
+
+
+## END BIG PRODUCTION OF EXTENSIVE MARGIN PLOTS
+
+
+
+
+
+
+
+
+
+
+
 
 
 crop.prod.by.occupation <- aggregate(x19.produccion.obtenidad.kg ~  x12.su.ocupacion.principal.es.agropecuaria + which.crop  , 
@@ -899,14 +921,6 @@ prop.table(table(stacked.firm.df$x12.su.ocupacion.principal.es.agropecuaria))
 
 
 
-#Join PDF's:
-# http://gotofritz.net/blog/howto/joining-pdf-files-in-os-x-from-the-command-line/
-
-
-# Input in terminal: 
-cd '/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Descriptive plots/'
-"/System/Library/Automator/Combine PDF Pages.action/Contents/Resources/join.py" -o 'Fert crosstabs combined.pdf' *.pdf
-
 
 
 
@@ -925,6 +939,28 @@ summary(lm( y01 ~ (I(x01>0) + I(x02>0) + I(x03>0) + I(x04>0) + I(x05>0) + I(x06>
 ))
 
 
+
+
+
+# What proportion of land within each farm is under fertilizer use?
+
+prop.land.fert.use <- by(stacked.firm.df, INDICES=list(factor(stacked.firm.df$folio)), FUN= function(x) {
+  sum((x$x19.fertilizante.cantidad.kg>0)*x$x19.superficie.cultivada.hectareas)/sum(x$x19.superficie.cultivada.hectareas)
+  }
+)
+# use factor() to clean away any levels that don't appear in stacked.firm.df
+
+summary(prop.land.fert.use)
+hist(prop.land.fert.use)
+mean(prop.land.fert.use==0)
+mean(prop.land.fert.use==1)
+mean(prop.land.fert.use!=0 & prop.land.fert.use!=1)
+hist(prop.land.fert.use[prop.land.fert.use!=0 & prop.land.fert.use!=1])
+
+table.multi.plot.folio <- by(stacked.firm.df, INDICES=list(factor(stacked.firm.df$which.crop)), FUN= function(x) {
+  list(table(table(factor(x$folio))), round(100*prop.table(table(table(factor(x$folio))))))
+  }
+)
 
 
 
