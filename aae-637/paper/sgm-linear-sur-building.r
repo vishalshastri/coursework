@@ -144,18 +144,33 @@ if (replacements$greek[k]=="c" & J==1) {next}
 # ok the below is trying to reverse it:
 #symm.mat<-matrix(paste0(replacements$greek[k], ".", apply(X=expand.grid(lead.zero(1:max(N,M)), lead.zero(1:max(N,M))), MARGIN=1, FUN=paste, collapse=".")), nrow=max(N,M), ncol=max(N,M))
 
-symm.mat<-matrix(paste0(replacements$greek[k], ".", apply(X=expand.grid(lead.zero(1:N), lead.zero(1:N)), MARGIN=1, FUN=paste, collapse=".")), nrow=N, ncol=N)
+if (replacements$greek[k]=="s") {
 
-symm.mat[upper.tri(symm.mat, diag = FALSE)] <- t(symm.mat)[upper.tri(symm.mat, diag = FALSE)]
-symm.mat<-symm.mat[1:replacements$N[k], 1:replacements$M[k]]
+  symm.mat<-matrix(paste0(replacements$greek[k], ".", apply(X=expand.grid(lead.zero(1:N), lead.zero(1:N)), MARGIN=1, FUN=paste, collapse=".")), nrow=N, ncol=N)
+
+  symm.mat[upper.tri(symm.mat, diag = FALSE)] <- t(symm.mat)[upper.tri(symm.mat, diag = FALSE)]
+  symm.mat<-symm.mat[1:replacements$N[k], 1:replacements$M[k]]
 
 
-#expanded.greeks.grid <- expand.grid(lead.zero(1:max(N,M)), lead.zero(1:max(N,M)))
-expanded.greeks.grid <- expand.grid(lead.zero(1:N), lead.zero(1:N))
-expanded.greeks.grid <- data.frame(expanded.greeks.grid$Var2, expanded.greeks.grid$Var1)
+  #expanded.greeks.grid <- expand.grid(lead.zero(1:max(N,M)), lead.zero(1:max(N,M)))
+  expanded.greeks.grid <- expand.grid(lead.zero(1:N), lead.zero(1:N))
+  expanded.greeks.grid <- data.frame(expanded.greeks.grid$Var2, expanded.greeks.grid$Var1)
 
-#symm.mat.2<-matrix(paste0(replacements$greek[k], ".", apply(X=expanded.greeks.grid, MARGIN=1, FUN=paste, collapse=".")), nrow=max(N,M), ncol=max(N,M))
-symm.mat.2<-matrix(paste0(replacements$greek[k], ".", apply(X=expanded.greeks.grid, MARGIN=1, FUN=paste, collapse=".")), nrow=N, ncol=N)
+  symm.mat.2<-matrix(paste0(replacements$greek[k], ".", apply(X=expanded.greeks.grid, MARGIN=1, FUN=paste, collapse=".")), nrow=N, ncol=N)
+} else {
+  symm.mat<-matrix(paste0(replacements$greek[k], ".", apply(X=expand.grid(lead.zero(1:J), lead.zero(1:J)), MARGIN=1, FUN=paste, collapse=".")), nrow=J, ncol=J)
+
+  symm.mat[upper.tri(symm.mat, diag = FALSE)] <- t(symm.mat)[upper.tri(symm.mat, diag = FALSE)]
+  symm.mat<-symm.mat[1:replacements$N[k], 1:replacements$M[k]]
+
+  expanded.greeks.grid <- expand.grid(lead.zero(1:J), lead.zero(1:J))
+  
+  expanded.greeks.grid <- data.frame(expanded.greeks.grid$Var2, expanded.greeks.grid$Var1)
+
+  symm.mat.2<-matrix(paste0(replacements$greek[k], ".", apply(X=expanded.greeks.grid, MARGIN=1, FUN=paste, collapse=".")), nrow=J, ncol=J)
+  
+}
+
 
 symm.mat.2[upper.tri(symm.mat.2, diag = FALSE)] <- t(symm.mat.2)[upper.tri(symm.mat.2, diag = FALSE)]
 symm.mat.2<-symm.mat.2[1:replacements$N[k], 1:replacements$M[k]]

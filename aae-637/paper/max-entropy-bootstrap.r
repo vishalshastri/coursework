@@ -5,7 +5,7 @@
 
 
 
-target.top.crop.number <- 4
+target.top.crop.number <- 1
 
 #Including zero cost:
 #Potatoes	4,058
@@ -31,7 +31,7 @@ functional.form <- "SGM" # OR TRANSLOG
  synthetic.data <-FALSE
 if (!exists("global.max.seed")) { global.max.seed <- 0}
 do.SUR <- FALSE
-include.cost.fn <- TRUE
+include.cost.fn <- FALSE
 only.cost.fn <- TRUE
 generate.synth.data.from.cost.fn <- TRUE
 start.at.true.xi <- FALSE
@@ -44,11 +44,11 @@ concave.in.prices <- TRUE
 
 if (!synthetic.data) { 
   intended.seed <- 100 
-  start.nonlin.from.ignorance <- FALSE
+  start.nonlin.from.ignorance <- TRUE
 #  start.nonlin.from.ignorance <- TRUE
   global.max.seed <- 4
-  do.SUR <- TRUE
-  include.cost.fn <- TRUE
+  do.SUR <- FALSE
+  include.cost.fn <- FALSE
   only.cost.fn <- FALSE
   generate.synth.data.from.cost.fn <- FALSE
   start.at.true.xi <- FALSE
@@ -77,7 +77,7 @@ if (!synthetic.data) {
 #functional.form <- "TRANSLOG"
 
 if (functional.form =="SGM") {
-  include.censored.cost <- TRUE
+  include.censored.cost <- FALSE
 }
 
 price.trim.quantile <- 0.99
@@ -97,6 +97,8 @@ saved.workspace.path <- "/Users/travismcarthur/Desktop/Metrics (637)/Final paper
 
 saved.workspace.path <- "/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Rdata results files/saved workspace only inputsDF with soil and rain.Rdata"
 # with soil and rain and elevation
+
+saved.workspace.path <- "/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Rdata results files/saved workspace only inputsDF with soil and rain and no drive time and with mean imputation.Rdata"
 
 
 GAMS.projdir <-  "/Users/travismcarthur/Desktop/gamsdir/projdir2/"
@@ -231,7 +233,7 @@ time.counter <- c()
 bootstrap.iter <- 0
 
 
-
+file.flavor <- "mean-impute-no-cost-fn-no-SUR"
 
 
 
@@ -334,7 +336,7 @@ if (functional.form =="TRANSLOG") {
 run.linear.from.shell <-paste0("cd ", GAMS.projdir, "\n", 
    GAMS.exe.path, " ", 
    "GMElinear", strsplit(target.crop, " ")[[1]][1], 
-   formatC(bootstrap.iter, width = 5, flag = "0"), ".gms", 
+   formatC(bootstrap.iter, width = 5, flag = "0"), file.flavor , ".gms", 
    " Ps=0 suppress=1")
 }
 
@@ -342,7 +344,7 @@ if (functional.form =="SGM") {
 run.linear.from.shell <-paste0("cd ", GAMS.projdir, "\n", 
    GAMS.exe.path, " ", 
    "sgmGMElinear", strsplit(target.crop, " ")[[1]][1], 
-   formatC(bootstrap.iter, width = 5, flag = "0"), ".gms", 
+   formatC(bootstrap.iter, width = 5, flag = "0"), file.flavor , ".gms", 
    " Ps=0 suppress=1")
 }
 
@@ -372,7 +374,7 @@ if (functional.form =="TRANSLOG") {
 run.nonlinear.from.shell <-paste0("cd ", GAMS.projdir, "\n", 
    GAMS.exe.path, " ", 
    "GMEnonlinear", strsplit(target.crop, " ")[[1]][1], 
-   formatC(bootstrap.iter, width = 5, flag = "0"), ".gms", 
+   formatC(bootstrap.iter, width = 5, flag = "0"), file.flavor , ".gms", 
    " Ps=0 suppress=1")
 }
 
@@ -384,7 +386,7 @@ if (functional.form =="SGM") {
 run.nonlinear.from.shell <-paste0("cd ", GAMS.projdir, "\n", 
    GAMS.exe.path, " ", 
    "sgmGMEnonlinear", strsplit(target.crop, " ")[[1]][1], 
-   formatC(bootstrap.iter, width = 5, flag = "0"), ".gms", 
+   formatC(bootstrap.iter, width = 5, flag = "0"), file.flavor , ".gms", 
    " Ps=0 suppress=1")
 }
 

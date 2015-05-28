@@ -4,14 +4,18 @@
 
 
 
+# save.image(file="/Users/travismcarthur/Desktop/gamsdir/projdir2/R workspace before test of correction factor model.Rdata")
+# library("gdata")
+# library("stringr")
+# load(file="/Users/travismcarthur/Desktop/gamsdir/projdir2/R workspace right before test of correction factor model.Rdata")
+# lambda.param.support <- c(-100, 0, 100)
 
 
 
-
-##### START FOR NONLINEAR::::
-
+##### START FOR NONLINEAR with correction factor::::
 
 
+# For now assuming that the lambdas have a support with 3 support points
 
 
 #exists.vec <- Vectorize( exists)
@@ -21,7 +25,8 @@
 # J <- 3
 
 combined.df <- data.frame(mget(c("y01", paste0("x", lead.zero(1:N)), 
-  paste0("w", lead.zero(1:N)),  paste0("q", lead.zero(1:J)) )))
+  paste0("w", lead.zero(1:N)),  paste0("q", lead.zero(1:(J-1))),  # NOTE THE (J-1) HERE
+  paste0("RInd", lead.zero(1:nalts)), paste0("P", lead.zero(1:nalts)) )))
   
 # TRANSLOG region.matrix.df <-   as.data.frame(region.matrix)
 
@@ -99,19 +104,19 @@ if ( !only.cost.fn) {
 # combined.df <- scale(combined.df, center=FALSE)
 # This was bad bad
 
-combined.df
+# combined.df
 
 
 top.before.data <- c(
 "sets ",
 paste0("  t number of observations  / 1 * ", nrow(combined.df), " /"),
 paste0("  d number of variables in datafile  / 1 * ", ncol(combined.df), " /"),
-paste0("  ss dimension of S matrix / 1 * ", N-1, "/"),
-paste0("  sss second dimension of S matrix / 1 * ", N-1, "/"),
+paste0("  ssR", lead.zero(1:nalts), " dimension of S matrix / 1 * ", N-1, "/"),
+paste0("  sssR", lead.zero(1:nalts), " second dimension of S matrix / 1 * ", N-1, "/"),
 paste0("  cc dimension of C matrix / 1 * ", J, "/"),
 paste0("  ccc second dimension of C matrix / 1 * ", J, "/"),
-"  m number of points in interval z / 1 * ", length(other.param.support), "/",
-"  h number of points in interval z / 1 * ", length(xi.param.support), "/",
+paste0("  m number of points in interval z / 1 * ", length(other.param.support), "/"),
+paste0("  h number of points in interval z / 1 * ", length(xi.param.support), "/"),
 "  j number of points in interval v / 1 * 3 /;",
 "",
 #"alias (s, ss);",
@@ -142,10 +147,12 @@ top.before.data <- c(top.before.data,
   "  MM              number of points in support",
   "  JJ              number of points in support",
   "  HH              number of points in xi support",
+  "  LL              number of points in lambda support",
   ";",
   "",
-  "MM=", length(other.param.support), ";",
-  "HH=", length(xi.param.support), ";",
+  paste0("MM=", length(other.param.support), ";"),
+  paste0("HH=", length(xi.param.support), ";"),
+  paste0("LL=", length(lambda.param.support), ";"),
   "JJ=3;",
   paste0("xi", lead.zero(N), "=1;"),
   #   paste0("xi", lead.zero(N), "=0;"),
@@ -196,6 +203,10 @@ param.support.simple.lines <- c( # Eliminated theta here
 "parameter zxi(h)    support points",
 "/",
 paste0(1:length(xi.param.support), "  ", xi.param.support),
+"/;", 
+"parameter zlambda(m)    support points",
+"/",
+paste0(1:length(lambda.param.support), "  ", lambda.param.support),
 "/;",
 "parameter zother(m)    support points",
 "/",
@@ -247,8 +258,8 @@ for ( i in 1:length(demand.eqns))  {
 
 # all.params <- gsub("[.]", "", names(ln.E.start.vals)[!grepl("region", names(ln.E.start.vals))] )
 
-all.params <- unique(unlist(str_extract_all(unlist(demand.eqns.nonlinear), 
-"(xi.[0-9][0-9])|(s.[0-9][0-9].[0-9][0-9])|(b.y.[0-9][0-9])|(b.[0-9][0-9])|(b.y.y)|(d.[0-9][0-9].[0-9][0-9])|(c.[0-9][0-9] )|(c.[0-9][0-9].[0-9][0-9])"
+all.params <- unique(unlist(str_extract_all(unlist(demand.eqns.alt), 
+"(lambda[0-9][0-9])|(xi.[0-9][0-9])|(s.[0-9][0-9].[0-9][0-9]R[0-9][0-9])|(b.y.[0-9][0-9]R[0-9][0-9])|(b.[0-9][0-9]R[0-9][0-9])|(b.y.yR[0-9][0-9])|(d.[0-9][0-9].[0-9][0-9]R[0-9][0-9])|(c.[0-9][0-9]R[0-9][0-9] )|(c.[0-9][0-9].[0-9][0-9]R[0-9][0-9])"
   ))
 )
 
@@ -259,7 +270,7 @@ all.params <- gsub("([.])|( )", "", all.params)
 
 non.theta.param.support.lines <- c() 
 
-for ( i in all.params[!grepl("xi", all.params)] ) {
+for ( i in all.params[!grepl("(xi)|(lambda)", all.params)] ) {
 
   non.theta.param.support.lines <- c(non.theta.param.support.lines, 
   paste0("parameter z", i, "(m)  support space for params;"),
@@ -267,6 +278,19 @@ for ( i in all.params[!grepl("xi", all.params)] ) {
   )
   
 }
+
+
+for ( i in all.params[grepl("lambda", all.params)] ) {
+
+  non.theta.param.support.lines <- c(non.theta.param.support.lines, 
+  paste0("parameter z", i, "(m)  support space for params;"),
+  paste0("z", i, "(m) = zlambda(m);")
+  )
+  
+}
+
+
+
 
 xi.param.support.lines <- c() 
 
@@ -298,7 +322,7 @@ for ( i in all.params[grepl("xi", all.params)] ) {
 
 
 # TRANSLOG all.eqns <- c("cost", paste0("s", 1:length(S.n)))
-all.eqns <- paste0("dem", 1:length(demand.eqns.nonlinear))
+all.eqns <- paste0("dem", 1:length(demand.eqns.alt))
 
 
 
@@ -316,10 +340,15 @@ cov.var.declarations <- paste0("  ", cov.var.declarations,  "    SUR covar param
 if (!do.SUR) { cov.var.declarations <- c() }
 
 
+
+
+
+
+
 variable.declaration.lines <- c("variables",
   paste0("  ", all.params, "   parameters to be estimated"),
-  "  Smat(ss,sss)   S matrix to make cost function concave",
-  "  SmatT(sss,ss)   transpose of S matrix to make cost function concave",
+  paste0("SmatR", lead.zero(1:nalts), "(ssR", lead.zero(1:nalts), ",", "sssR", lead.zero(1:nalts), ") S matrix to make cost function concave" ),
+  paste0("SmatTR", lead.zero(1:nalts), "(sssR", lead.zero(1:nalts), ",", "ssR", lead.zero(1:nalts), ") S matrix to make cost function concave" ),
 ifelse(convex.in.f.inputs,  "  Cmat(cc,ccc)   C matrix to make cost function convex in fixed inputs", ""),
 ifelse(convex.in.f.inputs,  "  CmatT(ccc,cc)   transpose of C matrix to make cost function convex in fixed inputs", ""),
 #  "  errorrelax(t) small value to accomodate the zero error adding up restriction",
@@ -332,7 +361,7 @@ ifelse(convex.in.f.inputs,  "  CmatT(ccc,cc)   transpose of C matrix to make cos
   "  g           gme objective value",
   "",
   "positive variable",
-  paste0("  p", all.params[!grepl("xi", all.params)], "(m)"),
+  paste0("  p", all.params[!grepl("xi", all.params)], "(m)"), # Lambda filters down in this line
   paste0("  p", all.params[grepl("xi", all.params)], "(h)"),
   paste0("  w", all.eqns, "(t,j)"),
 #  paste0("  ", all.params[grepl("theta", all.params)], "   parameters to be estimated"),
@@ -394,7 +423,10 @@ objective.fn.lines[1] <- paste0( "object..           g =e= ", objective.fn.lines
 
 model.restrictions <- list()
 
-GAMS.demand.eqns.nonlinear <- lapply(demand.eqns.nonlinear, FUN=add.data.subscripts)
+
+add.data.subscripts
+
+GAMS.demand.eqns.nonlinear <- lapply(demand.eqns.alt, FUN=add.data.subscripts)
 
 GAMS.demand.eqns.nonlinear <- lapply(GAMS.demand.eqns.nonlinear, FUN=function(x) gsub(pattern="[.]", replacement="", x=x))
 GAMS.demand.eqns.nonlinear <- lapply(GAMS.demand.eqns.nonlinear, FUN=function(x) gsub(pattern="[{^]", replacement="**", x=x))
@@ -593,7 +625,7 @@ cov.rest.declarations  <- cov.rest.declarations[cov.rest.declarations != ""]
 if (!do.SUR) { cov.rest.declarations <- c() }
 
 
-double.s.params<- unique(unlist(str_extract_all(gsub("[.]", "", unlist(demand.eqns)), "s[0-9]{4}")))
+double.s.params<- unique(unlist(str_extract_all(gsub("[.]", "", unlist(demand.eqns.alt)), "s[0-9]{4}R[0-9]{2}")))
 
 double.s.indices <- str_extract_all(double.s.params, "[0-9]{2}")
 
@@ -603,9 +635,12 @@ for ( i in 1:length(double.s.indices)) {
 
  first.ind <- as.numeric(double.s.indices[[i]][1])
  second.ind <- as.numeric(double.s.indices[[i]][2])
+ third.ind <- as.numeric(double.s.indices[[i]][3])
+ # Third index is the regime
 
-  concave.restriction.defn <- c(concave.restriction.defn,  paste0( "restrconcave", double.s.params[i], "..      ", double.s.params[i], " =e= - sum(sss, Smat(\"", 
-  first.ind - 1, "\",sss)*SmatT(sss,\"", second.ind - 1, "\"));") )
+  concave.restriction.defn <- c(concave.restriction.defn,  paste0( "restrconcave", double.s.params[i], "..      ", double.s.params[i], " =e= - sum(sssR", lead.zero(third.ind), ", SmatR", lead.zero(third.ind), "(\"", 
+  first.ind - 1, "\",sssR", lead.zero(third.ind), ")*SmatTR", lead.zero(third.ind), "(sssR", 
+  lead.zero(third.ind), ",\"", second.ind - 1, "\"));") )
   
 #    concave.restriction.defn <- c(concave.restriction.defn,  paste0( 
 #    "restrconcavelowertrinonzero", 
@@ -616,34 +651,40 @@ for ( i in 1:length(double.s.indices)) {
   if (first.ind==second.ind) {next}
   # since we don't want to zero out the diagonal elements
     
-  concave.restriction.defn <- c(concave.restriction.defn,  paste0( "restrconcavelowertri", 
-  first.ind, second.ind, "..      ", 0, " =e= Smat(\"", 
+  concave.restriction.defn <- c(concave.restriction.defn,  paste0( "restrconcavelowertriR", lead.zero(third.ind), 
+  first.ind, second.ind, "..      ", 0, " =e= SmatR", lead.zero(third.ind), "(\"", 
   first.ind - 1, "\",", "\"", second.ind - 1, "\");")) 
   
 }
 
-concave.restriction.declare <- c()
+#concave.restriction.declare <- c()
 
-for ( i in 1:length(double.s.indices)) {
-  concave.restriction.declare <- c(concave.restriction.declare, 
-    paste0( "restrconcave", double.s.params[i]))
+#for ( i in 1:length(double.s.indices)) {
+#  concave.restriction.declare <- c(concave.restriction.declare, 
+#    paste0( "restrconcave", double.s.params[i]))
     
-   first.ind <- as.numeric(double.s.indices[[i]][1])
-   second.ind <- as.numeric(double.s.indices[[i]][2])
+#   first.ind <- as.numeric(double.s.indices[[i]][1])
+#   second.ind <- as.numeric(double.s.indices[[i]][2])
    
 #   concave.restriction.declare <- c(concave.restriction.declare, 
 #    paste0( "restrconcavelowertrinonzero", second.ind, first.ind))
 
-  if (first.ind==second.ind) {next}
+#  if (first.ind==second.ind) {next}
   
-  concave.restriction.declare <- c(concave.restriction.declare, 
-    paste0( "restrconcavelowertri", first.ind, second.ind))
+#  concave.restriction.declare <- c(concave.restriction.declare, 
+#    paste0( "restrconcavelowertri", first.ind, second.ind))
     
-}
+#}
 
-Smat.transpose.restriction.defn <- "restrSmattrans(ss,sss).. Smat(ss,sss) =e= SmatT(sss,ss);"
+concave.restriction.declare <- gsub("[.].*", "", concave.restriction.defn)
 
-Smat.transpose.restriction.declare <- "restrSmattrans"
+
+Smat.transpose.restriction.defn <- paste0(
+  "restrSmattransR", lead.zero(1:nalts), "(ssR", lead.zero(1:nalts), ",sssR", lead.zero(1:nalts), 
+  ").. SmatR", lead.zero(1:nalts), "(ssR", lead.zero(1:nalts), ",sssR", lead.zero(1:nalts),
+  ") =e= SmatTR", lead.zero(1:nalts), "(sssR", lead.zero(1:nalts), ",ssR", lead.zero(1:nalts), ");" )
+
+Smat.transpose.restriction.declare <- paste0( "restrSmattransR", lead.zero(1:nalts))
 
 
 
@@ -730,14 +771,11 @@ Cmat.transpose.restriction.declare <- "restrCmattrans"
 
 
 
-
-
-
-
 if (!convex.in.f.inputs) {
   convex.restriction.declare <- ""
   Cmat.transpose.restriction.declare <- ""
 }
+# NOTE: Right now code will not work if we try to do convex in fixed inputs
 
 
 equation.declarations <- c(
@@ -770,67 +808,93 @@ equation.declarations <- c(
 library("stringr")
 
 
-GAMS.linear.results<- readLines(paste0(GAMS.projdir, "sgmGMElinear", strsplit(target.crop, " ")[[1]][1], 
-   formatC(bootstrap.iter, width = 5, flag = "0"), file.flavor , ".lst"))
+GAMS.nonlinear.results<- readLines(paste0(GAMS.projdir, "sgmGMEnonlinear", strsplit(target.crop, " ")[[1]][1], 
+   formatC(bootstrap.iter, width = 5, flag = "0"), file.flavor, ".lst"))
 
 
-GAMS.linear.results <- GAMS.linear.results[
-  -(1:grep("S O L V E      S U M M A R Y", GAMS.linear.results)) ]
+GAMS.nonlinear.results <- GAMS.nonlinear.results[
+  -(1:grep("S O L V E      S U M M A R Y", GAMS.nonlinear.results)) ]
   
-# GAMS.linear.results <- gsub("(^1)|(   2 )|(   3 )", "", GAMS.linear.results)
+# GAMS.nonlinear.results <- gsub("(^1)|(   2 )|(   3 )", "", GAMS.nonlinear.results)
 
-param.gather.regex<- paste0("(^1)|", paste0("(   ", 2:length(other.param.support), " )", collapse="|"))
+param.gather.regex<- paste0("(^1)|", paste0("(   ", 2:length(xi.param.support), " )", collapse="|"))
+# Get xi.param.support since it is the longest
 
-GAMS.linear.results <- gsub(param.gather.regex, "", GAMS.linear.results)
+GAMS.nonlinear.results <- gsub(param.gather.regex, "", GAMS.nonlinear.results)
 
-GAMS.linear.results.extracted <- str_extract(GAMS.linear.results, " p.*[.]L")
+GAMS.nonlinear.results.extracted <- str_extract(GAMS.nonlinear.results, " p.*[.]L")
 
-prob.names <- GAMS.linear.results.extracted[!is.na(GAMS.linear.results.extracted)]
+prob.names <- GAMS.nonlinear.results.extracted[!is.na(GAMS.nonlinear.results.extracted)]
 
-prob.numbers <- GAMS.linear.results[which(!is.na(GAMS.linear.results.extracted)) + 2]
+prob.names <- paste0(gsub("[.]L", "", prob.names), "R", rep(lead.zero(1:nalts), each=length(prob.names)), ".L")  
+
+prob.numbers <- GAMS.nonlinear.results[which(!is.na(GAMS.nonlinear.results.extracted)) + 2]
+
+prob.numbers <- rep(prob.numbers, nalts)
 
 set.seed(100)
-start.vals.lines <- paste0("xi", lead.zero(1:(N-1)), ".l = 1;")
+start.vals.lines <- paste0("lambda", lead.zero(1:nalts), ".l = 0;")
 # start.vals.lines <- paste0("xi", lead.zero(1:(N-1)), ".l = ", jitter(1), ";")
 # start.vals.lines <- paste0("xi", lead.zero(1:(N-1)), ".l = 0;")
 # added this to have correct (non-zero) starting vals for theta
 
-if ( start.at.true.xi ) {
-  start.vals.lines <- paste0("xi", lead.zero(1:(N-1)), ".l = ", 
-    synthetic.params[grepl("xi", names(synthetic.params)) ][-N], ";")
-}
+#if ( start.at.true.xi ) {
+#  start.vals.lines <- paste0("xi", lead.zero(1:(N-1)), ".l = ", 
+#    synthetic.params[grepl("xi", names(synthetic.params)) ][-N], ";")
+#}
 
 
 for ( i in 1:length(prob.names)) {
 
+  extracted.start.vals <- strsplit(prob.numbers[i], ",")[[1]]
+
   start.vals.lines <- c( start.vals.lines, 
-    paste0( prob.names[i], "(\"", 1:length(other.param.support), "\") = ",  
-      strsplit(prob.numbers[i], ",")[[1]], ";")
+    paste0( prob.names[i], "(\"", 1:length(extracted.start.vals), "\") = ",  
+      extracted.start.vals, ";")
   )
 
 }
 
 
-GAMS.linear.results<- readLines(paste0(GAMS.projdir, "sgmGMElinear", strsplit(target.crop, " ")[[1]][1], 
-   formatC(bootstrap.iter, width = 5, flag = "0"), file.flavor , ".lst"))
 
-# GAMS.linear.results<-readLines("/Users/travismcarthur/Desktop/Dropbox/entropytestlinear.lst")
+xi.p.delete.ind <- grep("xi",  start.vals.lines)
+start.vals.lines <- start.vals.lines[ - xi.p.delete.ind[1:(length(xi.p.delete.ind)/2)] ] 
 
-#GAMS.linear.results <- GAMS.linear.results[
-#  -(1:grep("S O L V E      S U M M A R Y", GAMS.linear.results)) ]
 
-begin.err.weight <- grep("L  probability corresponding error term", GAMS.linear.results)
-end.err.weight  <- grep(paste0("^", nrow(combined.df), " "), GAMS.linear.results)
+
+# Pretty hacky, below:
+for ( targ.p.xi in 1:N) {
+  start.vals.lines <- 
+    gsub(paste0("pxi", lead.zero(targ.p.xi), "R[0-9][0-9]"), paste0("pxi", lead.zero(targ.p.xi)),  start.vals.lines)
+}
+
+
+
+
+
+
+GAMS.nonlinear.results<- readLines(paste0(GAMS.projdir, "sgmGMEnonlinear", strsplit(target.crop, " ")[[1]][1], 
+   formatC(bootstrap.iter, width = 5, flag = "0"), file.flavor, ".lst"))
+
+# GAMS.nonlinear.results<-readLines("/Users/travismcarthur/Desktop/Dropbox/entropytestlinear.lst")
+
+#GAMS.nonlinear.results <- GAMS.nonlinear.results[
+#  -(1:grep("S O L V E      S U M M A R Y", GAMS.nonlinear.results)) ]
+
+begin.err.weight <- grep("L  probability corresponding error term", GAMS.nonlinear.results)
+end.err.weight  <- grep(paste0("^", nrow(combined.df), " "), GAMS.nonlinear.results)
 
 error.weights.lines <- c()
+
+
 
 
 if ( !start.nonlin.from.ignorance) {
 
 for ( i in 1:length(all.eqns) ) {
   
-  err.weight.temp.df <- read.table( paste0(GAMS.projdir, "sgmGMElinear", strsplit(target.crop, " ")[[1]][1], 
-   formatC(bootstrap.iter, width = 5, flag = "0"), file.flavor ,  ".lst"), 
+  err.weight.temp.df <- read.table( paste0(GAMS.projdir, "sgmGMEnonlinear", strsplit(target.crop, " ")[[1]][1], 
+   formatC(bootstrap.iter, width = 5, flag = "0"), file.flavor, ".lst"), 
     skip = begin.err.weight[i] + 3,  nrows= nrow(combined.df))
 
   err.weight.temp.df <- err.weight.temp.df[, -1 ]
@@ -875,10 +939,10 @@ for ( i in 1:length(all.eqns) ) {
 #  paste0("ptheta", lead.zero(1:(N-1)), ".l(\"3\") = 1.e-6;")
 #  )
 
-xi.weight.grid<- expand.grid(1:(N-1), 1:length(xi.param.support))
+#xi.weight.grid<- expand.grid(1:(N-1), 1:length(xi.param.support))
 
-xi.weight.lines <-  paste0("pxi", lead.zero(xi.weight.grid[,1]), ".l(\"", xi.weight.grid[,2], 
-  "\") = 1/", length(xi.param.support),";")
+#xi.weight.lines <-  paste0("pxi", lead.zero(xi.weight.grid[,1]), ".l(\"", xi.weight.grid[,2], 
+#  "\") = 1/", length(xi.param.support),";")
 
 if ( start.at.true.xi ) {
 
@@ -936,43 +1000,13 @@ for ( i in 1:(N-1) ) {
 
 
 
-GAMS.linear.results<- readLines(paste0(GAMS.projdir, "sgmGMElinear", strsplit(target.crop, " ")[[1]][1], 
-   formatC(bootstrap.iter, width = 5, flag = "0"), file.flavor , ".lst"))
-
-
-GAMS.linear.results.params<- GAMS.linear.results[grep("(parameters to be estimated$)|(SUR covar parameter$)", GAMS.linear.results)]
-
-GAMS.linear.results.params <- GAMS.linear.results.params[grep("VARIABLE", GAMS.linear.results.params)]
-
-GAMS.linear.results.params.names <- gsub("[.]L", "", str_extract(GAMS.linear.results.params, "[^ ]*[.]L") )
-
-
-GAMS.linear.results.params.numbers <- as.numeric(gsub("(  parameters to be estimated)|(  SUR covar parameter)", "",
-  str_extract(GAMS.linear.results.params, "([^ ]*  parameters to be estimated)|([^ ]*  SUR covar parameter)") ) )
-  
-  
-combined.w.params.df <- as.list(as.data.frame(combined.df))
-
-for ( i in 1:length(GAMS.linear.results.params.names)) {
-  combined.w.params.df[[ GAMS.linear.results.params.names[i] ]] <- GAMS.linear.results.params.numbers[i]
-}
-
-for ( i in 1:N) {
-  combined.w.params.df[[ paste0("xi", lead.zero(i)) ]] <- 1
-}
-
-
-
-
-
-
 
 
 Smat.start.vals.mat <- read.fwf( 
-  file=paste0(GAMS.projdir, "sgmGMElinear", strsplit(target.crop, " ")[[1]][1], 
-   formatC(bootstrap.iter, width = 5, flag = "0"), file.flavor , ".lst"), 
+  file=paste0(GAMS.projdir, "sgmGMEnonlinear", strsplit(target.crop, " ")[[1]][1], 
+   formatC(bootstrap.iter, width = 5, flag = "0"), file.flavor, ".lst"), 
    widths=c(2, rep(12, N-1) ),
-    skip = (grep("VARIABLE Smat.L", GAMS.linear.results)+3),  
+    skip = (grep("VARIABLE Smat.L", GAMS.nonlinear.results)+3),  
     nrows= N-1)
     
 
@@ -988,19 +1022,21 @@ Smat.initiation.v[is.na(Smat.initiation.v)] <- 0
 Smat.initiation.v <- c(Smat.initiation.v)
 
 if ( any(grepl("(Cmat)|(TIME)", gsub(" ", "", Smat.initiation.v)))) { Smat.initiation.v <- 0 }
-# This is to deal with cse when whole matrix is zeroes
+# This is to deal with case when whole matrix is zeroes
 
 Smat.initiation.grid <- expand.grid(1:(N-1), 1:(N-1))
 
-Smat.initial.values <- paste0("Smat.L(\"", Smat.initiation.grid[, 1], "\",\"", Smat.initiation.grid[, 2], "\") =  ", Smat.initiation.v, ";")
+Smat.initial.values <- paste0("SmatR", rep(lead.zero(1:nalts), each=length(Smat.initiation.v)), ".L(\"", Smat.initiation.grid[, 1], "\",\"", Smat.initiation.grid[, 2], "\") =  ", Smat.initiation.v, ";")
+
+
 
 if(convex.in.f.inputs) {
 
 Cmat.start.vals.mat <- read.fwf( 
-  file=paste0(GAMS.projdir, "sgmGMElinear", strsplit(target.crop, " ")[[1]][1], 
-   formatC(bootstrap.iter, width = 5, flag = "0"), file.flavor , ".lst"), 
+  file=paste0(GAMS.projdir, "sgmGMEnonlinear", strsplit(target.crop, " ")[[1]][1], 
+   formatC(bootstrap.iter, width = 5, flag = "0"), file.flavor, ".lst"), 
    widths=c(2, rep(12, J) ),
-    skip = (grep("VARIABLE Cmat.L", GAMS.linear.results)+3),  
+    skip = (grep("VARIABLE Cmat.L", GAMS.nonlinear.results)+3),  
     nrows= J)
     
 Cmat.start.vals.mat <- as.matrix(Cmat.start.vals.mat[, -1])
@@ -1021,14 +1057,15 @@ Cmat.initial.values <- paste0("Cmat.L(\"", Cmat.initiation.grid[, 1], "\",\"", C
 } else {
   Cmat.initial.values <- ""
 }
+# Again, the convex in fixed input code won't work as of now
 
 
 
 
 # TRANSLOG combined.w.params.df <- as.list(as.data.frame(combined.df))
 
-# TRANSLOG for ( i in 1:length(GAMS.linear.results.params.names)) {
-# TRANSLOG   combined.w.params.df[[ GAMS.linear.results.params.names[i] ]] <- GAMS.linear.results.params.numbers[i]
+# TRANSLOG for ( i in 1:length(GAMS.nonlinear.results.params.names)) {
+# TRANSLOG   combined.w.params.df[[ GAMS.nonlinear.results.params.names[i] ]] <- GAMS.nonlinear.results.params.numbers[i]
 # TRANSLOG }
 
 # TRANSLOG for ( i in 1:N) {
@@ -1079,11 +1116,67 @@ Cmat.initial.values <- paste0("Cmat.L(\"", Cmat.initiation.grid[, 1], "\",\"", C
 
 
 
-param.starting.vals <- paste0(GAMS.linear.results.params.names, ".l = ", GAMS.linear.results.params.numbers, ";")
+
+
+GAMS.nonlinear.results<- readLines(paste0(GAMS.projdir, "sgmGMEnonlinear", strsplit(target.crop, " ")[[1]][1], 
+   formatC(bootstrap.iter, width = 5, flag = "0"), file.flavor, ".lst"))
+
+
+GAMS.nonlinear.results.params<- GAMS.nonlinear.results[grep("(parameters to be estimated$)|(SUR covar parameter$)", GAMS.nonlinear.results)]
+
+GAMS.nonlinear.results.params <- GAMS.nonlinear.results.params[grep("VARIABLE", GAMS.nonlinear.results.params)]
+
+GAMS.nonlinear.results.params.names <- gsub("[.]L", "", str_extract(GAMS.nonlinear.results.params, "[^ ]*[.]L") )
+
+
+GAMS.nonlinear.results.params.numbers <- as.numeric(gsub("(  parameters to be estimated)|(  SUR covar parameter)", "",
+  str_extract(GAMS.nonlinear.results.params, "([^ ]*  parameters to be estimated)|([^ ]*  SUR covar parameter)") ) )
+  
+  
+combined.w.params.df <- as.list(as.data.frame(combined.df))
+
+for ( i in 1:length(GAMS.nonlinear.results.params.names)) {
+  combined.w.params.df[[ GAMS.nonlinear.results.params.names[i] ]] <- GAMS.nonlinear.results.params.numbers[i]
+}
+
+# This part above seems not to really do anything
+
+#for ( i in 1:N) {
+#  combined.w.params.df[[ paste0("xi", lead.zero(i)) ]] <- 1
+#}
 
 
 
-if ( start.nonlin.from.ignorance) {
+
+
+
+
+
+
+GAMS.nonlinear.results.params.names <- paste0(GAMS.nonlinear.results.params.names, 
+  rep(paste0("R", lead.zero(1:nalts)), each=length(GAMS.nonlinear.results.params.names) ) )
+  
+#GAMS.nonlinear.results.params.names <- c(
+#  GAMS.nonlinear.results.params.names[!grepl("(surdelta)|(xi)", GAMS.nonlinear.results.params.names)],
+#  unique(gsub("R.*", "", GAMS.nonlinear.results.params.names[grepl("(surdelta)|(xi)", GAMS.nonlinear.results.params.names)] ) )
+#  )
+  
+# paste0(letters[1:4],   rep(paste0("R", lead.zero(1:nalts)), each=length(letters[1:4]) ) ) 
+# it works
+
+param.starting.vals <- paste0(GAMS.nonlinear.results.params.names, ".l = ", GAMS.nonlinear.results.params.numbers, ";")
+# CAUTION: we are using vector recycling here
+
+ind.to.delete <- grep("(surdelta[0-9][0-9]R[0-9][0-9])|(xi[0-9][0-9]R[0-9][0-9])", param.starting.vals)
+
+param.starting.vals[ind.to.delete] <- gsub("R[0-9][0-9]", "", param.starting.vals[ind.to.delete])
+
+param.starting.vals <- param.starting.vals[ - ind.to.delete[1:(length(ind.to.delete)/2)]]
+
+
+
+if ( FALSE) {
+# Above was previously start.nonlin.from.ignorance
 
 
 
@@ -1277,7 +1370,7 @@ for ( i in 1:length(all.eqns) ) {
   assign(paste0("xi", lead.zero(N)), 1)
 
   rhs.to.set.error.term    <- with(as.list(chosen.global.search.params) ,
-      eval(parse(text=gsub("[.]", "", demand.eqns.nonlinear[[i]])))) 
+      eval(parse(text=gsub("[.]", "", demand.eqns.alt[[i]])))) 
       
   err.term.maxed.ent.ls <- vector("list", length(rhs.to.set.error.term))
   
@@ -1405,6 +1498,25 @@ if (!convex.in.f.inputs) {
   Cmat.initial.values <- ""
 }
 
+missing.param.start <- c()
+
+for ( targ.missing.param in all.params) {
+  if ( ! any(grepl(targ.missing.param, param.starting.vals)) ) {
+    missing.param.start <- c(missing.param.start, targ.missing.param)
+  }
+}
+ 
+param.starting.vals <- c(param.starting.vals,
+  paste0("  p", missing.param.start, ".l(m) = 1/MM;") 
+)
+# NOTE: we are not putting the LL special param support for lambda params here
+
+param.starting.vals <- c(param.starting.vals,
+  paste0("  ", missing.param.start, ".l = 0;") 
+)
+
+
+
 final.lines <- 
 c(
 "*Initial conditions",
@@ -1475,7 +1587,7 @@ parameter.display.lines <- c( paste0("display ", all.params, ".l;"),
   paste0("display p", all.params, ".l;"),
   paste0("display w", all.eqns, ".l;"),
   cov.var.display,
-  paste0("display Smat.l"),
+  paste0("display SmatR", lead.zero(1:nalts), ".l"),
 ifelse(convex.in.f.inputs,  paste0("display Cmat.l"), "")
 #  paste0("display errorrelax.l")
   )
@@ -1520,8 +1632,8 @@ completed.GAMS.file <-  c(
 
   
 cat(completed.GAMS.file, 
-  file=paste0(GAMS.projdir, "sgmGMEnonlinear", strsplit(target.crop, " ")[[1]][1], 
-   formatC(bootstrap.iter, width = 5, flag = "0"), file.flavor , ".gms"), 
+  file=paste0(GAMS.projdir, "sgmGMEnonlinearRegimes", strsplit(target.crop, " ")[[1]][1], 
+   formatC(bootstrap.iter, width = 5, flag = "0"), file.flavor, ".gms"), 
   sep="\n")
   
 # rvhess = maxdouble

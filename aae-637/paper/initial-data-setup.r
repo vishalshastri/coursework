@@ -37,13 +37,23 @@ for ( i in grep("obtenidad.quintal", colnames(inputs.df)) ) {
 # p. 18 of ftp://ftp.fao.org/docrep/fao/010/ah868e/ah868e00.pdf
 # "One Bolivian arroba is equivalent to 11.5 kg"
 # "One Bolivian quintal is equivalent to 46 kg"
+# Also here: http://sizes.com/units/quintal.htm
 
 for ( i in grep("bs.quintal", colnames(inputs.df)) ) {
   inputs.df[, gsub("bs.quintal", "bs.kg", colnames(inputs.df)[i]) ] <- inputs.df[, i] / 46
 }
 # Reciprocal since data is is Bolivianos per quintals
 
+# Use below for Amelia
+#for ( i in grep("bs.quintal", colnames(inputs.df)) ) {
+#  inputs.df[, gsub("bs.quintal", "bs.kg", colnames(inputs.df)[i]) ][ 
+#  inputs.df[, gsub("bs.quintal", "bs.kg", colnames(inputs.df)[i]) ]==0] <- NA
+#}
 
+#nominal.vars <- names(inputs.df)[sapply(inputs.df, FUN=function(x) is.character(x) | is.factor(x))]
+
+#a.out <- amelia(inputs.df, m = 1, noms = nominal.vars, incheck=FALSE, p2s=2)
+# Thanks to https://lists.gking.harvard.edu/pipermail/amelia/2015-January/001128.html
 
 
 
@@ -71,9 +81,186 @@ library("compiler")
 enableJIT(3)
 
 
+impute.levels <- c("household", "segmento.full", "sector.full", "canton.full", "seccion.full", "provincia.full", "departamento", "nation")
+
 input.price.columns <- c("x19.fertilizante.bs.kg", "x19.sem.comprada.bs.kg", "x19.abono.bs.kg", "x19.plagicidas.bs.kg")
 
-nation.input.averages <- apply(inputs.df[, input.price.columns], 2, FUN=function(x) median(x[x>0], na.rm=TRUE) )
+geog.split.ls <- list()
+
+for ( target.input in input.price.columns) {
+  list.temp <- list()
+  for (i in impute.levels) {
+    inputs.df[, paste0(target.input, ".impute.level")] <- NA
+    inputs.df[inputs.df[, target.input]!=0, paste0(target.input, ".impute.level")] <- "itself"
+    
+    if ( i=="household") { split.level <- "folio"} else { split.level <- i}
+    if (i=="nation") {geog.split.ls[[i]] <- inputs.df; next}
+    
+    inputs.for.split <- inputs.df[ inputs.df[, paste0(target.input, ".impute.level")] %in% "itself", 
+      c(split.level, target.input, "x19.codigo")]
+    
+    list.temp[[i]] <- split(x=inputs.for.split , f=inputs.for.split[, split.level])
+  }
+  geog.split.ls[[target.input]] <- list.temp
+}
+
+
+impute.mean.or.median <- mean
+# Set the imputation of the mean or median here
+
+
+input.price.columns <- c("x19.fertilizante.bs.kg", "x19.sem.comprada.bs.kg", "x19.abono.bs.kg", "x19.plagicidas.bs.kg")
+
+nation.input.averages <- apply(inputs.df[, input.price.columns], 2, FUN=function(x) impute.mean.or.median(x[x>0], na.rm=TRUE)) 
+nation.input.nobs <- apply(inputs.df[, input.price.columns], 2, FUN=function(x) { x <- x[!is.na(x)]; length(x[x>0])} )
+nation.input.sd <- apply(inputs.df[, input.price.columns], 2, FUN=function(x) sd(x[x>0], na.rm=TRUE) )
+
+for (target.input in input.price.columns ) {
+
+  inputs.df[, paste0(target.input, ".impute.level")] <- NA
+  
+  inputs.df[inputs.df[, target.input]!=0, paste0(target.input, ".impute.level")] <- "itself"
+
+impute.levels <- c("household", "segmento.full", "sector.full", "canton.full", "seccion.full", "provincia.full", "departamento", "nation")
+
+# Rprof()
+
+imputed.data.ls<- vector(mode = "list", length = nrow(inputs.df))
+
+geog.split.ls.targ.input <- geog.split.ls[[target.input]]
+
+for (i in 1:nrow(inputs.df)) {
+
+if (inputs.df[i, paste0(target.input, ".impute.level")] %in% "itself") {next}
+
+for (impute.level in impute.levels) {
+  
+  if (target.input=="x19.sem.comprada.bs.kg") {
+    if(impute.level=="household") {
+      seed.switcher <- geog.split.ls.targ.input[[ impute.level ]][[ inputs.df$folio[i] ]]$x19.codigo==inputs.df$x19.codigo[i]
+    } else {
+      seed.switcher <- geog.split.ls.targ.input[[ impute.level ]][[ inputs.df[i, impute.level] ]]$x19.codigo==inputs.df$x19.codigo[i]
+    }
+  } else {
+    seed.switcher <- TRUE
+  }
+
+  if (impute.level=="nation") { 
+    imputed.data.ls[[i]] <- c(unname(nation.input.averages[target.input]), 
+      impute.level, unname(nation.input.nobs[target.input]), unname(nation.input.sd[target.input]))
+    break
+  }
+  
+  if(impute.level=="household") {
+    impute.data <-   geog.split.ls.targ.input[[ impute.level ]][[ inputs.df$folio[i] ]][seed.switcher, target.input]
+  } else {
+    impute.data <- geog.split.ls.targ.input[[ impute.level ]][[ inputs.df[i, impute.level] ]][seed.switcher, target.input]
+  }
+  
+  if (impute.level=="household" && !all(is.na(impute.data)) && length(impute.data)>0  ) {
+    
+#     inputs.df[i, target.input] <- median( impute.data )
+#     inputs.df[i, c(target.input, paste0(target.input, ".impute.level") )] <- "household"
+      imputed.data.ls[[i]] <- c(impute.mean.or.median( impute.data ), "household", length(impute.data), sd(impute.data))
+#    prod01.df$impute.sample.size[i]<-0
+     break
+  }
+  if (impute.level=="household") {next}
+  
+  #target.crop<-prod01.df$crop[i]
+
+#  match.index <- inputs.df[, impute.level] == inputs.df[i, impute.level] & 
+#    inputs.df[, paste0(target.input, ".impute.level")] %in% "itself"
+  
+#  impute.sample.size <- sum(match.index)
+  
+  if (!all(is.na(impute.data)) && length(impute.data) >= 3) {
+#    inputs.df[i, target.input] <- median(impute.data )
+#    inputs.df[i, paste0(target.input, ".impute.level")] <- impute.level
+#    prod01.df$impute.sample.size[i] <- impute.sample.size
+    imputed.data.ls[[i]] <- c(impute.mean.or.median( impute.data ), impute.level, length(impute.data), sd(impute.data))
+    break
+  }
+  
+
+  
+}
+ 
+ cat(target.input, i, impute.level, "\n")
+  
+}
+
+temp.imputed.df <- data.frame(matrix(unlist(imputed.data.ls), ncol=4, byrow=TRUE), stringsAsFactors=FALSE)
+temp.imputed.df[, 1] <- as.numeric(temp.imputed.df[, 1])
+temp.imputed.df[, 3] <- as.numeric(temp.imputed.df[, 3])
+temp.imputed.df[, 4] <- as.numeric(temp.imputed.df[, 4])
+
+inputs.df[sapply(imputed.data.ls, FUN= function(x) length(x)>0 ), target.input] <- 
+  temp.imputed.df[, 1]
+
+inputs.df[sapply(imputed.data.ls, FUN= function(x) length(x)>0 ), 
+  paste0(target.input, ".impute.level") ] <- temp.imputed.df[, 2]
+  
+inputs.df[sapply(imputed.data.ls, FUN= function(x) length(x)>0 ), 
+  paste0(target.input, ".impute.n.obs") ] <- temp.imputed.df[, 3]
+  
+inputs.df[sapply(imputed.data.ls, FUN= function(x) length(x)>0 ), 
+  paste0(target.input, ".impute.sd") ] <- temp.imputed.df[, 4]
+
+}
+
+
+for (k in input.price.columns ) {
+  print( table(inputs.df[, paste0(k, ".impute.level")], useNA="always") )
+}
+
+# table(inputs.df[, paste0(target.input, ".impute.level")], useNA="always")
+
+# save(inputs.df, file=paste0(work.dir, "inputs df after 1st imputation.Rdata"))
+
+
+for (k in input.price.columns ) {
+  print( summary(inputs.df[, paste0(k, ".impute.n.obs")]) )
+}
+
+for (k in input.price.columns ) {
+  print( summary(inputs.df[, paste0(k, ".impute.sd")]) )
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+#### BEGIN SECTION
+
+impute.old.slower.way <- FALSE
+
+if ( impute.old.slower.way ) {
+
+
+input.price.columns <- c("x19.fertilizante.bs.kg", "x19.sem.comprada.bs.kg", "x19.abono.bs.kg", "x19.plagicidas.bs.kg")
+
+nation.input.averages <- apply(inputs.df[, input.price.columns], 2, FUN=function(x) impute.mean.or.median(x[x>0], na.rm=TRUE) )
+nation.input.nobs <- apply(inputs.df[, input.price.columns], 2, FUN=function(x) { x <- x[!is.na(x)]; length(x[x>0])} )
+nation.input.sd <- apply(inputs.df[, input.price.columns], 2, FUN=function(x) sd(x[x>0], na.rm=TRUE) )
 
 for (target.input in input.price.columns ) {
 
@@ -100,7 +287,8 @@ for (impute.level in impute.levels) {
   }
 
   if (impute.level=="nation") { 
-    imputed.data.ls[[i]] <- c(unname(nation.input.averages[target.input]), impute.level)
+    imputed.data.ls[[i]] <- c(unname(nation.input.averages[target.input]), 
+      impute.level, unname(nation.input.nobs[target.input]), unname(nation.input.sd[target.input]))
     break
   }
   
@@ -118,7 +306,7 @@ for (impute.level in impute.levels) {
     
 #     inputs.df[i, target.input] <- median( impute.data )
 #     inputs.df[i, c(target.input, paste0(target.input, ".impute.level") )] <- "household"
-      imputed.data.ls[[i]] <- c(median( impute.data ), "household")
+      imputed.data.ls[[i]] <- c(impute.mean.or.median( impute.data ), "household", length(impute.data), sd(impute.data))
 #    prod01.df$impute.sample.size[i]<-0
      break
   }
@@ -135,7 +323,7 @@ for (impute.level in impute.levels) {
 #    inputs.df[i, target.input] <- median(impute.data )
 #    inputs.df[i, paste0(target.input, ".impute.level")] <- impute.level
 #    prod01.df$impute.sample.size[i] <- impute.sample.size
-    imputed.data.ls[[i]] <- c(median( impute.data ), impute.level)
+    imputed.data.ls[[i]] <- c(impute.mean.or.median( impute.data ), impute.level, length(impute.data), sd(impute.data))
     break
   }
   
@@ -147,14 +335,22 @@ for (impute.level in impute.levels) {
   
 }
 
-temp.imputed.df <- data.frame(matrix(unlist(imputed.data.ls), ncol=2, byrow=TRUE), stringsAsFactors=FALSE)
+temp.imputed.df <- data.frame(matrix(unlist(imputed.data.ls), ncol=4, byrow=TRUE), stringsAsFactors=FALSE)
 temp.imputed.df[, 1] <- as.numeric(temp.imputed.df[, 1])
+temp.imputed.df[, 3] <- as.numeric(temp.imputed.df[, 3])
+temp.imputed.df[, 4] <- as.numeric(temp.imputed.df[, 4])
 
 inputs.df[sapply(imputed.data.ls, FUN= function(x) length(x)>0 ), target.input] <- 
   temp.imputed.df[, 1]
 
 inputs.df[sapply(imputed.data.ls, FUN= function(x) length(x)>0 ), 
   paste0(target.input, ".impute.level") ] <- temp.imputed.df[, 2]
+  
+inputs.df[sapply(imputed.data.ls, FUN= function(x) length(x)>0 ), 
+  paste0(target.input, ".impute.n.obs") ] <- temp.imputed.df[, 3]
+  
+inputs.df[sapply(imputed.data.ls, FUN= function(x) length(x)>0 ), 
+  paste0(target.input, ".impute.sd") ] <- temp.imputed.df[, 4]
 
 }
 
@@ -167,6 +363,19 @@ for (k in input.price.columns ) {
 
 # save(inputs.df, file=paste0(work.dir, "inputs df after 1st imputation.Rdata"))
 
+
+for (k in input.price.columns ) {
+  print( summary(inputs.df[, paste0(k, ".impute.n.obs")]) )
+}
+
+for (k in input.price.columns ) {
+  print( summary(inputs.df[, paste0(k, ".impute.sd")]) )
+}
+
+}
+
+
+### END SECTION
 
 
 
@@ -219,7 +428,9 @@ mano.obra.df$hourly.tractor.rental <- mano.obra.df$x101.cual.el.costo.de.la.hra.
 
 input.price.columns <- c("hourly.wage", "hourly.tractor.rental")
 
-nation.input.averages <- apply(mano.obra.df[, input.price.columns], 2, FUN=function(x) median(x[x>0], na.rm=TRUE) )
+nation.input.averages <- apply(mano.obra.df[, input.price.columns], 2, FUN=function(x) impute.mean.or.median(x[x>0], na.rm=TRUE) )
+nation.input.nobs <- apply(mano.obra.df[, input.price.columns], 2, FUN=function(x) { x <- x[!is.na(x)]; length(x[x>0])} )
+nation.input.sd <- apply(mano.obra.df[, input.price.columns], 2, FUN=function(x) sd(x[x>0], na.rm=TRUE) )
 
 for (target.input in input.price.columns ) {
 
@@ -239,7 +450,8 @@ if (mano.obra.df[i, paste0(target.input, ".impute.level")] %in% "itself") {next}
 for (impute.level in impute.levels) {
 
   if (impute.level=="nation") { 
-    imputed.data.ls[[i]] <- c(unname(nation.input.averages[target.input]), impute.level)
+    imputed.data.ls[[i]] <- c(unname(nation.input.averages[target.input]), 
+      impute.level, unname(nation.input.nobs[target.input]), unname(nation.input.sd[target.input]))
     break
   }
   
@@ -253,14 +465,14 @@ for (impute.level in impute.levels) {
   
   if (impute.level=="household" && length(impute.data)>0  ) {
     
-    imputed.data.ls[[i]] <- c(median( impute.data ), "household")
+    imputed.data.ls[[i]] <- c(impute.mean.or.median( impute.data ), "household", length(impute.data), sd(impute.data))
      break
   }
   if (impute.level=="household") {next}
 
   
   if (length(impute.data) >= 3) {
-    imputed.data.ls[[i]] <- c(median( impute.data ), impute.level)
+    imputed.data.ls[[i]] <- c(impute.mean.or.median( impute.data ), impute.level, length(impute.data), sd(impute.data))
     break
   }
   
@@ -270,20 +482,31 @@ for (impute.level in impute.levels) {
   
 }
 
-temp.imputed.df <- data.frame(matrix(unlist(imputed.data.ls), ncol=2, byrow=TRUE), stringsAsFactors=FALSE)
+temp.imputed.df <- data.frame(matrix(unlist(imputed.data.ls), ncol=4, byrow=TRUE), stringsAsFactors=FALSE)
 temp.imputed.df[, 1] <- as.numeric(temp.imputed.df[, 1])
+temp.imputed.df[, 3] <- as.numeric(temp.imputed.df[, 3])
+temp.imputed.df[, 4] <- as.numeric(temp.imputed.df[, 4])
+
 
 mano.obra.df[sapply(imputed.data.ls, FUN= function(x) length(x)>0 ), target.input] <- 
   temp.imputed.df[, 1]
 
 mano.obra.df[sapply(imputed.data.ls, FUN= function(x) length(x)>0 ), 
   paste0(target.input, ".impute.level") ] <- temp.imputed.df[, 2]
+
+mano.obra.df[sapply(imputed.data.ls, FUN= function(x) length(x)>0 ), 
+  paste0(target.input, ".impute.n.obs") ] <- temp.imputed.df[, 3]
+  
+mano.obra.df[sapply(imputed.data.ls, FUN= function(x) length(x)>0 ), 
+  paste0(target.input, ".impute.sd") ] <- temp.imputed.df[, 4]
   
 }
 
 for (k in input.price.columns ) {
   print( table(mano.obra.df[, paste0(k, ".impute.level")], useNA="always") )
 }
+
+
 
 
 
@@ -334,6 +557,7 @@ area.agg <- aggregate(x19.superficie.cultivada.hectareas ~ folio, data=inputs.df
 colnames(area.agg)[2] <- "firm.level.area"
 
 inputs.df <- merge(inputs.df, area.agg )
+# Above could be the culprit for cutting observations. Ok, seems not after testing.
 
 inputs.df$plot.prop.of.firm.area <- inputs.df$x19.superficie.cultivada.hectareas /inputs.df$firm.level.area
 
@@ -485,7 +709,7 @@ corresponding.input <- c("x19.cosecha", "x19.labores.culturales",
 
 
 nation.input.averages <- apply(inputs.df[, tractor.columns], 2, FUN=function(x) {
-  median( (x[x>0])/inputs.df$x19.superficie.cultivada.hectareas[x>0], na.rm=TRUE)
+  impute.mean.or.median( (x[x>0])/inputs.df$x19.superficie.cultivada.hectareas[x>0], na.rm=TRUE)
   } )
 
 
@@ -548,14 +772,14 @@ for (impute.level in impute.levels) {
   
   if (impute.level=="household" && length(impute.data)>0  ) {
     
-    imputed.data.ls[[i]] <- c(median( impute.data ), "household")
+    imputed.data.ls[[i]] <- c(impute.mean.or.median( impute.data ), "household")
      break
   }
   if (impute.level=="household") {next}
 
   
   if (length(impute.data) >= 3) {
-    imputed.data.ls[[i]] <- c(median( impute.data ), impute.level)
+    imputed.data.ls[[i]] <- c(impute.mean.or.median( impute.data ), impute.level)
     break
   }
   
@@ -567,12 +791,20 @@ for (impute.level in impute.levels) {
 
 temp.imputed.df <- data.frame(matrix(unlist(imputed.data.ls), ncol=2, byrow=TRUE), stringsAsFactors=FALSE)
 temp.imputed.df[, 1] <- as.numeric(temp.imputed.df[, 1])
+#temp.imputed.df[, 3] <- as.numeric(temp.imputed.df[, 3])
+#temp.imputed.df[, 4] <- as.numeric(temp.imputed.df[, 4])
 
 inputs.df[sapply(imputed.data.ls, FUN= function(x) length(x)>0 ), target.input] <- 
   temp.imputed.df[, 1]
 
 inputs.df[sapply(imputed.data.ls, FUN= function(x) length(x)>0 ), 
   paste0(target.input, ".impute.level") ] <- temp.imputed.df[, 2]
+
+#inputs.df[sapply(imputed.data.ls, FUN= function(x) length(x)>0 ), 
+#  paste0(target.input, ".impute.n.obs") ] <- temp.imputed.df[, 2]
+
+#inputs.df[sapply(imputed.data.ls, FUN= function(x) length(x)>0 ), 
+#  paste0(target.input, ".impute.sd") ] <- temp.imputed.df[, 3]
   
 }
 
@@ -628,7 +860,7 @@ min(inputs.df$x19.produccion.obtenidad.kg)
 table(is.na(inputs.df$x19.produccion.obtenidad.kg))
 
 
-nation.input.averages.tractor <- apply(inputs.df[, c("hourly.tractor.rental"), drop=FALSE], 2, FUN=function(x) median(x[x>0], na.rm=TRUE) )
+nation.input.averages.tractor <- apply(inputs.df[, c("hourly.tractor.rental"), drop=FALSE], 2, FUN=function(x) impute.mean.or.median(x[x>0], na.rm=TRUE) )
 
 inputs.df$hourly.tractor.rental[is.na(inputs.df$hourly.tractor.rental)] <- nation.input.averages.tractor
 # Ok, so this has no effect, since all of them were imputed at a higher level
@@ -644,7 +876,11 @@ for ( i in c("x19.fertilizante.cantidad.kg", "x19.sem.comprada.cantidad.kg",
 
 inputs.df <- inputs.df[inputs.df$x19.produccion.obtenidad.kg>0 &
   !is.na(inputs.df$x19.produccion.obtenidad.kg), ] 
-# This removes crop failures
+# This removes crop failures. This reduces number of observations by 3,000, so about 11% of the observations
+# Only 5 NA's. the rest are zeros
+# head(inputs.df[inputs.df$x19.produccion.obtenidad.kg==0, ])
+# head(inputs.df[inputs.df$x19.produccion.obtenidad.kg==0, c("x19.fertilizante.cantidad.kg", "x19.fertilizante.bs.kg.impute.level")]) 
+# inputs.df[, c("x19.fertilizante.cantidad.kg", "x19.fertilizante.bs.kg.impute.level")]
 
 
 summary(inputs.df[, c("x19.fertilizante.bs.kg", "x19.sem.comprada.bs.kg", "x19.abono.bs.kg", 
@@ -653,6 +889,9 @@ summary(inputs.df[, c("x19.fertilizante.bs.kg", "x19.sem.comprada.bs.kg", "x19.a
   "x19.plagicidas.cantidad.kg", "tractor.hrs.final", "x19.produccion.obtenidad.kg", 
   "x19.superficie.cultivada.hectareas", "x19.uso.riego", "ag.fam.labor.equiv.spread") ]
 )
+
+
+
 
 
 
@@ -686,6 +925,729 @@ work.dir <- "/Users/travismcarthur/Desktop/Metrics (637)/Final paper/"
 
 
 
+
+
+
+
+pob.shp<-importShapefile(paste0(work.dir, "centros_poblados.zip Folder/centros_poblados.shp"))
+
+
+pob.shp$canton.full <- with(pob.shp , paste0(DEPTO, PROVIN, SECCION, CANTON))
+
+pob.shp$comunidad.id<-substr(pob.shp$COD_BD_CEN, 1, 11)
+
+village.geog.df<-pob.shp[pob.shp$canton.full %in% inputs.df$canton.full, c("EID", "comunidad.id", "canton.full", "X", "Y", "VIVIENDA")]
+
+village.geog.df <- do.call(rbind, by(village.geog.df, INDICES=list(village.geog.df$canton.full), FUN=function(x) {
+  x[which.max(x$VIVIENDA), ]
+} )
+)
+# For now only using the village within the canton that has max population
+
+
+# install.packages("spatstat")
+library("spatstat")
+roads.shp<-readShapeSpatial(paste0(work.dir, "roads.shp"))
+
+roads.shp<-as.psp.SpatialLinesDataFrame(roads.shp)
+
+roads.shp$ends[, c("x0", "y0")]
+
+library("geosphere")
+library("maptools")
+
+#roads.shp.2<-readShapeSpatial(paste0(work.dir, "roads.shp"))
+
+#system.time( test <- dist2Line(village.geog.df[1, c("X", "Y"), drop=FALSE], roads.shp.2, distfun=distHaversine) )
+# distHaversine seems to be a nightmare, i.e. would take 40 hrs, so don't do it 
+
+#system.time( replicate(1000, distCosine(c(0,0),c(90,90))))
+#system.time( replicate(1000, distHaversine(c(0,0),c(90,90))))
+#system.time( replicate(1000, distVincentySphere(c(0,0),c(90,90))))
+#system.time( replicate(1000, distVincentyEllipsoid(c(0,0),c(90,90))))
+#system.time( replicate(1000, distMeeus(c(0,0),c(90,90))))
+
+
+
+
+library("rgeos")
+
+## MUST INSTALL SAGA GIS DEPENDENCY: http://www.nickrobison.com/2013/07/03/compile-saga-for-mac-os-x/
+# Seems to be just two commands to Terminal
+# brew tap osgeo/osgeo4mac
+# brew install saga-gis --with-app --with python
+# OK, I am not going with Saga, so above unnecessary. I wanted to get the intersection of a polygon
+# around the village and the set of lines
+
+#roads.shp.3 <- gSimplify(roads.shp.2, tol=.01)
+
+
+
+system.time(
+  villages.to.roads.ls <- apply(t(as.matrix(village.geog.df[, c("comunidad.id", "X", "Y")])), 2, function(center) {
+#    cat(date(), "\n")
+#    print(center)
+    min.index<- which.min(
+      colSums((t(as.matrix(roads.shp$ends[, c("x0", "y0")])) - as.numeric(center[ c("X", "Y")]))^2)^.5
+    )
+    cat(min.index)
+    data.frame(
+      dist.to.road=colSums((t(as.matrix(roads.shp$ends[min.index, c("x0", "y0")])) - as.numeric(center[ c("X", "Y")]))^2)^.5,
+      X.on.road = roads.shp$ends$x0[min.index],
+      Y.on.road = roads.shp$ends$y0[min.index]
+    )
+})
+)
+
+
+
+
+system.time(
+  villages.to.roads.ls <- apply(t(as.matrix(village.geog.df[, c("comunidad.id", "X", "Y")])), 2, function(center) {
+#    cat(date(), "\n")
+#    print(center)
+    min.index<- which.min(
+      colSums((t(as.matrix(roads.shp$ends[, c("x0", "y0")])) - as.numeric(center[ c("X", "Y")]))^2)^.5
+    )
+    cat(min.index)
+    data.frame(
+      dist.to.road=colSums((t(as.matrix(roads.shp$ends[min.index, c("x0", "y0")])) - as.numeric(center[ c("X", "Y")]))^2)^.5,
+      X.on.road = roads.shp$ends$x0[min.index],
+      Y.on.road = roads.shp$ends$y0[min.index]
+    )
+})
+)
+
+gc()
+
+villages.to.roads.df<-do.call(rbind, villages.to.roads.ls)
+village.geog.df<-cbind(village.geog.df, villages.to.roads.df)
+
+dist.to.road.v <- distHaversine(village.geog.df[, c("X", "Y")], village.geog.df[, c("X.on.road", "Y.on.road")]) / 1000 # Because this is in meters. Want to covert to km
+# This seems to get the same answers as the much-more-computationally-intensive dist2Line(village.geog.df[, c("X", "Y"), drop=FALSE], roads.shp.2, distfun=distHaversine) 
+
+dist.to.road.df <- data.frame(canton.full=village.geog.df$canton.full, dist.to.road=dist.to.road.v, stringsAsFactors=FALSE)
+
+inputs.df <- merge(inputs.df, dist.to.road.df, all=TRUE)
+
+
+system.time(
+  cities.to.roads.ls <- apply(t(as.matrix(
+    pob.shp[pob.shp$CAT_LOC %in% c("0-Capital", "1-Urbana", "2-Amanzanada"),
+      c( "EID", "X", "Y")])), 2, function(center) {
+#    cat(date(), "\n")
+#    print(center)
+    min.index<- which.min(
+      colSums((t(as.matrix(roads.shp$ends[, c("x0", "y0")])) - center[c("X", "Y")])^2)^.5
+    )
+    
+    data.frame(
+      EID=center["EID"],
+      dist.to.road=colSums((t(as.matrix(roads.shp$ends[min.index, c("x0", "y0")])) - center[c("X", "Y")])^2)^.5,
+      X.on.road = roads.shp$ends$x0[min.index],
+      Y.on.road = roads.shp$ends$y0[min.index]
+    )
+})
+)
+
+cities.to.roads.df<-do.call(rbind, cities.to.roads.ls)
+
+pob.shp.on.roads<-pob.shp
+
+pob.shp.on.roads<-merge(pob.shp.on.roads, cities.to.roads.df)
+
+
+la.paz.coords <- data.frame( X.on.road= -68.094656,  Y.on.road = -16.539350)
+
+# Coordinates for La Paz:
+# -16.539350, -68.094656
+
+
+library(spdep)
+library(rjson)
+library(RCurl)
+library(httr)
+
+
+drive.time.data.ls<-vector(mode="list", length = nrow(villages.df))
+# Had this above originally (i.e. in the MECOVI data prep); not sure what the consequences of this are
+drive.time.data.ls<-vector(mode="list", length = nrow(village.geog.df))
+
+
+dim(unique(village.geog.df[, 8:9]))
+village.geog.df.save <- village.geog.df
+village.geog.df <- village.geog.df[ !duplicated(c("X.on.road", "Y.on.road")), ]
+
+gather.mapquest<-TRUE
+
+# save.image(file="/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Rdata results files/saved workspace before mapquest.Rdata")
+
+#A One to Many route matrix call can handle up to 100 locations.
+#A Many to One matrix call can handle up to 50 locations.
+#An all to all route matrix call can handle up to 25 locations.
+# http://open.mapquestapi.com/directions/#matrixSample
+# But really, it looks like it is only really 25
+# Ok, this explains why it is really set to 25:
+# "Route matrix methods use what is called multi-destination path search. It expands from 
+# the origin location and marks each destination it finds. This search gets more expensive 
+# as the distance from the origin location increases, so the search is limited by a setting 
+# called MaxMatrixSearchTime. 
+# This is set to 180 minutes. Any destinations that lie outside this limit are found using 
+# regular "point to point" routes. However, the server limits the number of outlying 
+# locations (outside the MaxMatrixSearch limit) with a setting called MaxMatrixPointToPoint. 
+# This value is set to 25."
+# NOTE TO SELF: So then if the time it takes to drive to the first destination is greater than 180
+# minutes, then it is all point-to-point
+
+amanzanada.23.list <- list()
+urban.23.list <- list()
+
+
+detach("package:httr", unload=TRUE)
+library(httr)
+
+
+
+for (village in 1:nrow(village.geog.df)) {
+
+  if(!gather.mapquest) {break}
+
+  target.village<-village.geog.df[village, c("X.on.road", "Y.on.road")]
+  time.calcs.final.cols <- c()
+
+  for (settlement.type in list(c("0-Capital", "1-Urbana"), "2-Amanzanada")) {
+  
+    if ( pob.shp$CAT_LOC[pob.shp$EID==village.geog.df$EID[village]] %in% settlement.type ) {
+      time.calcs.final.cols <- c(time.calcs.final.cols, 0)
+      next
+    }
+    
+  
+    urban.coords<-pob.shp.on.roads[pob.shp.on.roads$CAT_LOC %in% settlement.type, c("X.on.road", "Y.on.road")]
+    
+    target.knn<-knearneigh(as.matrix(rbind(target.village, urban.coords ) ), k=96,  longlat = TRUE)
+    target.knn<-knn2nb(target.knn)[[1]] - 1
+    
+    time.calcs<-c()
+    time.calcs.final.v<-c()
+    
+#    for (coord.chunk in list(1:24, 25:48, 49:72, 73:96)) {
+    for (coord.chunk in list(1:23)) {
+    
+      reversed.urban.coords <- urban.coords[target.knn[coord.chunk], ]
+      reversed.urban.coords <- reversed.urban.coords[nrow(reversed.urban.coords):1, ]
+      # This should help with the "multi-destination path search" issue, since the 
+      # farthest-away point is now first
+    
+      target.coords<-rbind(target.village, reversed.urban.coords, la.paz.coords )
+      time.calcs <- list()
+      
+      for (direction.option in c("false", "true")) {
+      
+        json.req<-toJSON(list(locations=paste(target.coords$Y.on.road, target.coords$X.on.road, sep="," ),
+          options=list(allToAll="false", manyToOne=direction.option, MaxMatrixSearchTime=500))) # MaxMatrixSearchTime has no effect, BTW
+          
+        post.receipt<-POST(paste0("http://open.mapquestapi.com/directions/v2/routematrix?key=", 
+          mapquest.api.key), config=accept_json(), body=json.req)
+          
+        content(post.receipt)
+          
+        time.calcs[[direction.option]]<-unlist(content(post.receipt)$time[-1])
+        
+       }
+       
+       time.calcs[[1]][ time.calcs[[1]]==0] <- 99999999999
+       time.calcs[[2]][ time.calcs[[2]]==0] <- 99999999999
+       
+       
+       time.calcs.final.v<- c(time.calcs.final.v, 
+         unlist(time.calcs[[1]][-length(time.calcs[[1]])] + time.calcs[[2]][-length(time.calcs[[2]])]) )
+         # [-length(time.calcs[[1]])] takes out La Paz
+       
+    }
+    
+    time.calcs.final.cols <- c(time.calcs.final.cols, min(time.calcs.final.v))
+    
+    if (settlement.type == "2-Amanzanada") {
+      amanzanada.23.list[[village]] <- time.calcs.final.v
+    } else {
+      urban.23.list[[village]] <- time.calcs.final.v
+    }
+    
+    
+  }
+  
+  time.calcs.final.cols <- c(time.calcs.final.cols, 
+    unlist(time.calcs[[1]][length(time.calcs[[1]])] + time.calcs[[2]][length(time.calcs[[2]])]))
+  # This gets La Paz
+  
+  drive.time.data.ls[[village]]<-data.frame(comunidad.id=village.geog.df$comunidad.id[village], 
+    drive.time.urban=time.calcs.final.cols[1], drive.time.amanzanada=time.calcs.final.cols[2],
+    drive.time.la.paz=time.calcs.final.cols[3],
+    stringsAsFactors=FALSE)
+    
+  cat(village.geog.df$comunidad.id[village], village, nrow(village.geog.df), date(), unlist(content(post.receipt)$info$messages), sep="\n")
+    
+
+}
+
+
+urban.23.list.save <- urban.23.list
+amanzanada.23.list.save <- amanzanada.23.list
+
+#urban.23.list <- urban.23.list.save
+#amanzanada.23.list <- amanzanada.23.list.save
+
+inputs.df.save <- inputs.df
+
+
+
+
+
+amanzanada.23.list.2 <- lapply(amanzanada.23.list, FUN=function(x) {
+  if (is.null(x)) return(rep(NA, 23))
+  x <- sort(x)
+  x[x>99999999998]<-NA
+  x
+} )
+
+urban.23.list.2 <- lapply(urban.23.list, FUN=function(x) {
+  if (is.null(x)) return(rep(NA, 23))
+  x <- sort(x)
+  x[x>99999999998]<-NA
+  x
+} )
+
+amanzanada.23.mat <- matrix(unlist(amanzanada.23.list.2), ncol=23, byrow=TRUE)
+urban.23.mat <- matrix(unlist(urban.23.list.2), ncol=23, byrow=TRUE)
+
+colnames(amanzanada.23.mat) <- paste0("drive.time.amanzanada.rank.", 1:23)
+colnames(urban.23.mat) <- paste0("drive.time.urban.rank.", 1:23)
+
+urban.23.list.3 <- lapply(urban.23.list, FUN=function(x) {
+  if (is.null(x)) return(rep(NA, 5))
+  x <- (x/60)/60
+  # express in terms of hrs  
+  c(sum(x<=2), sum(x<=4), sum(x<=8), sum(x<=16), sum(x<=32))  
+} )
+
+urban.23.mat.3 <- matrix(unlist(urban.23.list.3), ncol=5, byrow=TRUE)
+colnames(urban.23.mat.3) <- c("cities.within.2.hrs", "cities.within.4.hrs", "cities.within.8.hrs", "cities.within.16.hrs", "cities.within.32.hrs")
+urban.23.df.3 <- as.data.frame(urban.23.mat.3)
+
+
+amanzanada.23.list.3 <- lapply(amanzanada.23.list, FUN=function(x) {
+  if (is.null(x)) return(rep(NA, 5))
+  x <- (x/60)/60
+  # express in terms of hrs  
+  c(sum(x<=1), sum(x<=2), sum(x<=4), sum(x<=8), sum(x<=16))  
+} )
+
+amanzanada.23.mat.3 <- matrix(unlist(amanzanada.23.list.3), ncol=5, byrow=TRUE)
+colnames(amanzanada.23.mat.3) <- c("towns.within.1.hrs", "towns.within.2.hrs", "towns.within.4.hrs", "towns.within.8.hrs", "towns.within.16.hrs")
+amanzanada.23.df.3 <- as.data.frame(amanzanada.23.mat.3)
+
+amanzanada.23.df <- as.data.frame(amanzanada.23.mat)
+urban.23.df <- as.data.frame(urban.23.mat)
+drive.time.23.df <- cbind(urban.23.df, amanzanada.23.df, urban.23.df.3, amanzanada.23.df.3, village.geog.df[, c("canton.full"), drop=FALSE] )
+
+#drive.time.data.ls[[647]]
+
+
+
+# Unable to calculate route matrix. - what does this mean?
+#"Unable to use location #1 :Must have a valid GEFID." means too far away from a road
+#"100 Unable to use location #15 :Must have a valid GEFID."
+#"100 Unable to use location #0 :Must have a valid GEFID."
+#manyToOne gives the direction that we are going in, i.e. to city or to village
+
+#names(rev(sort(table(test))))[1]
+
+
+
+drive.time.df<-do.call(rbind, drive.time.data.ls)
+drive.time.df$drive.time.urban[drive.time.df$drive.time.urban>99999999998]<-NA
+drive.time.df$drive.time.amanzanada[drive.time.df$drive.time.amanzanada>99999999998]<-NA
+
+drive.time.df <- merge(drive.time.df, village.geog.df[, c("comunidad.id", "canton.full")] )
+
+test.inputs.df <- inputs.df
+
+do.scramble.cantons <- FALSE
+
+if (do.scramble.cantons) {
+
+set.seed(16)
+cantons.to.scramble <- sample(unique(test.inputs.df$canton.full))
+test.inputs.df$scrambled.cantons <- NA
+for ( i in 1:length(unique(test.inputs.df$canton.full))) {
+  test.inputs.df$scrambled.cantons[test.inputs.df$canton.full==unique(test.inputs.df$canton.full)[i] ] <- cantons.to.scramble[i]
+  # Must do this so that we don't over-write as we are cycling through 
+}
+# test.inputs.df[, c("canton.full", "scrambled.cantons")]
+test.inputs.df$canton.full <- test.inputs.df$scrambled.cantons
+}
+
+
+test.inputs.df <- merge(test.inputs.df,  drive.time.df, all.x=TRUE)
+test.inputs.df <- merge(test.inputs.df,  drive.time.23.df, all.x=TRUE)
+
+do.regressions <- FALSE
+
+if (do.regressions) {
+
+# test.inputs.df.save <- test.inputs.df
+
+# test.inputs.df <- merge(test.inputs.df, dist.to.road.df, all.x=TRUE)
+# This dist.to.road was already merged in above
+
+any(duplicated(dist.to.road.df$canton.full))
+
+
+pob.shp.vivienda<-importShapefile(paste0(work.dir, "centros_poblados.zip Folder/centros_poblados.shp"))
+pob.shp.vivienda$canton.full <- with(pob.shp.vivienda , paste0(DEPTO, PROVIN, SECCION, CANTON))
+
+vivienda.canton.agg <- aggregate(VIVIENDA ~ canton.full,  data=pob.shp.vivienda, FUN=sum, na.rm=TRUE)
+colnames(vivienda.canton.agg)[2] <- "num.hh.canton"
+
+test.inputs.df <- merge(test.inputs.df, vivienda.canton.agg, all.x=TRUE)
+
+fert.folio.agg <- aggregate(x19.fertilizante.cantidad.kg ~ folio + canton.full,  data=test.inputs.df, FUN=function(x) ifelse(any(x>0), 1, 0))
+
+fert.canton.agg <- aggregate(x19.fertilizante.cantidad.kg ~ canton.full,  data=fert.folio.agg, FUN=function(x) sum(x>0)/length(x))
+colnames(fert.canton.agg)[2] <- "prop.canton.buying.fert"
+# NOTE: As of now, this is really just proportion of plots using fert. NOW FIXED.
+
+test.inputs.df <- merge(test.inputs.df, fert.canton.agg, all.x=TRUE)
+
+fert.folio.agg <- aggregate(x19.abono.cantidad.kg ~ folio + canton.full,  data=test.inputs.df, FUN=function(x) ifelse(any(x>0), 1, 0))
+fert.canton.agg <- aggregate(x19.abono.cantidad.kg ~ canton.full,  data=fert.folio.agg, FUN=function(x) sum(x>0)/length(x))
+colnames(fert.canton.agg)[2] <- "prop.canton.buying.abono"
+test.inputs.df <- merge(test.inputs.df, fert.canton.agg, all.x=TRUE)
+
+fert.folio.agg <- aggregate(x19.plagicidas.cantidad.kg ~ folio + canton.full,  data=test.inputs.df, FUN=function(x) ifelse(any(x>0), 1, 0))
+fert.canton.agg <- aggregate(x19.plagicidas.cantidad.kg ~ canton.full,  data=fert.folio.agg, FUN=function(x) sum(x>0)/length(x))
+colnames(fert.canton.agg)[2] <- "prop.canton.buying.plagicidas"
+test.inputs.df <- merge(test.inputs.df, fert.canton.agg, all.x=TRUE)
+
+fert.folio.agg <- aggregate(x19.sem.comprada.cantidad.kg ~ folio + canton.full,  data=test.inputs.df, FUN=function(x) ifelse(any(x>0), 1, 0))
+fert.canton.agg <- aggregate(x19.sem.comprada.cantidad.kg ~ canton.full,  data=fert.folio.agg, FUN=function(x) sum(x>0)/length(x))
+colnames(fert.canton.agg)[2] <- "prop.canton.buying.seeds"
+test.inputs.df <- merge(test.inputs.df, fert.canton.agg, all.x=TRUE)
+
+
+
+#test.inputs.df <- merge(geog.df, dist.to.road.df, all=TRUE)
+
+# geog.aug.df <- merge(dist.to.road.df, geog.df[, c("folio", "provincia.full",   "seccion.full", "canton.full", "sector.full", "segmento.full"  )], all=TRUE)
+# geog.aug.df <- merge(geog.aug.df, drive.time.df, all=TRUE)
+
+# output.aug.df <- merge(output.df, geog.aug.df)
+
+
+
+
+
+
+
+summary(lm( log(x19.fertilizante.bs.kg ) ~ cities.within.2.hrs + cities.within.4.hrs + cities.within.8.hrs + cities.within.16.hrs,
+  data=test.inputs.df, subset= x19.fertilizante.cantidad.kg > 0 & x19.fertilizante.bs.kg.impute.level=="itself") )
+
+
+summary(lm( log(x19.fertilizante.bs.kg ) ~ cities.within.2.hrs + I(cities.within.4.hrs-cities.within.2.hrs),
+  data=test.inputs.df, subset= x19.fertilizante.cantidad.kg > 0 & x19.fertilizante.bs.kg.impute.level=="itself") )
+
+summary(lm( log(x19.fertilizante.bs.kg ) ~ cities.within.2.hrs + I(cities.within.4.hrs-cities.within.2.hrs)  +
+  I(cities.within.8.hrs-cities.within.4.hrs) + I(cities.within.16.hrs-cities.within.8.hrs) +
+  I(cities.within.32.hrs-cities.within.16.hrs) +
+  dist.to.road + drive.time.la.paz +
+ # I(100*prop.canton.buying.fert) +
+  drive.time.amanzanada,
+  data=test.inputs.df, subset= x19.fertilizante.cantidad.kg > 0 & x19.fertilizante.bs.kg.impute.level=="itself") )
+  
+# summary(lm( log(x19.fertilizante.bs.kg ) ~ cities.within.2.hrs + I(cities.within.4.hrs-cities.within.2.hrs)  +
+#  I(cities.within.8.hrs-cities.within.4.hrs) + I(cities.within.16.hrs-cities.within.8.hrs) +
+#  I(cities.within.32.hrs-cities.within.16.hrs) +
+#  dist.to.road + drive.time.la.paz +
+# # I(100*prop.canton.buying.fert) +
+#  drive.time.amanzanada,
+#  data=inputs.df, subset= x19.fertilizante.cantidad.kg > 0 & x19.fertilizante.bs.kg.impute.level=="itself") )
+
+summary(lm( log(x19.fertilizante.bs.kg ) ~ cities.within.2.hrs + I(cities.within.4.hrs-cities.within.2.hrs)  +
+  I(cities.within.8.hrs-cities.within.4.hrs) + I(cities.within.16.hrs-cities.within.8.hrs) +
+  I(cities.within.32.hrs-cities.within.16.hrs) +
+  towns.within.1.hrs + I(towns.within.2.hrs-towns.within.1.hrs) + I(towns.within.4.hrs-towns.within.2.hrs)  +
+  I(towns.within.8.hrs-towns.within.4.hrs) + I(towns.within.16.hrs-towns.within.8.hrs) +
+  dist.to.road + drive.time.la.paz 
+ # I(100*prop.canton.buying.fert) +
+  ,
+  data=test.inputs.df, subset= x19.fertilizante.cantidad.kg > 0 & x19.fertilizante.bs.kg.impute.level=="itself") )
+  
+
+# x19.codigo really adds nothing
+# R square with model above (without prop.buying.fert) when cantons are scrambled is 0.009159.  This
+# Can rise to as high as 0.02 with other random seeds. Non-scrambled R^2 is 0.05094
+
+
+
+summary(lm( log(x19.abono.bs.kg ) ~ cities.within.2.hrs + I(cities.within.4.hrs-cities.within.2.hrs)  +
+  I(cities.within.8.hrs-cities.within.4.hrs) + I(cities.within.16.hrs-cities.within.8.hrs) +
+  I(cities.within.32.hrs-cities.within.16.hrs) +
+  dist.to.road + drive.time.la.paz +
+  I(100*prop.canton.buying.abono) +
+  drive.time.amanzanada,
+  data=test.inputs.df, subset= x19.abono.bs.kg.impute.level=="itself") )
+
+
+summary(lm( log(x19.plagicidas.bs.kg ) ~ cities.within.2.hrs + I(cities.within.4.hrs-cities.within.2.hrs)  +
+  I(cities.within.8.hrs-cities.within.4.hrs) + I(cities.within.16.hrs-cities.within.8.hrs) +
+  I(cities.within.32.hrs-cities.within.16.hrs) +
+  dist.to.road + drive.time.la.paz +
+  I(100*prop.canton.buying.plagicidas) +
+  drive.time.amanzanada,
+  data=test.inputs.df, subset= x19.plagicidas.bs.kg.impute.level=="itself") )
+  
+  
+summary(lm( log(hourly.wage ) ~ cities.within.2.hrs + I(cities.within.4.hrs-cities.within.2.hrs)  +
+  I(cities.within.8.hrs-cities.within.4.hrs) + I(cities.within.16.hrs-cities.within.8.hrs) +
+  I(cities.within.32.hrs-cities.within.16.hrs) +
+  dist.to.road + drive.time.la.paz +
+#  I(100*prop.canton.buying.plagicidas) +
+  drive.time.amanzanada,
+  data=test.inputs.df, subset= hourly.wage.impute.level=="itself") )
+
+
+summary(lm( log(hourly.tractor.rental ) ~ cities.within.2.hrs + I(cities.within.4.hrs-cities.within.2.hrs)  +
+  I(cities.within.8.hrs-cities.within.4.hrs) + I(cities.within.16.hrs-cities.within.8.hrs) +
+  I(cities.within.32.hrs-cities.within.16.hrs) +
+  dist.to.road + drive.time.la.paz +
+#  I(100*prop.canton.buying.plagicidas) +
+  drive.time.amanzanada,
+  data=test.inputs.df, subset= hourly.tractor.rental.impute.level=="itself") )
+
+#"hourly.wage" "hourly.wage.impute.level"
+#"hourly.tractor.rental" "hourly.tractor.rental.impute.level"
+
+
+summary(lm( log(x19.plagicidas.bs.kg ) ~ cities.within.2.hrs + I(cities.within.4.hrs-cities.within.2.hrs)  +
+  I(cities.within.8.hrs-cities.within.4.hrs) + I(cities.within.16.hrs-cities.within.8.hrs) +
+  I(cities.within.32.hrs-cities.within.16.hrs) +
+  dist.to.road + drive.time.la.paz +
+  I(100*prop.canton.buying.fert) +
+  drive.time.amanzanada,
+  data=test.inputs.df, subset= x19.plagicidas.cantidad.kg > 0 & x19.plagicidas.bs.kg.impute.level=="itself") )
+
+
+
+
+summary(lm( log(x19.sem.comprada.bs.kg ) ~ cities.within.2.hrs + I(cities.within.4.hrs-cities.within.2.hrs)  +
+  I(cities.within.8.hrs-cities.within.4.hrs) + I(cities.within.16.hrs-cities.within.8.hrs) +
+  I(cities.within.32.hrs-cities.within.16.hrs) +
+  dist.to.road + drive.time.la.paz +
+  I(100*prop.canton.buying.fert) +
+  drive.time.amanzanada +
+  x19.codigo,
+  data=test.inputs.df, subset= x19.sem.comprada.cantidad.kg > 0 & x19.sem.comprada.bs.kg.impute.level=="itself") )
+
+
+
+
+
+
+
+
+
+summary(lm( log(x19.fertilizante.bs.kg ) ~ drive.time.urban.rank.1 +  drive.time.urban.rank.2 +  drive.time.urban.rank.3 + 
+ drive.time.urban.rank.4 +  drive.time.urban.rank.5 +  drive.time.urban.rank.6 +  drive.time.urban.rank.7 +  drive.time.urban.rank.8 + 
+  drive.time.urban.rank.9 +  drive.time.urban.rank.10 +  drive.time.urban.rank.11 +  drive.time.urban.rank.12,
+  data=test.inputs.df, subset= x19.fertilizante.cantidad.kg > 0 & x19.fertilizante.bs.kg.impute.level=="itself") )
+
+summary(lm( log(x19.fertilizante.bs.kg ) ~ drive.time.urban.rank.1 +  drive.time.urban.rank.2 +  drive.time.urban.rank.3 + 
+ drive.time.urban.rank.4 +  drive.time.urban.rank.5 +  drive.time.urban.rank.6 +  drive.time.urban.rank.7 +  drive.time.urban.rank.8 + 
+  drive.time.urban.rank.9 +  drive.time.urban.rank.10 +  drive.time.urban.rank.11 +  drive.time.urban.rank.12 +
+   drive.time.urban.rank.13 +  drive.time.urban.rank.14 +  drive.time.urban.rank.15 +  drive.time.urban.rank.16 ,
+  data=test.inputs.df, subset= x19.fertilizante.cantidad.kg > 0 & x19.fertilizante.bs.kg.impute.level=="itself") )
+
+
+
+summary(lm( log(x19.fertilizante.bs.kg ) ~ drive.time.urban.rank.1,
+  data=test.inputs.df, subset= x19.fertilizante.cantidad.kg > 0 & x19.fertilizante.bs.kg.impute.level=="itself") )
+
+
+
+
+
+
+summary(lm( log(x20.bs.unidad.quintal.mn) ~ dist.to.road,
+  data=output.aug.df, subset= x20.codigo.de.producto=="Maiz combined" & x20.bs.unidad.quintal.mn>0) )
+
+summary(lm( log(x20.bs.unidad.quintal.mn) ~ drive.time.urban,
+  data=output.aug.df, subset= x20.codigo.de.producto=="Maiz combined" & x20.bs.unidad.quintal.mn>0) )
+
+summary(lm( log(x20.bs.unidad.quintal.mn) ~ drive.time.amanzanada,
+  data=output.aug.df, subset= x20.codigo.de.producto=="Maiz combined" & x20.bs.unidad.quintal.mn>0) )
+
+summary(lm( log(x20.bs.unidad.quintal.mn) ~ drive.time.la.paz,
+  data=output.aug.df, subset= x20.codigo.de.producto=="Maiz combined" & x20.bs.unidad.quintal.mn>0) )
+
+summary(lm( log(x20.bs.unidad.quintal.mn) ~ seccion.full,
+  data=output.aug.df, subset= x20.codigo.de.producto=="Maiz combined" & x20.bs.unidad.quintal.mn>0) )
+
+summary(lm( log(x20.bs.unidad.quintal.mn) ~ seccion.full*drive.time.urban,
+  data=output.aug.df, subset= x20.codigo.de.producto=="Maiz combined" & x20.bs.unidad.quintal.mn>0) )
+
+summary(lm( log(x20.bs.unidad.quintal.mn) ~ dist.to.road,
+  data=output.aug.df, subset= x20.codigo.de.producto=="Papa (patatas) " & x20.bs.unidad.quintal.mn>0) )
+
+summary(lm( log(x20.bs.unidad.quintal.mn) ~ drive.time.urban,
+  data=output.aug.df, subset= x20.codigo.de.producto=="Papa (patatas) " & x20.bs.unidad.quintal.mn>0) )
+
+summary(lm( log(x20.bs.unidad.quintal.mn) ~ drive.time.amanzanada,
+  data=output.aug.df, subset= x20.codigo.de.producto=="Papa (patatas) " & x20.bs.unidad.quintal.mn>0) )
+
+summary(lm( log(x20.bs.unidad.quintal.mn) ~ drive.time.la.paz,
+  data=output.aug.df, subset= x20.codigo.de.producto=="Papa (patatas) " & x20.bs.unidad.quintal.mn>0) )
+
+
+
+summary(lm( log(x19.fertilizante.bs.kg ) ~ log(num.hh.canton) * drive.time.urban,
+  data=test.inputs.df, subset= x19.fertilizante.cantidad.kg > 0 & x19.fertilizante.bs.kg.impute.level=="itself") )
+
+
+summary(lm( log(x19.fertilizante.bs.kg ) ~ num.hh.canton * drive.time.urban,
+  data=test.inputs.df, subset= x19.fertilizante.cantidad.kg > 0 & x19.fertilizante.bs.kg.impute.level=="itself") )
+
+# x19.fertilizante.cantidad.kg should get rid of problems
+
+summary(lm( log(x19.fertilizante.bs.kg ) ~ I(100*prop.canton.buying.fert),
+  data=test.inputs.df, subset= x19.fertilizante.cantidad.kg > 0 & x19.fertilizante.bs.kg.impute.level=="itself") )
+# The results of this regression, in particular, makes little sense. more buyers should mean lower prices
+
+summary(lm( log(x19.fertilizante.bs.kg ) ~ I(100*prop.canton.buying.fert)*num.hh.canton,
+  data=test.inputs.df, subset= x19.fertilizante.cantidad.kg > 0 & x19.fertilizante.bs.kg.impute.level=="itself") )
+  
+
+summary(lm( log(x19.fertilizante.bs.kg ) ~ I(100*prop.canton.buying.fert):num.hh.canton,
+  data=test.inputs.df, subset= x19.fertilizante.cantidad.kg > 0 & x19.fertilizante.bs.kg.impute.level=="itself") )
+
+
+
+
+summary(lm( log(x19.fertilizante.bs.kg ) ~ I(100*prop.canton.buying.fert) * drive.time.urban,
+  data=test.inputs.df, subset= x19.fertilizante.cantidad.kg > 0 & x19.fertilizante.bs.kg.impute.level=="itself") )
+
+
+summary(lm( log(x19.fertilizante.bs.kg ) ~ I(100*prop.canton.buying.fert^2)*I(100*prop.canton.buying.fert) * dist.to.road,
+  data=test.inputs.df, subset= x19.fertilizante.cantidad.kg > 0 & x19.fertilizante.bs.kg.impute.level=="itself") )
+
+
+summary(lm( log(x19.fertilizante.bs.kg ) ~ I(100*prop.canton.buying.fert) * dist.to.road,
+  data=test.inputs.df, subset= x19.fertilizante.cantidad.kg > 0 & x19.fertilizante.bs.kg.impute.level=="itself") )
+
+
+
+
+
+
+summary(lm( log(x19.fertilizante.bs.kg ) ~ log(I(100*prop.canton.buying.fert)),
+  data=test.inputs.df, subset= x19.fertilizante.cantidad.kg > 0 & x19.fertilizante.bs.kg.impute.level=="itself") )
+
+
+summary(lm( log(x19.fertilizante.bs.kg ) ~ drive.time.urban,
+  data=test.inputs.df, subset= x19.fertilizante.bs.kg > 0) )
+
+summary(lm( log(x19.fertilizante.bs.kg ) ~ drive.time.amanzanada,
+  data=test.inputs.df, subset= x19.fertilizante.bs.kg > 0) )
+
+summary(lm( log(x19.fertilizante.bs.kg ) ~ drive.time.la.paz ,
+  data=test.inputs.df, subset= x19.fertilizante.bs.kg > 0) )
+  
+summary(lm( log(x19.fertilizante.bs.kg ) ~ dist.to.road,
+  data=test.inputs.df, subset= x19.fertilizante.bs.kg > 0) )
+  
+summary(lm( log(x19.fertilizante.bs.kg ) ~ (dist.to.road + drive.time.urban + drive.time.amanzanada + drive.time.la.paz)^4 +
+ I(dist.to.road^2) + I(drive.time.urban^2) + I(drive.time.amanzanada^2) + I(drive.time.la.paz^2),
+  data=test.inputs.df, subset= x19.fertilizante.bs.kg > 0) )
+
+summary(lm( x19.fertilizante.bs.kg  ~ (dist.to.road + drive.time.urban + drive.time.amanzanada + drive.time.la.paz)^4 +
+ I(dist.to.road^2) + I(drive.time.urban^2) + I(drive.time.amanzanada^2) + I(drive.time.la.paz^2),
+  data=test.inputs.df, subset= x19.fertilizante.bs.kg > 0) )
+
+summary(lm( log(x19.fertilizante.bs.kg ) ~ (dist.to.road + drive.time.urban + drive.time.amanzanada + drive.time.la.paz),
+  data=test.inputs.df, subset= x19.fertilizante.bs.kg > 0) )
+
+
+summary(lm( x19.fertilizante.bs.kg  ~ drive.time.urban,
+  data=test.inputs.df, subset= x19.fertilizante.bs.kg > 0) )
+
+summary(lm( x19.fertilizante.bs.kg  ~ drive.time.amanzanada,
+  data=test.inputs.df, subset= x19.fertilizante.bs.kg > 0) )
+
+summary(lm( x19.fertilizante.bs.kg  ~ drive.time.la.paz ,
+  data=test.inputs.df, subset= x19.fertilizante.bs.kg > 0) )
+  
+summary(lm( x19.fertilizante.bs.kg  ~ dist.to.road ,
+  data=test.inputs.df, subset= x19.fertilizante.bs.kg > 0) )
+  
+
+summary(lm( log(x19.fertilizante.bs.kg ) ~ log(drive.time.urban+1),
+  data=test.inputs.df, subset= x19.fertilizante.bs.kg > 0) )
+
+summary(lm( log(x19.fertilizante.bs.kg ) ~ log(drive.time.amanzanada+1),
+  data=test.inputs.df, subset= x19.fertilizante.bs.kg > 0) )
+
+summary(lm( log(x19.fertilizante.bs.kg ) ~ log(drive.time.la.paz + 1) ,
+  data=test.inputs.df, subset= x19.fertilizante.bs.kg > 0) )
+
+summary(lm( log(x19.fertilizante.bs.kg ) ~ log(dist.to.road) ,
+  data=test.inputs.df, subset= x19.fertilizante.bs.kg > 0) )
+  
+  
+  
+summary(lm( log(x19.fertilizante.bs.kg ) ~ drive.time.urban*seccion.full,
+  data=test.inputs.df, subset= x19.fertilizante.bs.kg > 0) )
+  
+summary(lm( log(x19.fertilizante.bs.kg ) ~ seccion.full,
+  data=test.inputs.df, subset= x19.fertilizante.bs.kg > 0) )
+
+summary(lm( log(x19.fertilizante.bs.kg ) ~ drive.time.urban*provincia.full,
+  data=test.inputs.df, subset= x19.fertilizante.bs.kg > 0) )
+
+
+summary(lm( log(x19.fertilizante.bs.kg ) ~ canton.full,
+  data=test.inputs.df, subset= x19.fertilizante.bs.kg > 0) )
+
+
+length(coef(lm( log(x19.fertilizante.bs.kg ) ~ canton.full,
+  data=test.inputs.df, subset= x19.fertilizante.bs.kg > 0) ))
+
+sum(!is.na(coef(lm( log(x19.fertilizante.bs.kg ) ~ drive.time.urban*seccion.full,
+  data=test.inputs.df, subset= x19.fertilizante.bs.kg > 0) )))
+  
+  
+for ( targ.input in c("x19.fertilizante.bs.kg", "x19.sem.comprada.bs.kg", "x19.abono.bs.kg", "x19.plagicidas.bs.kg")) {
+  print(summary(lm( I(log( get(targ.input ))) ~ drive.time.urban,
+    data=test.inputs.df, subset= get(targ.input ) > 0) )) 
+}
+
+
+#save.image(file="/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Rdata results files/drive time save workspace.Rdata")
+
+
+
+#load(file="/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Rdata results files/drive time save workspace.Rdata")
+
+
+#inputs.df <- merge(inputs.df,  drive.time.df, all=TRUE)
+
+}
+
+
+
+
+
+inputs.df <- test.inputs.df
+# Uses the work above with the drive time
 
 
 
@@ -907,6 +1869,7 @@ elevation.df <- rbind(elevation.df,
     elevation=elev.dem2$band1[villages.elev.2.spatialpixels@grid.index], stringsAsFactors=FALSE)
   )
 # Weird textwrangler corruption is messing us up in the line above
+# CORRUPTION
 
 pob.shp <- merge(pob.shp, elevation.df, all.x=TRUE)
 
@@ -1060,7 +2023,12 @@ inputs.df$mean.ann.rain.5yr[is.na(inputs.df$mean.ann.rain.5yr)] <- mean.rainfall
 ######### END GEOG WORK
 
 
+#save(inputs.df, file="/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Rdata results files/saved workspace only inputsDF with soil and rain and drive time.Rdata")
 
+#save(inputs.df, file="/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Rdata results files/saved workspace only inputsDF with soil and rain and advanced drive time fixed.Rdata")
+
+
+save(inputs.df, file="/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Rdata results files/saved workspace only inputsDF with soil and rain and no drive time and with mean imputation.Rdata")
 
 
 # rm(list=setdiff(ls(), keep.these))
@@ -1072,7 +2040,7 @@ inputs.df$mean.ann.rain.5yr[is.na(inputs.df$mean.ann.rain.5yr)] <- mean.rainfall
 
 # save(inputs.df, file="/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Rdata results files/saved workspace only inputsDF with soil.Rdata")
 
-save(inputs.df, file="/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Rdata results files/saved workspace only inputsDF with soil and rain.Rdata")
+#save(inputs.df, file="/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Rdata results files/saved workspace only inputsDF with soil and rain.Rdata")
 
 # save.image("/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Rdata results files/saved workspace only inputsDF.Rdata")
 

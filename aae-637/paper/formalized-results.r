@@ -2,7 +2,7 @@
 
 
 
-target.top.crop.number <- 1
+target.top.crop.number <- 5
 
 #Including zero cost:
 #Potatoes	4,058
@@ -14,19 +14,20 @@ target.top.crop.number <- 1
 M <- 1
 N <- 6
 #J <- 3
-J <- 3
+J <- 6
  
 
 do.data.prep <- TRUE
 source("/Users/travismcarthur/git/coursework/aae-637/paper/postestimation-functions.r")
 
 text.crop <- "potatoes"
-text.crop <- "maize"
-#text.crop <- "wheat"
+#text.crop <- "maize"
+text.crop <- "wheat"
+text.crop <- "fava-beans"
 
 
 
-results.ls <- extract.gams.est(file.name = "sgmGMEnonlinearMaiz00000 3 fixed inputs.lst")
+results.ls <- extract.gams.est(file.name = "sgmGMEnonlinearHaba00000 6 fixed inputs.lst")
 # results.ls <- extract.gams.est(file.name = "sgmGMEnonlinearTrigo00000 6 fixed inputs.lst")
 # "sgmGMEnonlinearPapa00000 6 fixed inputs.lst"
 
@@ -308,13 +309,17 @@ library("reshape2")
 df_m <- melt(cross.country.yield.df, id.var=c("Item","Area"))
 df_m$variable<-as.numeric(gsub("X", "", df_m$variable))
 
+
+pdf(file=paste0("/Users/travismcarthur/Desktop/Proposal course/Materials for 3-31 meeting with Brad/andean-yield-comparison.pdf"), width=5, height=5)
+
 ggplot(df_m, aes(x=variable, y=value, group=Area, colour=Area)) + 
     geom_line()   + 
     ggtitle("Yield (kg per hectare)") +
     facet_grid(Item ~ ., scales="free_y") +
     expand_limits(y=0)
 # Thanks to http://stackoverflow.com/questions/11214012/set-only-lower-bound-of-a-limit-for-ggplot
-  
+
+dev.off()
 
 
 ## What prop[ortion of land is under fert?

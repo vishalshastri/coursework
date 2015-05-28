@@ -205,6 +205,8 @@ add.data.subscripts <- function(x) {
     x <- gsub(paste0("q", ii), paste0("q", ii, "(t)"), x)
     x <- gsub(paste0("x", ii), paste0("x", ii, "(t)"), x)
     x <- gsub(paste0("y", ii), paste0("y", ii, "(t)"), x)
+    x <- gsub(paste0("P", ii), paste0("P", ii, "(t)"), x)
+    x <- gsub(paste0("RInd", ii), paste0("RInd", ii, "(t)"), x)
     
   }
   regions.to.fix <- str_extract_all(x, "region[[:alpha:]]+")[[1]]

@@ -734,6 +734,14 @@ crop.prod.by.occupation
 
 
 
+stacked.firm.df$x19.fertilizante.cantidad.kg.posi <- stacked.firm.df$x19.fertilizante.cantidad.kg > 0 
+stacked.firm.df$x19.sem.comprada.cantidad.kg.posi <- stacked.firm.df$x19.sem.comprada.cantidad.kg > 0
+stacked.firm.df$tractor.hrs.final.posi <- stacked.firm.df$tractor.hrs.final > 0
+stacked.firm.df$x19.plagicidas.cantidad.kg.posi <- stacked.firm.df$x19.plagicidas.cantidad.kg > 0
+stacked.firm.df$paid.hours.spread.posi <- stacked.firm.df$paid.hours.spread > 0
+stacked.firm.df$x19.abono.cantidad.kg.posi <- stacked.firm.df$x19.abono.cantidad.kg > 0
+
+
 fert.ftable <-ftable( stacked.firm.df$x19.sem.comprada.cantidad.kg.posi,
   stacked.firm.df$tractor.hrs.final.posi,
   stacked.firm.df$x19.plagicidas.cantidad.kg.posi,
@@ -755,6 +763,85 @@ fert.ftable$percentage.use <- round(100*fert.ftable$Uses/(fert.ftable$Uses + fer
 
 
 str(test.ftable)
+
+posi.inputs <- c("x19.fertilizante.cantidad.kg.posi", "x19.sem.comprada.cantidad.kg.posi",
+"tractor.hrs.final.posi",
+"x19.plagicidas.cantidad.kg.posi",
+"paid.hours.spread.posi",
+"x19.abono.cantidad.kg.posi" )
+
+posi.inputs.table.ls <- list()
+
+for ( i in posi.inputs) {
+  posi.inputs.table.ls[[i]] <- prop.table(table(stacked.firm.df[, i], stacked.firm.df$which.crop), 2)["TRUE", ]
+}
+
+posi.inputs.table <- do.call(rbind, posi.inputs.table.ls)*100
+
+rownames(posi.inputs.table) <- c("Inorganic fert", "Purchased seeds", "Tractor", "Plaguicidas", "Hired labor", "Organic fert")
+
+posi.inputs.table <- posi.inputs.table[, c("Potatoes", "Maize", "Barley", "Wheat", "Fava Beans")]
+
+library("stargazer")
+
+
+stargazer(posi.inputs.table, # float.env="sidewaystable", 
+   digits=1, align=TRUE,
+  title="Percentage of plots where each input is used, by crop", summary=FALSE,
+  out="/Users/travismcarthur/Desktop/Proposal course/prop-uncensored-obs.tex")
+
+
+ftable(stacked.firm.df[, "x19.fertilizante.cantidad.kg.posi"] , stacked.firm.df[, i], stacked.firm.df$which.crop)
+
+
+
+
+
+cond.posi.inputs.table.ls <- list()
+
+for ( i in posi.inputs[-1]) {
+  temp.df <- stacked.firm.df[ stacked.firm.df[, "x19.fertilizante.cantidad.kg.posi"], ]
+  cond.posi.inputs.table.ls[[length(cond.posi.inputs.table.ls)+1]] <- prop.table(table(temp.df[, i], temp.df$which.crop), 2)["TRUE", ]
+  temp.df <- stacked.firm.df[ !stacked.firm.df[, "x19.fertilizante.cantidad.kg.posi"], ]
+  cond.posi.inputs.table.ls[[length(cond.posi.inputs.table.ls)+1]] <- prop.table(table(temp.df[, i], temp.df$which.crop), 2)["TRUE", ]
+}
+
+
+cond.posi.inputs.table <- as.data.frame(do.call(rbind, cond.posi.inputs.table.ls)*100)
+
+cond.posi.inputs.table$use.fert <- c("Used fert", "Did not use fert")
+cond.posi.inputs.table$input <- rep(c("Purchased seeds", "Tractor", "Plaguicidas", "Hired labor", "Organic fert"), each=2)
+
+cond.posi.inputs.table <- cond.posi.inputs.table[, c("input", "use.fert", "Potatoes", "Maize", "Barley", "Wheat", "Fava Beans")]
+names(cond.posi.inputs.table)[1:2] <- c("Input", "Conditional on")
+
+
+
+stargazer(cond.posi.inputs.table, # float.env="sidewaystable", 
+   digits=1, align=TRUE, rownames=FALSE,
+  title="Percentage of plots where each input is used, conditional on whether fertilizer was used", summary=FALSE,
+  out="/Users/travismcarthur/Desktop/Proposal course/prop-cond-fert-use.tex")
+
+
+
+
+with(stacked.firm.df[stacked.firm.df$which.crop=="Potatoes", ],
+ table(zona.agroproductiva, x19.fertilizante.cantidad.kg.posi )
+)
+
+
+
+
+with(stacked.firm.df[stacked.firm.df$which.crop=="Potatoes", ],
+ prop.table(table(zona.agroproductiva, x19.fertilizante.cantidad.kg.posi ), 1)
+)
+
+
+
+
+
+
+
 
 
 

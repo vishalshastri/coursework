@@ -1,7 +1,7 @@
 
 # THESE ARE IMPORTANT PARAMS IMMEDIATELY BELOW:
-mfx.on.posi.median <- FALSE
-mean.of.MP <- TRUE
+mfx.on.posi.median <- TRUE
+mean.of.MP <- FALSE
 # NOTE, IMPORTANT: It seems that under a quadratic specification, the mean of the marginal
 # products is equal to the marginal product of the mean, so the above is somewhat redundant.
 # The elasticities differ, however.
@@ -16,6 +16,8 @@ saved.workspace.path <- "/Users/travismcarthur/Desktop/Metrics (637)/Final paper
 
 saved.workspace.path <- "/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Rdata results files/saved workspace only inputsDF.Rdata"
 
+saved.workspace.path <- "/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Rdata results files/saved workspace only inputsDF with soil and rain.Rdata"
+# with soil and rain and elevation
 
 
 GAMS.projdir <-  "/Users/travismcarthur/Desktop/gamsdir/projdir/"
@@ -68,6 +70,42 @@ library(Matrix)
 
 bootstrapped.marg.results.ls <- list()
 r.sq.list <- list()
+nobs <- c()
+
+
+M <- 1
+N <- 6
+# J <- 3
+ J <- 6
+
+price.trim.quantile <- 0.99
+demand.var.trim.quantile <- 0.95
+functional.form <- "SGM"
+#demand.var.trim.quantile <- 1
+
+  intended.seed <- 100 
+  start.nonlin.from.ignorance <- FALSE
+#  start.nonlin.from.ignorance <- TRUE
+  global.max.seed <- 4
+  do.SUR <- TRUE
+  include.cost.fn <- TRUE
+  only.cost.fn <- FALSE
+  generate.synth.data.from.cost.fn <- FALSE
+  start.at.true.xi <- FALSE
+ synthetic.data <-FALSE
+if (!exists("global.max.seed")) { global.max.seed <- 0}
+
+
+do.yield <- TRUE
+
+
+
+
+
+
+
+
+
 
 for ( target.top.crop.number in 1:5) {
 
@@ -88,13 +126,6 @@ load(saved.workspace.path)
 
 
 
-
-
-
-
-
-
-
 log.plus.one.cost <- FALSE
 
 bootstrap.iter <- 1
@@ -106,6 +137,22 @@ source(paste0(code.dir, "build-model-extract-parcels.r"))
 combined.df <- data.frame(mget(c("y01", paste0("x", lead.zero(1:N)), 
   paste0("w", lead.zero(1:N)),  paste0("q", lead.zero(1:J)) )))
   
+if (do.yield) {
+  combined.df$yield <- combined.df$y01/combined.df$q01
+  combined.df$x01 <- combined.df$x01/combined.df$q01
+  combined.df$x02 <- combined.df$x02/combined.df$q01
+  combined.df$x03 <- combined.df$x03/combined.df$q01
+  combined.df$x04 <- combined.df$x04/combined.df$q01
+  combined.df$x05 <- combined.df$x05/combined.df$q01
+  combined.df$x06 <- combined.df$x06/combined.df$q01
+  combined.df$q03 <- combined.df$q03/combined.df$q01
+# Oh well; I'm hardcoding the numbers in 
+
+  combined.df <- combined.df[combined.df$yield < quantile(combined.df$yield, .99), ]
+  # Cutting out strange observations
+
+}
+  
 #region.matrix.df <-   as.data.frame(region.matrix)
 #colnames(region.matrix.df) <- iconv(colnames(region.matrix.df), to="ASCII//TRANSLIT")
 #colnames(region.matrix.df) <- gsub("'", "", colnames(region.matrix.df) )
@@ -114,27 +161,29 @@ combined.df <- data.frame(mget(c("y01", paste0("x", lead.zero(1:N)),
 #combined.df <- cbind(combined.df, region.matrix.df)
 #combined.df <- cbind(combined.df, region)
 
-
-combined.df$y01 <- exp(combined.df$y01)
-# need to convert back to original
+if (functional.form!="SGM") {
+  combined.df$y01 <- exp(combined.df$y01)
+  # need to convert back to original
+  combined.df.orig.quad$q02 <- log(combined.df.orig.quad$q02)
+  # To change irrigation back to zero-one
+}
 
 combined.df.orig <- combined.df
 combined.df.orig.quad <- combined.df.orig
-combined.df.orig.quad$q02 <- log(combined.df.orig.quad$q02)
-# To change irrigation back to zero-one
-
-for ( i in paste0("x", lead.zero(1:N))) {
-  combined.df[, i] <- combined.df[, i] + min(combined.df[combined.df[, i]!=0, i])
-}
-# S0 no zeros when we take logs
 
 
-region.matrix.df <-   as.data.frame(region.matrix)
-colnames(region.matrix.df) <- iconv(colnames(region.matrix.df), to="ASCII//TRANSLIT")
-colnames(region.matrix.df) <- gsub("'", "", colnames(region.matrix.df) )
-colnames(region.matrix.df) <- gsub("[.]", "", colnames(region.matrix.df) )
+#for ( i in paste0("x", lead.zero(1:N))) {
+#  combined.df[, i] <- combined.df[, i] + min(combined.df[combined.df[, i]!=0, i])
+#}
+# S0 no zeros when we take logs. NOTE: Not sure why this was done earlier
+
+# NOTE: BElow, I'm taking out the region dummies
+#region.matrix.df <-   as.data.frame(region.matrix)
+#colnames(region.matrix.df) <- iconv(colnames(region.matrix.df), to="ASCII//TRANSLIT")
+#colnames(region.matrix.df) <- gsub("'", "", colnames(region.matrix.df) )
+#colnames(region.matrix.df) <- gsub("[.]", "", colnames(region.matrix.df) )
   
-combined.df.orig.quad <- cbind(combined.df.orig.quad, region.matrix.df)
+#combined.df.orig.quad <- cbind(combined.df.orig.quad, region.matrix.df)
 
 
 
@@ -162,10 +211,16 @@ bootstraps <- apply(matrix(
     1, FUN=function(x) {
     
     data.df <- combined.df.orig.quad[x, ]
-    estResult <- quadFuncEst(  "y01", 
-      c(paste0("x", lead.zero(1:N)), paste0("q", lead.zero(1:J))),
-          data=data.df, shifterNames=colnames(region.matrix.df) ) 
-          
+    
+    if ( do.yield) {
+      estResult <- quadFuncEst(  "yield", 
+        c(paste0("x", lead.zero(1:N)), paste0("q", lead.zero(2:J))),
+           data=data.df)
+    } else {
+      estResult <- quadFuncEst(  "y01", 
+        c(paste0("x", lead.zero(1:N)), paste0("q", lead.zero(1:J))),
+            data=data.df) #, shifterNames=colnames(region.matrix.df) )  # NOTE: TAKING out region
+    } 
     estResult$coef[is.na(estResult$coef)] <- 0
     
     if (mfx.on.posi.median ) {
@@ -179,13 +234,25 @@ bootstraps <- apply(matrix(
     }
     
     if (mean.of.MP) {
-      margProducts <- colMeans(quadFuncDeriv( 
-        c(paste0("x", lead.zero(1:N)), paste0("q", lead.zero(1:J))),
-          data.df, coef( estResult ) ), na.rm=TRUE)
+      if ( do.yield) {
+        margProducts <- colMeans(quadFuncDeriv( 
+          c(paste0("x", lead.zero(1:N)), paste0("q", lead.zero(2:J))),
+            data.df, coef( estResult ) ), na.rm=TRUE)
+        } else {
+          margProducts <- colMeans(quadFuncDeriv( 
+            c(paste0("x", lead.zero(1:N)), paste0("q", lead.zero(1:J))),
+              data.df, coef( estResult ) ), na.rm=TRUE)
+        }
     } else {
+      if ( do.yield) {
       margProducts <- quadFuncDeriv( 
-      c(paste0("x", lead.zero(1:N)), paste0("q", lead.zero(1:J))),
+      c(paste0("x", lead.zero(1:N)), paste0("q", lead.zero(2:J))),
           combined.mean.temp, coef( estResult ) ) 
+      } else {
+        margProducts <- colMeans(quadFuncDeriv( 
+          c(paste0("x", lead.zero(1:N)), paste0("q", lead.zero(1:J))),
+            data.df, coef( estResult ) ), na.rm=TRUE)
+      }
     }
           
     names(margProducts) <- paste0("margProduct.",  names(margProducts))
@@ -212,9 +279,15 @@ point.est <- apply(matrix(
     1, FUN=function(x) {
     
     data.df <- combined.df.orig.quad[x, ]
-    estResult <- quadFuncEst(  "y01", 
-      c(paste0("x", lead.zero(1:N)), paste0("q", lead.zero(1:J))),
-          data=data.df, shifterNames=colnames(region.matrix.df) ) 
+    if( do.yield) {
+      estResult <- quadFuncEst(  "yield", 
+        c(paste0("x", lead.zero(1:N)), paste0("q", lead.zero(2:J))),
+           data=data.df)
+    } else {
+      estResult <- quadFuncEst(  "y01", 
+        c(paste0("x", lead.zero(1:N)), paste0("q", lead.zero(1:J))),
+            data=data.df) #, shifterNames=colnames(region.matrix.df) )  # NOTE: TAKING out region
+    } 
           
     estResult$coef[is.na(estResult$coef)] <- 0
 
@@ -228,14 +301,26 @@ point.est <- apply(matrix(
       combined.mean.temp <- as.data.frame(t(colMeans(data.df)))
     }
     
-   if (mean.of.MP) {
-      margProducts <- colMeans(quadFuncDeriv( 
-        c(paste0("x", lead.zero(1:N)), paste0("q", lead.zero(1:J))),
-          data.df, coef( estResult ) ), na.rm=TRUE)
+    if (mean.of.MP) {
+      if ( do.yield) {
+        margProducts <- colMeans(quadFuncDeriv( 
+          c(paste0("x", lead.zero(1:N)), paste0("q", lead.zero(2:J))),
+            data.df, coef( estResult ) ), na.rm=TRUE)
+        } else {
+          margProducts <- colMeans(quadFuncDeriv( 
+            c(paste0("x", lead.zero(1:N)), paste0("q", lead.zero(1:J))),
+              data.df, coef( estResult ) ), na.rm=TRUE)
+        }
     } else {
+      if ( do.yield) {
       margProducts <- quadFuncDeriv( 
-      c(paste0("x", lead.zero(1:N)), paste0("q", lead.zero(1:J))),
+      c(paste0("x", lead.zero(1:N)), paste0("q", lead.zero(2:J))),
           combined.mean.temp, coef( estResult ) ) 
+      } else {
+        margProducts <- colMeans(quadFuncDeriv( 
+          c(paste0("x", lead.zero(1:N)), paste0("q", lead.zero(1:J))),
+            data.df, coef( estResult ) ), na.rm=TRUE)
+      }
     }
           
     names(margProducts) <- paste0("margProduct.",  names(margProducts))
@@ -260,13 +345,23 @@ point.est <- apply(matrix(
 
 CI.mat <- matrix(apply(bootstraps, 1, FUN=quantile, probs=c(0.05, 0.95), na.rm=TRUE), ncol=2, byrow=TRUE)
 
-input.desc <- c("Inorganic Fert", "Seeds", "Tractor Hrs", "Plaguicidas", "Hired Labor", "Organic Fert", "Land", "Irrigation", "Family Labor")
+
+
+input.desc <- c("Inorganic Fert", "Purchased Seeds", "Tractor Hrs", "Plaguicidas", "Hired Labor", "Organic Fert", "Land", "Irrigation", "Family Labor", "Soil", "Elevation", "Rainfall")
+
 
 marg.prod.row.names <- rep(input.desc, 2)
 
 marg.prod.measure <- c(rep("Marginal Prod", length(input.desc)), rep("Output elasticity", length(input.desc)))
 
-input.units <- c("kg", "kg", "hours", "kg", "hours", "kg", "hectares", "binary", "num persons", rep("", length(input.desc)))
+if (do.yield) {
+  input.units <- c("kg/ha", "kg/ha", "hours/ha", "kg/ha", "hours/ha", "kg/ha", "binary", "num persons/ha", "index", "km", "decimeters", 
+    rep("", length(input.desc)-1))
+} else{
+  input.units <- c("kg", "kg", "hours", "kg", "hours", "kg", "hectares", "binary", "num persons", "index", "km", "decimeters", 
+    rep("", length(input.desc)))
+}
+
 
 
 
@@ -281,6 +376,12 @@ if (mfx.on.posi.median ) {
 
 bootstrapped.results.df <- data.frame(Measure=marg.prod.measure, Input.Name=marg.prod.row.names , stringsAsFactors=FALSE) 
 
+if (do.yield) {
+  bootstrapped.results.df <- bootstrapped.results.df[!grepl("Land", bootstrapped.results.df$Input.Name), ]
+  data.means.v <- data.means.v[input.desc!="Land"] 
+  # Caution: We are usingg te vector recycling feature here
+}
+
 bootstrapped.results.df$Point.Estimate <- point.est
 bootstrapped.results.df$Units <- input.units
 bootstrapped.results.df$Lower.90.CI <- CI.mat[, 1]
@@ -290,15 +391,36 @@ if (mfx.on.posi.median) {
   colnames(bootstrapped.results.df)[colnames(bootstrapped.results.df)=="Data.mean"] <- "Data.median|x>0"
 }
 
+bootstrapped.results.df$Input.Name <- with(bootstrapped.results.df,
+ ifelse((Lower.90.CI > 0 & Upper.90.CI > 0) | (Lower.90.CI < 0 & Upper.90.CI < 0), 
+  paste0(Input.Name, "*"), Input.Name)
+)
+
 
 
 bootstrapped.marg.results.ls[[target.crop]] <- bootstrapped.results.df
-    
-r.sq.list[[target.crop]]<- quadFuncEst(  "y01", 
-      c(paste0("x", lead.zero(1:N)), paste0("q", lead.zero(1:J))),
-          data=combined.df.orig.quad, shifterNames=colnames(region.matrix.df) )$r2bar
+
+if (do.yield) {
+  r.sq.list[[target.crop]]<- quadFuncEst(  "yield", 
+        c(paste0("x", lead.zero(1:N)), paste0("q", lead.zero(2:J))),
+            data=combined.df.orig.quad )$r2bar #, shifterNames=colnames(region.matrix.df) )$r2bar # TAKING OUT REGION
+} else {
+  r.sq.list[[target.crop]]<- quadFuncEst(  "y01", 
+        c(paste0("x", lead.zero(1:N)), paste0("q", lead.zero(1:J))),
+            data=combined.df.orig.quad )$r2bar
+}
+
+
+nobs <- c(nobs, nrow(combined.df.orig.quad))
+
+cat(target.top.crop.number, "\n")
 
 }
+
+
+
+
+
 
 
 
@@ -316,29 +438,39 @@ for ( i in 1:length(bootstrapped.marg.results.ls) ) {
 #  summary=FALSE, rownames=FALSE, align=TRUE, no.space=TRUE,
 #  out = paste0("/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Marginal products/table", i, ".tex" ))
   
-
+  # TODO: Need to change tabe titles according to mode
   
   xtab.output <- print(xtable(bootstrapped.marg.results.ls[[i]], ,
     caption=paste0("Marginal Product and Output Elasticities for ", crop.english[i], 
-  "; $R^2$ for model is ", round(r.sq.list[[i]], digits=3))),
+  "; $R^2$ for model is ", round(r.sq.list[[i]], digits=3), "; N = ", nobs[i] )),
   hline.after=0:nrow(bootstrapped.marg.results.ls[[i]]),
   caption.placement="top")
   
   xtab.output <- paste(xtab.output, "\\vspace{2em}")
   if (mfx.on.posi.median) {
-    cat(xtab.output, sep="\n",
-      file=paste0("/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Marginal products/tableatmedian", i, ".tex" ))
+     if ( do.yield) {
+  	    cat(xtab.output, sep="\n",
+          file=paste0("/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Marginal products/NEWyieldtableatmedian", i, ".tex" ))
+      } else {
+        cat(xtab.output, sep="\n",
+          file=paste0("/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Marginal products/NEWtableatmedian", i, ".tex" ))
+      }
   } else {
   	if (mean.of.MP) {
       cat(xtab.output, sep="\n",
-        file=paste0("/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Marginal products/tablemeanofMP", i, ".tex" ))  	
+        file=paste0("/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Marginal products/NEWtablemeanofMP", i, ".tex" ))  	
   	} else {
-      cat(xtab.output, sep="\n",
-        file=paste0("/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Marginal products/table", i, ".tex" ))
+  	  if ( do.yield) {
+  	    cat(xtab.output, sep="\n",
+          file=paste0("/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Marginal products/NEWyieldtable", i, ".tex" ))
+      } else {
+        cat(xtab.output, sep="\n",
+          file=paste0("/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Marginal products/NEWtable", i, ".tex" ))
+      }
   	}
   }
   # thanks to http://stackoverflow.com/questions/7160754/adding-a-horizontal-line-between-the-rows-in-a-latex-table-using-r-xtable?rq=1
-  
+  # ABove is a total mess of "if else"
 }
 
 
@@ -346,8 +478,91 @@ for ( i in 1:length(bootstrapped.marg.results.ls) ) {
 
 
 
+estResult
+
+#combined.df.orig.quad$yield <- combined.df.orig.quad$y01 / combined.df.orig.quad$q01
+
+    estResult <- quadFuncEst(  "yield", 
+      c(paste0("x", lead.zero(1:N)), paste0("q", lead.zero(2:J))),
+          data=combined.df.orig.quad) # , shifterNames=colnames(region.matrix.df) ) # NOTE: taking out region
+          
+    estResult$coef[is.na(estResult$coef)] <- 0
 
 
+replacement.cov <- matrix(0, nrow=1, ncol=ncol(estResult$coefCov))
+rownames(replacement.cov) <- "b_7_7"
+
+cov.rownames <- rownames(estResult$coefCov)
+cov.targ.ind <- which(cov.rownames== "b_6_11")
+
+estResult$coefCov <- rbind(estResult$coefCov[1:cov.targ.ind,], 
+  replacement.cov, 
+  estResult$coefCov[(cov.targ.ind+1):length(cov.rownames),] )
+
+replacement.cov <- matrix(0, nrow=nrow(estResult$coefCov), ncol=1)
+
+colnames(replacement.cov) <- "b_7_7"
+
+estResult$coefCov <- cbind(estResult$coefCov[, 1:cov.targ.ind], 
+  replacement.cov, 
+  estResult$coefCov[, (cov.targ.ind+1):length(cov.rownames)] )
+
+
+
+
+test <- quadFuncDeriv( 
+      c(paste0("x", lead.zero(1:N)), paste0("q", lead.zero(2:J))),
+          as.data.frame(t(colMeans(combined.df.orig.quad))), coef( estResult ), coefCov=vcov( estResult ) ) 
+
+
+
+plot(quadFuncDeriv( 
+      c(paste0("x", lead.zero(1:N)), paste0("q", lead.zero(2:J))),
+          cbind(x01=0:100, combined.mean.temp[, -2]), coef( estResult ) )$x01 #, vcov( estResult ) ) 
+)
+
+
+
+library("effects")
+
+quad.est <- quadFuncEst(  "y01", 
+      c(paste0("x", lead.zero(1:N)), paste0("q", lead.zero(1:J))),
+          data=combined.df.orig.quad )
+          
+quad.est <- lm(y01 ~ (x01 + x02 + x03 + x04 + x05 + x06 + 
+  q01 + q02 + q03 + q04 + q05 + q06)^2 + I(x01^2) + I(x02^2) + I(x03^2) + I(x04^2) + I(x05^2) +
+  I(x06^2) + I(q01^2)  + I(q03^2) + I(q04^2) + I(q05^2) + I(q06^2), # + I(q02^2) Since irrigation
+  data=combined.df)
+
+quad.est <- lm(y01 ~ (x01 + x02 + x03 + x04 + x05 + x06 + 
+  q01 + q02 + q03 + q04 + q05 + q06)^2 + poly(x01,2) + poly(x02, 2) + poly(x03,2) + poly(x04,2) + poly(x05,2) +
+  poly(x06,2) + poly(q01,2)  + poly(q03,2) + poly(q04,2) + poly(q05,2) + poly(q06,2), # + I(q02^2) Since irrigation
+  data=combined.df)
+
+
+quad.est <- lm(y01 ~ x01 + x02 + x03 + x04 + x05 + x06 + 
+  q01 + q02 + q03 + q04 + q05 + q06, # + I(q02^2) Since irrigation
+  data=combined.df)
+
+summary(quad.est)
+
+plot(effect(c("x01"), quad.est, xlevels=list(x01=seq(0, quantile(x01, .95), by=1)),
+  given.values=colMeans(combined.df[, names(combined.df) %in% names(coef(quad.est))])), ask = FALSE, rescale.axis = FALSE)
+     
+plot(Effect(c("x01"), quad.est, xlevels=list(x01=seq(0, quantile(x01, .95), by=1))), ask = FALSE, rescale.axis = FALSE)
+
+plot(allEffects( quad.est))
+, "x01:x02"
+"I(x01^2)"
+
+
+price.lm <- lm( x01 ~ (w01 + w02 + w03 + w04 + w05 + w06 + y01 + I(y01^2))^2 + 
+  I(w01^2) + I(w02^2) + I(w03^2) + I(w04^2) + I(w05^2) + I(w06^2) +
+  (q01 + q02 + q03)^2  , subset=x01>0   
+   )
+summary(price.lm)
+
+plot(Effect("w01", price.lm), ask = FALSE, rescale.axis = FALSE)
 
 
 

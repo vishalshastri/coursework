@@ -921,7 +921,7 @@ if (linear.GAMS.output ) {
 
   cat(completed.GAMS.file, 
     file=paste0(GAMS.projdir, "sgmGMElinear", strsplit(target.crop, " ")[[1]][1], 
-     formatC(bootstrap.iter, width = 5, flag = "0"), ".gms"), 
+     formatC(bootstrap.iter, width = 5, flag = "0"), file.flavor , ".gms"), 
     sep="\n")
   
 }

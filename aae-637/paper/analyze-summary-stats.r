@@ -2,7 +2,8 @@
 
 #saved.workspace.path <- "/Users/travismcarthur/Desktop/Metrics (637)/Final paper/GAMS work/saved workspace.Rdata"
 
-saved.workspace.path <- "/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Rdata results files/saved workspace only inputsDF.Rdata"
+#saved.workspace.path <- "/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Rdata results files/saved workspace only inputsDF.Rdata"
+saved.workspace.path <- "/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Rdata results files/saved workspace only inputsDF with soil and rain.Rdata"
 
 
 
@@ -131,7 +132,7 @@ uncensored.cost <- apply(firm.df[, c(
 
 print(table(uncensored.cost))
 
-firm.df<- firm.df[uncensored.cost, ]
+#firm.df<- firm.df[uncensored.cost, ]
 # try to see what happens when we eliminate censoring
 
 number.obs.ls[[target.crop]] <- nrow(firm.df)
@@ -216,6 +217,92 @@ unlist(fert.intensity.conditional.ls)
 
 
 save.image(file="/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Rdata results files/2008 summary stats.Rdata")
+
+
+#load("/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Rdata results files/2008 summary stats.Rdata")
+
+#
+
+pdf("/Users/travismcarthur/Desktop/Proposal course/Materials for 3-31 meeting with Brad/censored-inputs.pdf", width=5, height=5)
+
+par(cex=.6)
+
+barplot(as.matrix(censored.df), beside=TRUE, col=terrain.colors(num.of.top.crops),
+  main="Proportion of uncensored observations")
+
+
+top.crops.english <- top.crops
+top.crops.english[top.crops.english=="Papa (patatas) "] <- "Potatoes"
+top.crops.english[top.crops.english=="Maiz combined"] <- "Maize"
+top.crops.english[top.crops.english=="Cebada combined" ] <- "Barley"
+top.crops.english[top.crops.english=="Trigo          "] <- "Wheat"
+top.crops.english[top.crops.english=="Haba (verde)    "] <- "Fava beans"
+
+legend("topright", top.crops.english[1:num.of.top.crops], cex=1, 
+       fill=terrain.colors(num.of.top.crops))
+
+dev.off()
+
+par(cex=1)
+
+
+
+
+
+fert.ext.margin.agg <- aggregate(inputs.df$x19.fertilizante.cantidad.quintal, by = list(inputs.df$folio), FUN=sum, na.rm=TRUE)
+
+colnames(fert.ext.margin.agg) <- c("folio", "farm.used.fertilizer")
+fert.ext.margin.agg$farm.used.fertilizer <- fert.ext.margin.agg$farm.used.fertilizer > 0
+ 
+inputs.for.fert.ext.margin.df <-  merge(inputs.df[!duplicated(inputs.df[, c("folio", "x19.codigo")]),] , fert.ext.margin.agg)
+
+
+#extensive.margin.by.crop.mat <- as.matrix(with(inputs.for.fert.ext.margin.df[inputs.for.fert.ext.margin.df$x19.codigo %in% top.crops, ],
+#  prop.table(table(factor(x19.codigo), farm.used.fertilizer), margin=1)) * 100
+#)
+
+extensive.margin.by.crop.mat <- as.matrix(with(inputs.for.fert.ext.margin.df[inputs.for.fert.ext.margin.df$x19.codigo %in% top.crops, ],
+  prop.table(xtabs(factor.de.expansión ~ factor(x19.codigo) + farm.used.fertilizer), margin=1)) * 100
+)
+
+extensive.margin.by.crop.mat <- extensive.margin.by.crop.mat[, 2:1]
+
+library("stargazer")
+library("xtable")
+
+xtab.output <- print(xtable(extensive.margin.by.crop.mat,
+  caption="Percentage of farmers using fertilizer by type of crop planted in Bolivia", digits=1),
+  caption.placement = "top")
+  
+cat(xtab.output, sep="n",
+      file=paste0("/Users/travismcarthur/Desktop/Proposal course/Materials for 4-1 meeting with Brad/bolivia-fert-use-by-crop.tex")
+      )
+
+fert.ext.margin.agg.w.weights <- merge(fert.ext.margin.agg, inputs.df[!duplicated(inputs.df[ , c("folio", "factor.de.expansión")]) , 
+  c("folio", "factor.de.expansión")])
+
+overall.extensive.margin.mat <- t(as.matrix(prop.table(xtabs(factor.de.expansión ~ farm.used.fertilizer, data=fert.ext.margin.agg.w.weights) )) * 100
+)
+
+overall.extensive.margin.mat <- overall.extensive.margin.mat[, 2:1, drop=FALSE]
+
+xtab.output <- print(xtable(overall.extensive.margin.mat,
+  caption="Percentage of farmers using fertilizer in Bolivia, overall", digits=1),
+  caption.placement = "top")
+  
+cat(xtab.output, sep="n",
+      file=paste0("/Users/travismcarthur/Desktop/Proposal course/Materials for 4-1 meeting with Brad/bolivia-fert-use-overall.tex")
+      )
+
+
+
+
+# Check if survey weights changes things:
+
+
+# Thanks to http://r.789695.n4.nabble.com/How-do-I-get-a-weighted-frequency-table-td3774665.html
+
+
 
 
 # number of farms that have the same crop in multiple plots

@@ -61,8 +61,114 @@ nrow(output.df)
 # Hmm. one quarter of the data was dropped. This may be due to inconsistent coding of the crop names
 # ok, now only ~3% of data is dropped after the coding fix
 
+
+
+sold.perc.by <- by(output.df, INDICES=list(output.df$x20.codigo.de.producto), FUN=function(x) {
+  x$x20.cuanto.vende.mn...cantidad.quintal[is.na(x$x20.cuanto.vende.mn...cantidad.quintal )] <- 0 
+  x$x20.vende.fuera.pais...cantidad.quintal[is.na(x$x20.vende.fuera.pais...cantidad.quintal )] <- 0 
+  mean(x$x20.cuanto.vende.mn...cantidad.quintal >0 | x$x20.vende.fuera.pais...cantidad.quintal>0)
+})
+
+sold.perc.by <- unclass(sold.perc.by)
+sold.perc.df <- as.data.frame(sold.perc.by)
+most.grown.tab <- sort(table(output.df$x20.codigo.de.producto), decreasing=TRUE)
+
+sold.perc.df.save <- sold.perc.df
+
+sold.perc.df <- sold.perc.df[match(names(most.grown.tab), rownames(sold.perc.df)), , drop=FALSE] * 100
+
+rownames(sold.perc.df) <- gsub("(^ +)|( +$)", "", rownames(sold.perc.df))
+colnames(sold.perc.df) <- "Percentage"
+
+library("stargazer")
+
+stargazer(sold.perc.df, digits=1, align=TRUE,
+  out="/Users/travismcarthur/Desktop/Proposal course/Materials for 4-16 meeting with JP and Brad/market_sale.tex",
+  title="Proportion of farmers growing each crop who sell that crop in the market",
+  summary=FALSE)
+  
+
+fert.sold.ctable.p.starg <- gsub("multicolumn[{]1[}][{]c[}]", "multicolumn{1}{l}", fert.sold.ctable.p.starg)
+
+cat(fert.sold.ctable.p.starg, file="/Users/travismcarthur/Desktop/Proposal course/Materials for 4-16 meeting with JP and Brad/market_sale_by_fert_use.tex", sep="\n")
+
+
+
+
+
+crop.fert.agg<- aggregate(inputs.df$x19.fertilizante.cantidad.kg, 
+  by=inputs.df[, c("folio", "x19.codigo")], 
+  FUN=sum, na.rm=TRUE)
+  
+unique(crop.fert.agg$x19.codigo)[!as.character(unique(crop.fert.agg$x19.codigo)) %in% output.df$x20.codigo.de.producto]
+# Seems ok, except for a few unusual crops
+colnames(crop.fert.agg)[2:3] <- c("x20.codigo.de.producto",  "fert.kg")
+
+output.df.aug <- merge(output.df, crop.fert.agg, )
+
+output.df.aug$x20.cuanto.vende.mn...cantidad.quintal[is.na(output.df.aug$x20.cuanto.vende.mn...cantidad.quintal )] <- 0 
+output.df.aug$x20.vende.fuera.pais...cantidad.quintal[is.na(output.df.aug$x20.vende.fuera.pais...cantidad.quintal )] <- 0 
+
+output.df.aug$sold.any <- output.df.aug$x20.cuanto.vende.mn...cantidad.quintal >0 | output.df.aug$x20.vende.fuera.pais...cantidad.quintal>0
+
+#round(prop.table(ftable(output.df.aug$x20.codigo.de.producto, output.df.aug$sold.any, output.df.aug$fert.kg>0), margin=3)*100)
+
+library("catspec")
+
+fert.sold.table <- table(output.df.aug$x20.codigo.de.producto, output.df.aug$sold.any, output.df.aug$fert.kg>0)
+
+fert.sold.ctable <- ctab(fert.sold.table, type = "column", percentages = TRUE) 
+# Thanks to http://r.789695.n4.nabble.com/prop-table-on-three-way-table-td798226.html
+
+
+
+#fert.sold.ctable[, fert.sold.ctable$ctab=="TRUE", ]
+
+fert.sold.ctable.p <- print(fert.sold.ctable)
+fert.sold.ctable.p <- fert.sold.ctable.p[c(FALSE, TRUE), , drop=FALSE]
+# This removes everyother row, which are the rows with the "FALSE" for having sold
+fert.sold.ctable.p <- as.data.frame(fert.sold.ctable.p)
+rownames(fert.sold.ctable.p ) <- attr(fert.sold.ctable$table, "dimnames")[[1]]
+colnames(fert.sold.ctable.p) <- c("Did not use fert", "Did use")
+
+fert.sold.ctable.p <- cbind(fert.sold.ctable.p, sold.perc.df.save*100)
+colnames(fert.sold.ctable.p)[3] <- "Overall proportion who sold"
+
+fert.sold.ctable.p <- fert.sold.ctable.p[match(names(most.grown.tab), rownames(fert.sold.ctable.p)), , drop=FALSE] 
+rownames(fert.sold.ctable.p) <- gsub("(^ +)|( +$)", "", rownames(fert.sold.ctable.p))
+
+
+fert.sold.ctable.p.starg <- stargazer(fert.sold.ctable.p, digits=1, align=TRUE,
+  title="Proportion of farmers growing each crop who sell that crop in the market, according to whether use fert",
+  summary=FALSE)
+  
+
+fert.sold.ctable.p.starg <- gsub("multicolumn[{]1[}][{]c[}]", "multicolumn{1}{l}", fert.sold.ctable.p.starg)
+
+cat(fert.sold.ctable.p.starg, file="/Users/travismcarthur/Desktop/Proposal course/Materials for 4-16 meeting with JP and Brad/market_sale_by_fert_use.tex", sep="\n")
+
+
+
+as.data.frame(print(fert.sold.ctable))
+
+
+
+Maiz combined                                              FALSE   1903  137
+                                                           TRUE    1061  112
+
+
+Papa (patatas)                                             FALSE   2178  425
+                                                           TRUE     860  582
+
+
+
+### BELOW IS NOT COMPATIBLE WITH ABOVE
+
+
 inputs.fixed.df <- inputs.df[ , c("folio", "soil.quality", "elevation" , "mean.ann.rain.5yr",  
   "provincia.full", "seccion.full", "sector.full", "segmento.full", "departamento" )]
+  
+
 
 output.df <- merge(output.df, inputs.fixed.df[!duplicated(inputs.fixed.df), ])
 
