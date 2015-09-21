@@ -256,6 +256,9 @@ demand.eqns.nonlinear <- lapply(demand.eqns, FUN=function(x) {
 }
 )
 
+cost.fn.expr <- demand.eqns[[length(demand.eqns)]]
+
+
 if ( !include.cost.fn) {
   demand.eqns <- demand.eqns[-length(demand.eqns)]
   demand.eqns.nonlinear <- demand.eqns.nonlinear[-length(demand.eqns.nonlinear)]

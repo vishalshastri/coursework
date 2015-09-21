@@ -5,7 +5,7 @@
 
 
 
-target.top.crop.number <- 1
+target.top.crop.number <- 2
 
 #Including zero cost:
 #Potatoes	4,058
@@ -21,7 +21,7 @@ N <- 6
 
 
 
-
+do.regimes <- TRUE
 
 functional.form <- "SGM" # OR TRANSLOG
 #functional.form <- "TRANSLOG"
@@ -99,6 +99,8 @@ saved.workspace.path <- "/Users/travismcarthur/Desktop/Metrics (637)/Final paper
 # with soil and rain and elevation
 
 saved.workspace.path <- "/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Rdata results files/saved workspace only inputsDF with soil and rain and no drive time and with mean imputation.Rdata"
+
+saved.workspace.path <- "/Users/travismcarthur/Desktop/Bolivia project/Data/saved workspace only inputsDF with soil and rain and no drive time and with mean imputation.Rdata"
 
 
 GAMS.projdir <-  "/Users/travismcarthur/Desktop/gamsdir/projdir2/"
@@ -233,7 +235,7 @@ time.counter <- c()
 bootstrap.iter <- 0
 
 
-file.flavor <- "mean-impute-no-cost-fn-no-SUR"
+file.flavor <- "mean-impute-no-cost-fn-no-SUR-logit-attempt"
 
 
 
@@ -378,6 +380,12 @@ run.nonlinear.from.shell <-paste0("cd ", GAMS.projdir, "\n",
    " Ps=0 suppress=1")
 }
 
+
+# In fact, we need the linear construction file to be created
+# even if we "start nonlinear from ignorance"
+# since the nonlinear relies on it for the var names.
+# Can just run it a few secs and stop.
+
 if (functional.form =="SGM") {
   source(paste0(code.dir, "sgm-GAMS-nonlinear-construction.r"))
 }
@@ -394,6 +402,45 @@ run.nonlinear.from.shell <-paste0("cd ", GAMS.projdir, "\n",
 
 
 system(run.nonlinear.from.shell)
+
+
+
+if ( do.regimes) {
+
+  n.regime.groups <- 6
+  
+  source(paste0(code.dir, "regimes-cluster-calc.r"))
+  
+  source(paste0(code.dir, "GAMS-multinomial-logit-construction.r"))
+  
+  
+  run.multinom.logit.from.shell <-paste0("cd ", GAMS.projdir, "\n", 
+    GAMS.exe.path, " ", 
+    "MLEmultinomiallogit", strsplit(target.crop, " ")[[1]][1], 
+    formatC(bootstrap.iter, width = 5, flag = "0"), file.flavor , ".gms", 
+    " Ps=0 suppress=1")
+
+  system(run.multinom.logit.from.shell)
+  
+  
+  source(paste0(code.dir, "prep-for-sgm-GAMS-regimes-construction.r"))
+  
+  
+  source(paste0(code.dir, "sgm-GAMS-regimes-construction.r"))
+  
+
+  run.nonlinear.regimes.from.shell <-paste0("cd ", GAMS.projdir, "\n", 
+     GAMS.exe.path, " ", 
+     "sgmGMEnonlinearRegimes", strsplit(target.crop, " ")[[1]][1], 
+     formatC(bootstrap.iter, width = 5, flag = "0"), file.flavor , ".gms", 
+     " Ps=0 suppress=1")
+
+  system(run.nonlinear.regimes.from.shell)
+
+
+
+}
+
 
 
 

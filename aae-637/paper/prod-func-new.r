@@ -19,6 +19,8 @@ saved.workspace.path <- "/Users/travismcarthur/Desktop/Metrics (637)/Final paper
 saved.workspace.path <- "/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Rdata results files/saved workspace only inputsDF with soil and rain.Rdata"
 # with soil and rain and elevation
 
+saved.workspace.path <- "/Users/travismcarthur/Desktop/Bolivia project/Data/saved workspace only inputsDF with soil and rain and advanced drive time fixed.Rdata"
+
 
 GAMS.projdir <-  "/Users/travismcarthur/Desktop/gamsdir/projdir/"
 
@@ -70,7 +72,8 @@ library(Matrix)
 
 bootstrapped.marg.results.ls <- list()
 r.sq.list <- list()
-nobs <- c()
+nobs <- list()
+MP.var.ls <- list()
 
 
 M <- 1
@@ -98,6 +101,7 @@ if (!exists("global.max.seed")) { global.max.seed <- 0}
 
 do.yield <- TRUE
 
+aggregate.regions <- TRUE
 
 
 
@@ -105,7 +109,7 @@ do.yield <- TRUE
 
 
 
-
+#  target.top.crop.number <- 1
 
 for ( target.top.crop.number in 1:5) {
 
@@ -124,7 +128,38 @@ for ( target.top.crop.number in 1:5) {
 
 load(saved.workspace.path)
 
+log.plus.one.cost <- FALSE
 
+bootstrap.iter <- 1
+# NOTE: Bootstrap iter = 0 means actual estimate
+bootstrap.selection.v <- TRUE
+source(paste0(code.dir, "build-model-extract-parcels.r"))
+
+
+# Do this section above just so we can extract the regions where the crops are planted
+
+unique.regions <- as.character( unique(region) )
+
+if (aggregate.regions) {
+  unique.regions[grepl("ALTIPLANO", unique.regions)] <- "ALTIPLANO"
+  unique.regions[grepl("VALLES", unique.regions)] <- "VALLES"
+  unique.regions <- unique(unique.regions)
+}
+
+region.list <- as.list( unique.regions )
+
+names(region.list) <- unique.regions
+
+
+
+
+region.list <- c(list(ALL.REGIONS=unique.regions), region.list)
+
+
+for ( target.region in names(region.list) ) {
+
+
+load(saved.workspace.path)
 
 log.plus.one.cost <- FALSE
 
@@ -134,8 +169,18 @@ bootstrap.selection.v <- TRUE
 source(paste0(code.dir, "build-model-extract-parcels.r"))
 
 
+
+if (aggregate.regions) {
+  region <- as.character( region )
+  region[grepl("ALTIPLANO", region)] <- "ALTIPLANO"
+  region[grepl("VALLES", region)] <- "VALLES"
+}
+
+
 combined.df <- data.frame(mget(c("y01", paste0("x", lead.zero(1:N)), 
   paste0("w", lead.zero(1:N)),  paste0("q", lead.zero(1:J)) )))
+  
+combined.df <- cbind(combined.df, data.frame(region) )
   
 if (do.yield) {
   combined.df$yield <- combined.df$y01/combined.df$q01
@@ -168,6 +213,13 @@ if (functional.form!="SGM") {
   # To change irrigation back to zero-one
 }
 
+
+combined.df <- combined.df[combined.df$region %in% region.list[[target.region]], ]
+
+if (nrow(combined.df) < 78 ) { next }
+# The number of params in the quadratic production function is 78, so this avoids the 
+# Problem of negative degrees of freedom
+
 combined.df.orig <- combined.df
 combined.df.orig.quad <- combined.df.orig
 
@@ -197,7 +249,7 @@ library("micEcon")
 
 
 
-boot.replications <- 2000
+boot.replications <- 100
 
 # as.data.frame(t(apply(combined.df.orig.quad, 2, function(x) median(x[x>0]) )))
 
@@ -211,6 +263,7 @@ bootstraps <- apply(matrix(
     1, FUN=function(x) {
     
     data.df <- combined.df.orig.quad[x, ]
+    data.df <- data.df[, colnames(data.df)!="region"]
     
     if ( do.yield) {
       estResult <- quadFuncEst(  "yield", 
@@ -279,6 +332,9 @@ point.est <- apply(matrix(
     1, FUN=function(x) {
     
     data.df <- combined.df.orig.quad[x, ]
+    
+    data.df <- data.df[, colnames(data.df)!="region"]
+    
     if( do.yield) {
       estResult <- quadFuncEst(  "yield", 
         c(paste0("x", lead.zero(1:N)), paste0("q", lead.zero(2:J))),
@@ -344,8 +400,7 @@ point.est <- apply(matrix(
 #CI.mat <- matrix(apply(bootstraps, 1, FUN=quantile, probs=c(0.025, 0.975)), ncol=2, byrow=TRUE)
 
 CI.mat <- matrix(apply(bootstraps, 1, FUN=quantile, probs=c(0.05, 0.95), na.rm=TRUE), ncol=2, byrow=TRUE)
-
-
+MP.var.ls[[target.crop]][[target.region]] <- apply(bootstraps, 1, FUN=var, na.rm=TRUE)
 
 input.desc <- c("Inorganic Fert", "Purchased Seeds", "Tractor Hrs", "Plaguicidas", "Hired Labor", "Organic Fert", "Land", "Irrigation", "Family Labor", "Soil", "Elevation", "Rainfall")
 
@@ -379,7 +434,7 @@ bootstrapped.results.df <- data.frame(Measure=marg.prod.measure, Input.Name=marg
 if (do.yield) {
   bootstrapped.results.df <- bootstrapped.results.df[!grepl("Land", bootstrapped.results.df$Input.Name), ]
   data.means.v <- data.means.v[input.desc!="Land"] 
-  # Caution: We are usingg te vector recycling feature here
+  # Caution: We are using the vector recycling feature here
 }
 
 bootstrapped.results.df$Point.Estimate <- point.est
@@ -398,24 +453,31 @@ bootstrapped.results.df$Input.Name <- with(bootstrapped.results.df,
 
 
 
-bootstrapped.marg.results.ls[[target.crop]] <- bootstrapped.results.df
+bootstrapped.marg.results.ls[[target.crop]][[target.region]] <- bootstrapped.results.df
 
 if (do.yield) {
-  r.sq.list[[target.crop]]<- quadFuncEst(  "yield", 
+  r.sq.list[[target.crop]][[target.region]]<- quadFuncEst(  "yield", 
         c(paste0("x", lead.zero(1:N)), paste0("q", lead.zero(2:J))),
             data=combined.df.orig.quad )$r2bar #, shifterNames=colnames(region.matrix.df) )$r2bar # TAKING OUT REGION
 } else {
-  r.sq.list[[target.crop]]<- quadFuncEst(  "y01", 
+  r.sq.list[[target.crop]][[target.region]]<- quadFuncEst(  "y01", 
         c(paste0("x", lead.zero(1:N)), paste0("q", lead.zero(1:J))),
             data=combined.df.orig.quad )$r2bar
 }
 
 
-nobs <- c(nobs, nrow(combined.df.orig.quad))
+nobs[[target.crop]][[target.region]] <- nrow(combined.df.orig.quad)
 
 cat(target.top.crop.number, "\n")
 
 }
+
+}
+
+
+# END ESTIMATION
+
+
 
 
 
@@ -428,7 +490,13 @@ cat(target.top.crop.number, "\n")
 library("stargazer")
 library("xtable")
 
-for ( i in 1:length(bootstrapped.marg.results.ls) ) {
+
+
+for ( target.crop.number in 1:length(bootstrapped.marg.results.ls) ) {
+
+for (target.region in names(bootstrapped.marg.results.ls[[target.crop.number]]) ) {
+
+#for ( i in 1:length(bootstrapped.marg.results.ls) ) {
 
   crop.english<- c("Potatoes", "Maize", "Barley", "Wheat", "Fava Beans")
 
@@ -438,43 +506,156 @@ for ( i in 1:length(bootstrapped.marg.results.ls) ) {
 #  summary=FALSE, rownames=FALSE, align=TRUE, no.space=TRUE,
 #  out = paste0("/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Marginal products/table", i, ".tex" ))
   
-  # TODO: Need to change tabe titles according to mode
+  # TODO: Need to change table titles according to mode
   
-  xtab.output <- print(xtable(bootstrapped.marg.results.ls[[i]], ,
-    caption=paste0("Marginal Product and Output Elasticities for ", crop.english[i], 
-  "; $R^2$ for model is ", round(r.sq.list[[i]], digits=3), "; N = ", nobs[i] )),
-  hline.after=0:nrow(bootstrapped.marg.results.ls[[i]]),
-  caption.placement="top")
+  xtab.output <- print(xtable(bootstrapped.marg.results.ls[[target.crop.number]][[target.region]], 
+    caption=paste0("Marginal Product and Output Elasticities for ", crop.english[target.crop.number], " in ",
+    target.region,
+    "; $R^2$ for model is ", round(r.sq.list[[target.crop.number]][[target.region]], digits=3), 
+    "; N = ", nobs[[target.crop.number]][[target.region]] )),
+    hline.after=0:nrow(bootstrapped.marg.results.ls[[target.crop.number]][[target.region]]),
+    caption.placement="top")
+    
+#  xtab.output <- print(xtable(bootstrapped.marg.results.ls[[target.crop.number]][[target.region]],
+#    caption=paste0("Marginal Product and Output Elasticities for ", crop.english[target.crop.number], " in ",
+#    target.region)),
+#    hline.after=0:nrow(bootstrapped.marg.results.ls[[target.crop.number]][[target.region]]),
+#    caption.placement="top") 
   
   xtab.output <- paste(xtab.output, "\\vspace{2em}")
   if (mfx.on.posi.median) {
      if ( do.yield) {
   	    cat(xtab.output, sep="\n",
-          file=paste0("/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Marginal products/NEWyieldtableatmedian", i, ".tex" ))
+          file=paste0("/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Marginal products/NEWyieldtableatmedian_", crop.english[target.crop.number], "_", target.region, ".tex" ))
       } else {
         cat(xtab.output, sep="\n",
-          file=paste0("/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Marginal products/NEWtableatmedian", i, ".tex" ))
+          file=paste0("/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Marginal products/NEWtableatmedian_", 
+          crop.english[target.crop.number], "_", target.region, ".tex" ))
       }
   } else {
   	if (mean.of.MP) {
       cat(xtab.output, sep="\n",
-        file=paste0("/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Marginal products/NEWtablemeanofMP", i, ".tex" ))  	
+        file=paste0("/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Marginal products/NEWtablemeanofMP_", 
+        crop.english[target.crop.number], "_", target.region, ".tex" ))  	
   	} else {
   	  if ( do.yield) {
   	    cat(xtab.output, sep="\n",
-          file=paste0("/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Marginal products/NEWyieldtable", i, ".tex" ))
+          file=paste0("/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Marginal products/NEWyieldtable_",
+           crop.english[target.crop.number], "_", target.region, ".tex" ))
       } else {
         cat(xtab.output, sep="\n",
-          file=paste0("/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Marginal products/NEWtable", i, ".tex" ))
+          file=paste0("/Users/travismcarthur/Desktop/Metrics (637)/Final paper/Marginal products/NEWtable_", 
+          crop.english[target.crop.number], "_", target.region, ".tex" ))
       }
   	}
   }
   # thanks to http://stackoverflow.com/questions/7160754/adding-a-horizontal-line-between-the-rows-in-a-latex-table-using-r-xtable?rq=1
   # ABove is a total mess of "if else"
+  
+
+}
+
+}
+
+# END CODE
+
+#install.packages("aod")
+library("aod")
+
+
+
+wald.result.ls <- list()
+
+
+for ( target.crop.number in 1:length(bootstrapped.marg.results.ls) ) {
+
+
+  region.combns <- t(  combn(names( bootstrapped.marg.results.ls[[target.crop.number]][-1] ), 2) )
+  # Taking [-1] since all.regions is the first element
+  
+  for ( target.pair in 1:nrow(region.combns) ) {
+  
+    first.region  <- region.combns[ target.pair, 1]
+    second.region <- region.combns[ target.pair, 2]
+    
+    first.point <- bootstrapped.marg.results.ls[[target.crop.number]][[  first.region  ]]$Point.Estimate["margProduct.x01",]
+    second.point <- bootstrapped.marg.results.ls[[target.crop.number]][[  second.region ]]$Point.Estimate["margProduct.x01",]
+
+    first.var <- MP.var.ls[[target.crop.number]][[  first.region  ]]["margProduct.x01"]
+    second.var <- MP.var.ls[[target.crop.number]][[  second.region  ]]["margProduct.x01"]    
+    
+    
+    mp.sigma <- matrix(c(first.var, 0, 0, second.var), ncol=2)
+    # Note that the covariance is zero since these region-specific samples are independent
+    
+    wald.result.ls[[as.character(target.crop.number)]][[target.pair]] <- 
+      wald.test(mp.sigma, c( first.point, second.point), L=matrix(c(1, -1), ncol=2))$result$chi2["P"]
+    
+
+
+  }
+
 }
 
 
-# END CODE
+
+
+wald.test(mp.sigma, c( first.point, second.point), L=diag(2))
+
+
+
+
+
+
+
+
+
+
+
+
+
+wald.test(Sigma, b)
+
+
+
+
+
+
+
+
+# Ok, I have 3 different flavors of iterators here, which is quite dangerous:
+# target.crop.number
+# target.top.crop.number
+# target.crop
+# That could lead to big trouble
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -770,6 +770,7 @@ equation.declarations <- c(
 library("stringr")
 
 
+
 GAMS.linear.results<- readLines(paste0(GAMS.projdir, "sgmGMElinear", strsplit(target.crop, " ")[[1]][1], 
    formatC(bootstrap.iter, width = 5, flag = "0"), file.flavor , ".lst"))
 

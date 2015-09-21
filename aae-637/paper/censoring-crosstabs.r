@@ -115,7 +115,7 @@ for ( target.top.crop.number in 2:5 ) {
   source(paste0(code.dir, "build-model-extract-parcels.r"))
   firm.df$which.crop <- firm.df$x19.codigo
   firm.df$region <- region
-  firm.df <- merge(firm.df, additional.chars.df, all.x=TRUE)
+ # firm.df <- merge(firm.df, additional.chars.df, all.x=TRUE)
   stacked.firm.df <- rbind(stacked.firm.df, firm.df)
 }
 
@@ -752,6 +752,44 @@ fert.ftable <-ftable( stacked.firm.df$x19.sem.comprada.cantidad.kg.posi,
 
 
 fert.ftable <- as.data.frame(fert.ftable)
+
+fert.ftable[rev(order(fert.ftable$Freq)),]
+
+apply(fert.ftable[rev(order(fert.ftable$Freq)),1:6], 1, FUN=function(x) sum(as.logical(x)) )
+
+test.kmeans <- kmeans(stacked.firm.df[, c("x19.sem.comprada.cantidad.kg.posi",
+  "tractor.hrs.final.posi",
+  "x19.plagicidas.cantidad.kg.posi",
+  "paid.hours.spread.posi",
+  "x19.abono.cantidad.kg.posi",
+  "x19.fertilizante.cantidad.kg.posi")], centers=6, nstart=1000)
+  
+str(test.kmeans)
+table(test.kmeans$cluster)
+
+just.posi.vars.df <- stacked.firm.df[, c("x19.sem.comprada.cantidad.kg.posi",
+  "tractor.hrs.final.posi",
+  "x19.plagicidas.cantidad.kg.posi",
+  "paid.hours.spread.posi",
+  "x19.abono.cantidad.kg.posi",
+  "x19.fertilizante.cantidad.kg.posi")]
+
+trans1 <- as(just.posi.vars.df, "transactions")
+
+d_jaccard <- dissimilarity(trans1)
+hc <- hclust(d_jaccard)
+plot(hc)
+## get 20 clusters and look at the difference of the item frequencies (bars)
+## for the top 20 items) in cluster 1 compared to the data (line)
+
+test.cut <- cutree(hc, 6)
+
+colnames(just.posi.vars.df) <- c("Seed", "Tractor", "Plag", "Labor", "Abono", "Fert")
+
+as.data.frame( ftable(just.posi.vars.df[test.cut==1, ]) )
+
+
+
 
 fert.ftable <- cbind(fert.ftable[fert.ftable$Fert==TRUE, ], 
   fert.ftable[fert.ftable$Fert==FALSE, "Freq"])

@@ -31,19 +31,91 @@ summary(with(as.list(start.params), eval(parse(text=cost.fn.expr))))
 #'MODE_ID'    is 1,2,3,4
 #'CHOICE' 0 -1 -- this is "mode"
 
-nalts <- 2
+
+
+
+
+#just.posi.vars.df <- stacked.firm.df[, c("x19.sem.comprada.cantidad.kg.posi",
+#  "tractor.hrs.final.posi",
+#  "x19.plagicidas.cantidad.kg.posi",
+#  "paid.hours.spread.posi",
+#  "x19.abono.cantidad.kg.posi",
+#  "x19.fertilizante.cantidad.kg.posi")]
+
+library("arules")
+
+
+firm.df$x19.fertilizante.cantidad.kg.posi <- firm.df$x19.fertilizante.cantidad.kg > 0 
+firm.df$x19.sem.comprada.cantidad.kg.posi <- firm.df$x19.sem.comprada.cantidad.kg > 0
+firm.df$tractor.hrs.final.posi <- firm.df$tractor.hrs.final > 0
+firm.df$x19.plagicidas.cantidad.kg.posi <- firm.df$x19.plagicidas.cantidad.kg > 0
+firm.df$paid.hours.spread.posi <- firm.df$paid.hours.spread > 0
+firm.df$x19.abono.cantidad.kg.posi <- firm.df$x19.abono.cantidad.kg > 0
+  
+just.posi.vars.df <- firm.df[, c("x19.sem.comprada.cantidad.kg.posi",
+  "tractor.hrs.final.posi",
+  "x19.plagicidas.cantidad.kg.posi",
+  "paid.hours.spread.posi",
+  "x19.abono.cantidad.kg.posi",
+  "x19.fertilizante.cantidad.kg.posi")]
+
+trans1 <- as(just.posi.vars.df, "transactions")
+
+d_jaccard <- dissimilarity(trans1)
+hc <- hclust(d_jaccard)
+plot(hc)
+## get 20 clusters and look at the difference of the item frequencies (bars)
+## for the top 20 items) in cluster 1 compared to the data (line)
+
+n.regime.groups <- 6
+
+regime.cut <- cutree(hc, n.regime.groups)
+
+# colnames(just.posi.vars.df) <- c("Seed", "Tractor", "Plag", "Labor", "Abono", "Fert")
+# as.data.frame( ftable(just.posi.vars.df[test.cut==1, ]) )
+
+regime.cut.tab <- table(regime.cut)
+
+set.seed(100)
+for ( i in names(regime.cut.tab)[regime.cut.tab <= 80] ) {
+  regime.cut[ regime.cut==i ] <- sample(
+    x= as.numeric( names(regime.cut.tab)[regime.cut.tab > 80] ), 
+    size=sum(regime.cut==i), replace=TRUE
+  )
+}
+
+table(regime.cut)
+
+
+nalts <- length(unique(regime.cut))
 mode_id <- rep(1:nalts, length(x01)) 
 #mode <- ifelse(rep(x01, each=2) > 0, 1, 0)
 
-mode <- c()
+#mode <- c()
 # Really hacky, below:
+#for ( i in 1:length(x01)) {
+#  if (x01[i]>0) {  
+#    mode <- c(mode, c(0, 1) )
+#  } else {
+#    mode <- c(mode, c(1, 0) )
+#  }
+#}
+
+
+
+
+
+mode <- c()
 for ( i in 1:length(x01)) {
-  if (x01[i]>0) {  
-    mode <- c(mode, c(0, 1) )
-  } else {
-    mode <- c(mode, c(1, 0) )
-  }
+  mode.vec <- rep(0, nalts)
+  mode.vec[ regime.cut[i] ] <- 1
+  mode <- c(mode, mode.vec)
 }
+
+
+
+
+
 
 
 if (FALSE) {
@@ -92,10 +164,13 @@ cond_logit_llf <- function(b0) {
 
   start.params <- b0
 #  names(start.params) <- rep(all.params, nalts)
-  start.params.ls<- as.list(as.data.frame(matrix(start.params, ncol=nalts)))
-  for ( i in 1:nalts) {
+  start.params.ls<- as.list(as.data.frame(matrix(start.params, ncol=nalts-1)))
+  for ( i in 1:(nalts-1)) {
     names(start.params.ls[[i]]) <- all.params
   }
+  
+  start.params.ls[[ nalts ]] <- rep(0, length(all.params) )
+  names(start.params.ls[[ nalts ]]) <- all.params
   
   #start.params.ls<- list(start.params[1:length(all.params)], start.params[(length(all.params)+1):length(start.params)])
 #print(start.params.ls)
@@ -116,32 +191,79 @@ cond_logit_llf <- function(b0) {
    }  
 #   print(inner_1)
    
-   sum(inner_1-part_2)
+   (-1) * sum(inner_1-part_2)
    
 }
 
 set.seed(200)
 
-start.val.f <- jitter( rep(0, length(all.params)*nalts), factor= 0.0001 )
+#start.val.f <- jitter( rep(0, length(all.params)*nalts), factor= 0.0001 )
+
+start.val.f <- jitter( rep(0, length(all.params)*(nalts-1)), factor= 0.0001 )
 
 cond_logit_llf( start.val.f  )
 cond_logit_llf( start.val.f + 0.000001 )
 
 set.seed(200)
-multi.logit.results <- optim(par=jitter( rep(0, length(all.params)*nalts), factor= 0.0001 ), fn=cond_logit_llf, method = "BFGS", control=list(trace=10, fnscale= -1, maxit=10000000, ndeps = rep(1e-10, length(start.val.f ))))
+multi.logit.results <- optim(par=jitter( rep(0, length(all.params)*(nalts-1)), factor= 0.0001 ), fn=cond_logit_llf, 
+  method = "Nelder-Mead", control=list(trace=10, maxit=1000000 ))
+  #, ndeps = rep(1e-10, length(start.val.f ))))
+  
+multi.logit.results.2 <- optim(par=multi.logit.results$par, fn=cond_logit_llf, 
+  method = "Nelder-Mead", control=list(trace=10, maxit=1000000 ))
+  
+  
+nlminb.test <- nlminb(start=jitter( rep(0, length(all.params)*(nalts-1)), factor= 0.0001 ), objective=cond_logit_llf,
+  control=list(trace=1))  
 
+nlm.test <- nlm(f=cond_logit_llf, p=jitter( rep(0, length(all.params)*(nalts-1)), factor= 0.0001 ), print.level=2 )
 
+multi.logit.results.10 <- optim(par=nlm.test$estimate, fn=cond_logit_llf, 
+  method = "Nelder-Mead", control=list(trace=10,  maxit=50000))
 
+multi.logit.results$par <- nlm.test$estimate
+
+# install.packages("bbmle")
+library("bbmle")
+
+set.seed(200)
+mle2.start <- jitter( rep(0, length(all.params)*(nalts-1)), factor= 0.0001 )
+names(mle2.start ) <- paste0("alt.", rep(1:(nalts-1), each=length(all.params)), all.params)
+
+test.mle2 <- mle2(cond_logit_llf, start=mle2.start,  optimizer="nlminb")
+# method
+# maxit=10000000
+# "Nelder-Mead"
+
+multi.logit.results.save <- multi.logit.results
+multi.logit.results <- multi.logit.results.2
+
+multi.logit.results.2 <- optim(par=multi.logit.results$par, fn=cond_logit_llf, 
+  method = "Nelder-Mead", control=list(trace=10, fnscale= -1, maxit=50000))
+  
+multi.logit.results <- multi.logit.results.4
+
+multi.logit.results.4 <- optim(par=multi.logit.results.3$par, fn=cond_logit_llf, 
+  method = "Nelder-Mead", control=list(trace=10, fnscale= -1, maxit=50000))
+
+# , ndeps = rep(1e-10, length(start.val.f )
+
+multi.logit.results.5 <- optim(par=multi.logit.results.4$par[1:(length(multi.logit.results.4$par)*4/5)], fn=cond_logit_llf, 
+  method = "Nelder-Mead", control=list(trace=10,  maxit=10000))
 
 
 cond_logit_predict <- function(b0, outcome) {
 
   start.params <- b0
 #  names(start.params) <- rep(all.params, nalts)
-  start.params.ls<- as.list(as.data.frame(matrix(start.params, ncol=nalts)))
-  for ( i in 1:nalts) {
+  start.params.ls<- as.list(as.data.frame(matrix(start.params, ncol=nalts-1)))
+  for ( i in 1:(nalts-1)) {
     names(start.params.ls[[i]]) <- all.params
   }
+  
+  start.params.ls[[ nalts ]] <- rep(0, length(all.params) )
+  names(start.params.ls[[ nalts ]]) <- all.params
+  
 
   inner_2 <- 0
   for (i in 1:nalts)  {     # %*** Create LLF denom. ***         
@@ -159,20 +281,65 @@ cond_logit_predict <- function(b0, outcome) {
 
 
 
-summary(cond_logit_predict(multi.logit.results$par, outcome=2))
+predicted.regime <- 5
 
-predictions <- cond_logit_predict(multi.logit.results$par, outcome=2)
+summary(cond_logit_predict(multi.logit.results$par, outcome=predicted.regime))
 
-table( x01 >0, predictions> mean(predictions) )
+predictions <- cond_logit_predict(multi.logit.results$par, outcome=predicted.regime)
 
-table( x01 >0, predictions> 0.5 )
+table( regime.cut == predicted.regime, predictions> mean(predictions) )
 
-cor( x01 >0, predictions> mean(predictions) )
+table( regime.cut == predicted.regime, predictions> 0.5 )
+
+cor( regime.cut == predicted.regime, predictions> mean(predictions) )
+cor( regime.cut == predicted.regime, predictions> 0.5 )
 
 
 L_C = -length(x01) * log(nalts)   #; % Greene 7th ed. p. 807
 
 1 - cond_logit_llf(multi.logit.results$par)/L_C
+
+1 - (-1) * cond_logit_llf(multi.logit.results$par)/L_C
+
+
+1 - (- 4.6192206111E+03) /L_C
+
+
+
+#install.packages("numDeriv")
+library("numDeriv")
+
+z = grad(cond_logit_llf, multi.logit.results$par) # ; % Numerical Gradients          
+H = t(z) %*% z 
+cov_betas=inv(H)
+
+
+function (x, z, ...) 
+{
+    if (is.character(z)) 
+        xs <- update(x, alt.subset = z)
+    if (class(z) == "mnlogit") 
+        xs <- z
+    coef.x <- coef(x)
+    coef.s <- coef(xs)
+    un <- names(coef.x) %in% names(coef.s)
+    diff.coef <- coef.s - coef.x[un]
+    diff.var <- vcov(xs) - vcov(x)[un, un]
+    hmf <- as.numeric(diff.coef %*% solve(diff.var) %*% diff.coef)
+    names(hmf) <- "chisq"
+    df <- sum(un)
+    names(df) <- "df"
+    pv <- pchisq(hmf, df = df, lower.tail = FALSE)
+    res <- list(data.name = x$call$data, statistic = hmf, p.value = pv, 
+        parameter = df, method = "Hausman-McFadden test", alternative = "IIA is rejected")
+    class(res) <- "htest"
+    res
+}
+
+
+
+
+
 
 
 
