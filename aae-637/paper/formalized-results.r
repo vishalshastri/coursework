@@ -389,6 +389,7 @@ table.multi.plot.folio <- by(stacked.firm.df, INDICES=list(factor(stacked.firm.d
 
 
 
+
 #unique(stacked.firm.df$which.crop)
 #[1] "Potatoes"   "Maize"      "Barley"     "Wheat"      "Fava Beans"
 

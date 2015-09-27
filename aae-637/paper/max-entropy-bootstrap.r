@@ -409,6 +409,10 @@ if ( do.regimes) {
 
   n.regime.groups <- 6
   
+  # This point right below here relies on there being on 
+  # prep-for-sgm-GAMS-regimes-construction.r not having been run
+  # Maybe want   source(paste0(code.dir, "build-model-extract-parcels.r"))   here
+  
   source(paste0(code.dir, "regimes-cluster-calc.r"))
   
   source(paste0(code.dir, "GAMS-multinomial-logit-construction.r"))
@@ -423,8 +427,13 @@ if ( do.regimes) {
   system(run.multinom.logit.from.shell)
   
   
+  set.exp.correction.as.q07 <- TRUE
+  normalize.cond.exp.coefs <- TRUE
+  
+  
   source(paste0(code.dir, "prep-for-sgm-GAMS-regimes-construction.r"))
   
+  start.nonlin.regimes.from.ignorance <- FALSE
   
   source(paste0(code.dir, "sgm-GAMS-regimes-construction.r"))
   
@@ -436,6 +445,9 @@ if ( do.regimes) {
      " Ps=0 suppress=1")
 
   system(run.nonlinear.regimes.from.shell)
+  
+  # options decimals = 7;
+  # ----  28655 VARIABLE byyalt1.L             =    0.0000001  parameters to be estimated
 
 
 

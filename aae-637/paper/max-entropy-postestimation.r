@@ -99,14 +99,16 @@ prob.numbers <- GAMS.nonlinear.results[which(!is.na(GAMS.nonlinear.results.extra
 ###### ACTUALLY, START HERE
 ########################
 
+library("numDeriv")
+
 # GAMS.nonlinear.results<- readLines("/Users/travismcarthur/Desktop/Dropbox/entropytest.lst")
 # GAMS.projdir <- "/Users/travismcarthur/Desktop/gamsdir/projdir/"
 
 all.eqns <- paste0("dem", 1:length(demand.eqns))
 
-GAMS.nonlinear.results<- readLines(paste0(GAMS.projdir, "sgmGMEnonlinear" # "GMEnonlinear",  
+GAMS.nonlinear.results<- readLines(paste0(GAMS.projdir, "sgmGMEnonlinearRegimes", # "GMEnonlinear",  
 strsplit(target.crop, " ")[[1]][1], 
-   formatC(bootstrap.iter, width = 5, flag = "0"), ".lst"))
+   formatC(bootstrap.iter, width = 5, flag = "0"), file.flavor, ".lst"))
 
 
 GAMS.nonlinear.results.params<- GAMS.nonlinear.results[grep("parameters to be estimated$", GAMS.nonlinear.results)]
@@ -121,6 +123,55 @@ GAMS.nonlinear.results.params.numbers <- as.numeric(gsub("  parameters to be est
 
 GAMS.nonlinear.results.params.full <- GAMS.nonlinear.results.params.numbers
 names(GAMS.nonlinear.results.params.full) <- GAMS.nonlinear.results.params.names
+
+
+
+
+
+
+# New way to get param values with more digits of precision
+
+
+gdx.params.df <- read.csv(file=paste0(GAMS.projdir, "sgmGMEnonlinearRegimes", strsplit(target.crop, " ")[[1]][1], 
+     formatC(bootstrap.iter, width = 5, flag = "0"), file.flavor  , "-param-output.txt"),
+     head=FALSE, stringsAsFactors=FALSE)
+   
+names(gdx.params.df) <- c("param.names", "param.values")  
+
+
+
+#all.params.simple <- unique(unlist(str_extract_all(unlist(demand.eqns.nonlinear), 
+#"(xi.[0-9][0-9])|(s.[0-9][0-9].[0-9][0-9])|(b.y.[0-9][0-9])|(b.[0-9][0-9])|(b.y.y)|(d.[0-9][0-9].[0-9][0-9])|(c.[0-9][0-9] )|(c.[0-9][0-9].[0-9][0-9])"
+#  ))
+#)
+
+all.params.simple <- unique(unlist(str_extract_all(unlist(demand.eqns.alt), 
+"(lambda[0-9][0-9])|(xi.[0-9][0-9])|(s.[0-9][0-9].[0-9][0-9]R[0-9][0-9])|(b.y.[0-9][0-9]R[0-9][0-9])|(b.[0-9][0-9]R[0-9][0-9])|(b.y.yR[0-9][0-9])|(d.[0-9][0-9].[0-9][0-9]R[0-9][0-9])|(c.[0-9][0-9]R[0-9][0-9] )|(c.[0-9][0-9].[0-9][0-9]R[0-9][0-9])"
+  ))
+)
+
+
+
+all.params.simple <- all.params.simple[!grepl(paste0("xi.", lead.zero(N)), all.params.simple)]
+
+all.params.simple <- gsub("([.])|( )", "", all.params.simple)
+
+#all.params.simple <- all.params.simple[!grepl("xi", all.params.simple)]
+
+GAMS.nonlinear.results.params.names <- 
+  gdx.params.df$param.names[ gdx.params.df$param.names %in% all.params.simple]
+
+GAMS.nonlinear.results.params.numbers <-
+gdx.params.df$param.values[ gdx.params.df$param.names %in% all.params.simple]
+  
+  
+
+
+
+
+
+
+
 
 
 
@@ -166,9 +217,9 @@ for ( i in 1:length(all.eqns) ) {
 #    skip = begin.err.weight[i] + 3,  nrows= nrow(combined.df))
     # "/Users/travismcarthur/Desktop/Dropbox/entropytest.lst"
     err.weight.temp.df <- read.table(
-  paste0(GAMS.projdir, "sgmGMEnonlinear",  # "GMEnonlinear", 
+  paste0(GAMS.projdir, "sgmGMEnonlinearRegimes",  # "GMEnonlinear", 
   strsplit(target.crop, " ")[[1]][1], 
-   formatC(bootstrap.iter, width = 5, flag = "0"), ".lst"), 
+   formatC(bootstrap.iter, width = 5, flag = "0"), file.flavor, ".lst"), 
 #paste0(GAMS.projdir,"sgmGMEnonlinearHaba00000 before soil and elev.lst"),
    skip = begin.err.weight[i] + 3 ,  nrows= nrow(combined.df))  
    #    skip = begin.err.weight[i] + 3,  nrows= nrow(combined.df))  
@@ -290,14 +341,14 @@ for ( i in 1:(length(all.eqns)) ) {
   
   temp.deriv.fn <- function(x, data) { 
     x <- c(as.list(x), as.list(data))
-    with(x, eval(parse(text=gsub("[.]", "", demand.eqns.nonlinear[[i]] #modified.S.n.string #demand.eqns.nonlinear[[i]]
+    with(x, eval(parse(text=gsub("[.]", "", gsub("[.]", "", demand.eqns.alt[[i]]) #modified.S.n.string #demand.eqns.nonlinear[[i]]
     ) )) )
     # This line seemed to have a serious bug from the translog form,
     # where is ws just plugging in cost fn instaed of cost share eqns
   }
 
   modified.S.n.string.evaled.deriv[[i]] <- jacobian(temp.deriv.fn, 
-    x=GAMS.nonlinear.results.params.full, method="complex", 
+    x=GAMS.nonlinear.results.params.full, method= "Richardson", #"complex", 
     data=as.data.frame(combined.df) )
   
   #(with(combined.w.params.df, eval(parse(text=modified.S.n.string ))) -
@@ -312,6 +363,35 @@ temp.deriv.fn(  GAMS.nonlinear.results.params.full, as.data.frame(combined.df))
 
 stacked.jacobian <- do.call(rbind, modified.S.n.string.evaled.deriv) 
 
+colnames(stacked.jacobian) <- names(GAMS.nonlinear.results.params.full)
+
+head(stacked.jacobian[ , c(grep("lambda", colnames(stacked.jacobian) ), which(colnames(stacked.jacobian)=="d0107R01"))] )
+rankMatrix(stacked.jacobian[ , grepl("lambda", colnames(stacked.jacobian) )] )
+rankMatrix(stacked.jacobian[ , c(grep("lambda", colnames(stacked.jacobian) ), which(colnames(stacked.jacobian)=="d0107R01"))] )
+rankMatrix(stacked.jacobian )
+ncol(stacked.jacobian)
+rankMatrix(stacked.jacobian[ , grepl("(lambda)|(07)", colnames(stacked.jacobian) )] )
+rankMatrix(stacked.jacobian[ , grepl("(lambda)|(07)", colnames(stacked.jacobian) )] , tol=10^-8)
+sum(grepl("(lambda)|(07)", colnames(stacked.jacobian) ))
+
+
+ testcols <- function(ee) {
+       ## split eigenvector matrix into a list, by columns
+       evecs <- split(zapsmall(ee$vectors),col(ee$vectors))
+       ## for non-zero eigenvalues, list non-zero evec components
+       mapply(function(val,vec) {
+           if (val!=0) NULL else which(vec!=0)
+       },zapsmall(ee$values),evecs)
+       # Thanks to http://stackoverflow.com/questions/12304963/using-eigenvalues-to-test-for-singularity-identifying-collinear-columns
+   }
+   
+lambda.and.07.cols <- stacked.jacobian[ , grepl("(lambda)|(07)", colnames(stacked.jacobian) )] 
+
+
+ testcols(eigen(crossprod(lambda.and.07.cols)))
+ # 
+
+
 stacked.jacobian <- rbind(  modified.ln.E.string.evaled.deriv, 
   do.call(rbind, modified.S.n.string.evaled.deriv) )
 
@@ -320,7 +400,17 @@ stacked.jacobian <- rbind(  modified.ln.E.string.evaled.deriv,
 library("matrixcalc")
 
 is.positive.definite(big.sigma)
+isSymmetric(big.sigma, tol=.Machine$double.eps)
+
 #is.positive.definite(test.matrix)
+# stacked.jacobian.save <- stacked.jacobian
+# summary( stacked.jacobian.save - stacked.jacobian)
+
+# For complex vs. Richardson methods
+# And seems to really be only one element that is that far
+#max(abs(as.matrix(stacked.jacobian.save - stacked.jacobian)))
+#[1] 0.001493081
+
 
 
 #param.covar.mat <-  solve(
@@ -332,15 +422,25 @@ is.positive.definite(big.sigma)
 
 #stacked.jacobian.last.theta.dropped <- stacked.jacobian[, -ncol(stacked.jacobian)]
 
-
-param.covar.mat <-  solve(
-  t( stacked.jacobian ) %*% 
+param.covar.mat.core <- t( stacked.jacobian ) %*% 
     kronecker( solve(big.sigma/nrow(combined.df)), diag(nrow(combined.df)) ) %*% 
     stacked.jacobian
-  , tol=.Machine$double.eps^2)
+    
+rankMatrix(param.covar.mat.core)
+dim(param.covar.mat.core)
+
+rankMatrix(param.covar.mat.core[1:100, 1:100])
+
+param.covar.mat <-  solve(  param.covar.mat.core, tol=.Machine$double.eps^3)
+#param.covar.mat <-  solve(  param.covar.mat.core, tol=.Machine$double.eps^2)
 # NOTE: reducing singularity tolerance to make it work
+# Ok, now need to use .Machine$double.eps^3 to make it work. Problem?!?!?
 # is it solve(big.sigma/nrow(combined.df)) or solve(big.sigma)?
 
+
+is.positive.definite(param.covar.mat)
+
+round(t(t(GAMS.nonlinear.results.params.full)), digits=2)
 
 round(t(t(GAMS.nonlinear.results.params.full /  sqrt(diag(param.covar.mat)) ) ), digits=2)
 
@@ -360,6 +460,12 @@ grepl("xi", names(GAMS.nonlinear.results.params.full))]))
 param.covar.mat[grepl("theta", names(GAMS.nonlinear.results.params.full)),
 grepl("theta", names(GAMS.nonlinear.results.params.full))]
 
+
+
+param.covar.mat[grepl("lambda", names(GAMS.nonlinear.results.params.full)),
+grepl("lambda", names(GAMS.nonlinear.results.params.full))]
+
+
 cov2cor(param.covar.mat[grepl("xi", names(GAMS.nonlinear.results.params.full)),
 grepl("xi", names(GAMS.nonlinear.results.params.full))])
 
@@ -378,7 +484,9 @@ print(wald.test(param.covar.mat, GAMS.nonlinear.results.params.full, L = t(matri
 
 # BELOW IS TEST OF WHETHER A GIVEN FIXED INPUT BELONGS IN THE REGRESSION
 
-which.fixed.input <- 6
+
+for ( which.fixed.input in 1:7) {
+
 
 param.set <- names(GAMS.nonlinear.results.params.full)[
   grepl(paste0("(d[0-9][0-9]0", which.fixed.input,
@@ -400,7 +508,10 @@ fixed.input.wald.mat <- do.call(rbind, fixed.input.wald.ls)
 print(wald.test(param.covar.mat, GAMS.nonlinear.results.params.full, L = fixed.input.wald.mat))
 
 
+}
 
+# Hmm. So now it seems q07 doesn't belong? Need to let GAMS actually finish solving the problem,
+# though, since the we are not at the optimum solution
 
 
 
@@ -978,12 +1089,42 @@ coef.of.variation(w04)
 coef.of.variation(w05)
 coef.of.variation(w06)
 
+# ( lambda01 * ( log(P01) / (1-P01) ) * (P01 - RInd01) + lambda02 * ( log(P02) / (1-P02) ) * (P02 - RInd02) + lambda03 * ( log(P03) / (1-P03) ) * (P03 - RInd03) + lambda04 * ( log(P04) / (1-P04) ) * (P04 - RInd04) )
+
+
+co.lin.test.df <- data.frame(a=( log(P01) / (1-P01) ) * (P01 - RInd01), 
+  b = ( log(P02) / (1-P02) ) * (P02 - RInd02) ,
+  c= ( log(P03) / (1-P03) ) * (P03 - RInd03) ,
+  d = ( log(P04) / (1-P04) ) * (P04 - RInd04) 
+)
+
+rankMatrix( as.matrix(co.lin.test.df), tol=10^-8 )
+
+
+
+co.lin.test.df <- data.frame(a=( log(P01) / (1-P01) ) * (P01 - RInd01), 
+  b = ( log(P02) / (1-P02) ) * (P02 - RInd02) ,
+  c= ( log(P03) / (1-P03) ) * (P03 - RInd03) ,
+  d = ( log(P04) / (1-P04) ) * (P04 - RInd04), 
+  e = ( log(P05) / (1-P05) ) * (P05 - RInd05) 
+)
+
+rankMatrix( as.matrix(co.lin.test.df), tol=10^-8 )
+
+cor( cbind(co.lin.test.df, RInd01, RInd02, RInd03, RInd04, RInd05) )
 
 
 
 
+rankMatrix( cbind(with(as.list(GAMS.nonlinear.results.params.full), eval(parse(text=correction.factor))), 
+with(as.list(GAMS.nonlinear.results.params.full), eval(parse(text=correction.factor)))^2),
+tol=10^-8 )
+
+cor(cbind(with(as.list(GAMS.nonlinear.results.params.full), eval(parse(text=correction.factor))), 
+with(as.list(GAMS.nonlinear.results.params.full), eval(parse(text=correction.factor)))^2))
 
 
+summary( with(as.list(GAMS.nonlinear.results.params.full), eval(parse(text=correction.factor))) )
 
 
 

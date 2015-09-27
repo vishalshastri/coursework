@@ -11,7 +11,7 @@
 
 # as.data.frame(region.matrix) 
 
-file.flavor <- "typical"
+#file.flavor <- "typical"
 
 
 #exists.vec <- Vectorize( exists)
@@ -555,13 +555,35 @@ set.seed(100)
   
 parameter.display.lines <- c( paste0("display ", gsub(" ", "", unlist(alt.params)), ".l;"),
 "display overflow_protect.l;"
-
 #  paste0("display p", all.params, ".l;"),
 #  paste0("display w", all.eqns, ".l;"),
 #  paste0("display ", cov.var.display, ".l;")
 #  paste0("display Smat.l")
 #  paste0("display errorrelax.l")
   )
+
+
+gdx.output.file <- paste0("MLEmultinomiallogit", strsplit(target.crop, " ")[[1]][1], 
+     formatC(bootstrap.iter, width = 5, flag = "0"), file.flavor  , "-param-output.txt") 
+
+
+
+gdx.like.output.lines <- c(
+paste0("file output /", gdx.output.file, "/;"),
+"output.nr = 2  ; /* 'rounding option' used to force e format */",
+"output.nd = 15 ; /* or larger */ ",
+"output.nw = 0  ; /* width as required */ ",
+"put output;" ,
+paste0("put \"", gsub(" ", "", unlist(alt.params)), ",\" ", 
+  gsub(" ", "", unlist(alt.params)), ".l /;"),
+"put \"overflow_protect,\" overflow_protect.l;",
+"putclose;"
+)
+
+
+
+
+
 
 # set.seed(100)
 # paste0(gsub(" ", "", unlist(alt.params)), ".l = ", rnorm(length(unlist(alt.params)), mean=0, sd=5), ";"),
@@ -641,7 +663,8 @@ completed.GAMS.file <-  c(
 #  errorrelaxrestrict.defn, " ",
 #  covar.SUR.lines,
   final.lines, " ",
-  parameter.display.lines 
+  parameter.display.lines, " ",
+  gdx.like.output.lines
 )
 
 

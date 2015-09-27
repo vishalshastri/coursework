@@ -44,6 +44,8 @@ hc <- hclust(d_jaccard)
 regime.cut <- cutree(hc, n.regime.groups)
 
 # colnames(just.posi.vars.df) <- c("Seed", "Tractor", "Plag", "Labor", "Abono", "Fert")
+# NOTE: THIS ORDERING OF INPUTS ABOVE in the commented-out code
+# IS "WRONG" - inconsistent with ordering in underlying dataframe
 # as.data.frame( ftable(just.posi.vars.df[test.cut==1, ]) )
 
 regime.cut.tab <- table(regime.cut)

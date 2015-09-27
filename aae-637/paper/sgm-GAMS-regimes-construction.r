@@ -263,6 +263,21 @@ all.params <- unique(unlist(str_extract_all(unlist(demand.eqns.alt),
   ))
 )
 
+# NOTE: DOuble-check about the dots on demand.eqns.alt here 
+
+
+#all.params <- unique(unlist(str_extract_all(unlist(demand.eqns.alt), 
+#"(lambda[0-9][0-9])|(xi[0-9][0-9])|(s[0-9][0-9][0-9][0-9]R[0-9][0-9])|(by[0-9][0-9]R[0-9][0-9])|(b[0-9][0-9]R[0-9][0-9])|(byyR[0-9][0-9])|(d[0-9][0-9][0-9][0-9]R[0-9][0-9])|(c[0-9][0-9]R[0-9][0-9] )|(c[0-9][0-9][0-9][0-9]R[0-9][0-9])"
+#  ))
+#)
+
+
+all.params <- c(all.params, paste0("lambda", lead.zero(1:nalts)) )
+
+
+
+
+
 all.params <- all.params[!grepl(paste0("xi.", lead.zero(N)), all.params)]
 
 all.params <- gsub("([.])|( )", "", all.params)
@@ -347,6 +362,7 @@ if (!do.SUR) { cov.var.declarations <- c() }
 
 variable.declaration.lines <- c("variables",
   paste0("  ", all.params, "   parameters to be estimated"),
+  ifelse(set.exp.correction.as.q07, paste0("  q", lead.zero(J), "(t)    expectation correction term"), ""),
   paste0("SmatR", lead.zero(1:nalts), "(ssR", lead.zero(1:nalts), ",", "sssR", lead.zero(1:nalts), ") S matrix to make cost function concave" ),
   paste0("SmatTR", lead.zero(1:nalts), "(sssR", lead.zero(1:nalts), ",", "ssR", lead.zero(1:nalts), ") S matrix to make cost function concave" ),
 ifelse(convex.in.f.inputs,  "  Cmat(cc,ccc)   C matrix to make cost function convex in fixed inputs", ""),
@@ -368,6 +384,15 @@ ifelse(convex.in.f.inputs,  "  CmatT(ccc,cc)   transpose of C matrix to make cos
 #  "longlogsection(t)",
   ";"
 )
+
+
+#if (set.exp.correction.as.q07) {
+#  variable.declaration.lines <- variable.declaration.lines[-length(variable.declaration.lines)]
+  # getting rid of trailing semicolon
+#  variable.declaration.lines <- c(variable.declaration.lines,
+#     , ";" ) 
+#}
+
 
 
 
@@ -424,7 +449,7 @@ objective.fn.lines[1] <- paste0( "object..           g =e= ", objective.fn.lines
 model.restrictions <- list()
 
 
-add.data.subscripts
+# add.data.subscripts
 
 GAMS.demand.eqns.nonlinear <- lapply(demand.eqns.alt, FUN=add.data.subscripts)
 
@@ -448,6 +473,24 @@ for ( i in 1:length(GAMS.demand.eqns.nonlinear)) {
   model.restrictions[[i]] <- c(first.eq.line.a, second.eq.line.a, first.eq.line.b, second.eq.line.b)
   
 }
+
+
+
+correction.factor.subscripted <- add.data.subscripts(correction.factor)
+
+if ( set.exp.correction.as.q07 ) {
+
+  model.restrictions[[length(model.restrictions)+1]] <-
+  c( "expectationcorrectionfactor(t)..",     
+    strwrap( paste0("q", lead.zero(J), "(t) =e= ", correction.factor.subscripted), 
+    indent=12, exdent=19, width=80),
+    ";"               
+  )         
+
+}
+
+
+
 
 
 
@@ -794,11 +837,9 @@ equation.declarations <- c(
 #  restriction.that.err.sum.to.zero.declare,
 #  errorrelaxrestrict.declare,
   cov.rest.declarations,
+  ifelse(set.exp.correction.as.q07, "expectationcorrectionfactor(t)", ""),
   ";"
 )
-
-
-  
 
 
 
@@ -832,8 +873,63 @@ prob.numbers <- GAMS.nonlinear.results[which(!is.na(GAMS.nonlinear.results.extra
 
 prob.numbers <- rep(prob.numbers, nalts)
 
+
+
+# NEW WAY TO GET PARAM VALUES BELOW
+
+gdx.params.df <- read.csv(file=paste0(GAMS.projdir, "sgmGMEnonlinear", strsplit(target.crop, " ")[[1]][1], 
+     formatC(bootstrap.iter, width = 5, flag = "0"), file.flavor  , "-param-output.txt"),
+     head=FALSE, stringsAsFactors=FALSE)
+   
+names(gdx.params.df) <- c("param.names", "param.values")  
+     
+#GAMS.nonlinear.results.params.full <- 
+#  gdx.params.df$param.values[gdx.params.df$param.names %in% all.params]
+#names(GAMS.nonlinear.results.params.full) <- 
+#  gdx.params.df$param.names[gdx.params.df$param.names %in% all.params]
+  
+
+gdx.params.probs.df <- gdx.params.df[grepl("^p", gdx.params.df$param.names), ]
+prob.names <- unique(gdx.params.probs.df$param.names)
+
+
+prob.numbers <- c()
+
+for ( targ.prob.name in unique(prob.names) ) {
+
+  prob.numbers <- c(prob.numbers, 
+    paste0( 
+      gdx.params.probs.df$param.values[gdx.params.probs.df$param.names==targ.prob.name], 
+      collapse=", ")
+  )
+
+}
+# Being a bit clever here to ensure that we pass the later steps 
+# exactly what they were expecting, based on the previous way of extracting this
+
+prob.numbers <- rep(prob.numbers, nalts)
+# Wow, this relies heavily on having the right order, etc.
+
+
+prob.names <- paste0( prob.names, "R", rep(lead.zero(1:nalts), each=length(prob.names)), ".L")  
+
+# prob.numbers <- GAMS.nonlinear.results[which(!is.na(GAMS.nonlinear.results.extracted)) + 2]
+
+
+
+
+
+#gdx.params.probs.df <- gdx.params.df[grepl("^p", gdx.params.df$param.names), ]
+  
+#overflow_protect <-
+#  gdx.params.df$param.values[gdx.params.df$param.names=="overflow_protect"]
+
+
+
+
+
 set.seed(100)
-start.vals.lines <- paste0("lambda", lead.zero(1:nalts), ".l = 0;")
+start.vals.lines <- paste0("lambda", lead.zero(1:sum(grepl("lambda", all.params))), ".l = 0;")
 # start.vals.lines <- paste0("xi", lead.zero(1:(N-1)), ".l = ", jitter(1), ";")
 # start.vals.lines <- paste0("xi", lead.zero(1:(N-1)), ".l = 0;")
 # added this to have correct (non-zero) starting vals for theta
@@ -884,20 +980,41 @@ GAMS.nonlinear.results<- readLines(paste0(GAMS.projdir, "sgmGMEnonlinear", strsp
 begin.err.weight <- grep("L  probability corresponding error term", GAMS.nonlinear.results)
 end.err.weight  <- grep(paste0("^", nrow(combined.df), " "), GAMS.nonlinear.results)
 
+
+
+
+
+
+
+gdx.params.df <- read.csv(file=paste0(GAMS.projdir, "sgmGMEnonlinear", strsplit(target.crop, " ")[[1]][1], 
+     formatC(bootstrap.iter, width = 5, flag = "0"), file.flavor  , "-param-output.txt"),
+     head=FALSE, stringsAsFactors=FALSE)
+   
+names(gdx.params.df) <- c("param.names", "param.values")  
+
+
+
+
 error.weights.lines <- c()
 
+# [62188] "put \"wdem6,\" wdem6.l(\"3455\",\"1\") /;" "put \"wdem6,\" wdem6.l(\"3455\",\"2\") /;" "put \"wdem6,\" wdem6.l(\"3455\",\"3\") /;"
 
 
 
-if ( !start.nonlin.from.ignorance) {
+if ( !start.nonlin.regimes.from.ignorance) {
 
 for ( i in 1:length(all.eqns) ) {
   
-  err.weight.temp.df <- read.table( paste0(GAMS.projdir, "sgmGMEnonlinear", strsplit(target.crop, " ")[[1]][1], 
-   formatC(bootstrap.iter, width = 5, flag = "0"), file.flavor, ".lst"), 
-    skip = begin.err.weight[i] + 3,  nrows= nrow(combined.df))
+#  err.weight.temp.df <- read.table( paste0(GAMS.projdir, "sgmGMEnonlinear", strsplit(target.crop, " ")[[1]][1], 
+#   formatC(bootstrap.iter, width = 5, flag = "0"), file.flavor, ".lst"), 
+#    skip = begin.err.weight[i] + 3,  nrows= nrow(combined.df))
 
-  err.weight.temp.df <- err.weight.temp.df[, -1 ]
+#  err.weight.temp.df <- err.weight.temp.df[, -1 ]
+  
+  err.weight.temp.df <- gdx.params.df$param.values[ 
+    gdx.params.df$param.names== paste0("wdem", i)]
+
+  err.weight.temp.df <- as.data.frame(matrix(err.weight.temp.df, ncol=3, byrow=TRUE))
   
   err.grid <- expand.grid( 1:3, 1:nrow(combined.df))
   
@@ -1133,6 +1250,34 @@ GAMS.nonlinear.results.params.numbers <- as.numeric(gsub("(  parameters to be es
   str_extract(GAMS.nonlinear.results.params, "([^ ]*  parameters to be estimated)|([^ ]*  SUR covar parameter)") ) )
   
   
+
+
+gdx.params.df <- read.csv(file=paste0(GAMS.projdir, "sgmGMEnonlinear", strsplit(target.crop, " ")[[1]][1], 
+     formatC(bootstrap.iter, width = 5, flag = "0"), file.flavor  , "-param-output.txt"),
+     head=FALSE, stringsAsFactors=FALSE)
+   
+names(gdx.params.df) <- c("param.names", "param.values")  
+
+
+
+all.params.simple <- unique(unlist(str_extract_all(unlist(demand.eqns.nonlinear), 
+"(xi.[0-9][0-9])|(s.[0-9][0-9].[0-9][0-9])|(b.y.[0-9][0-9])|(b.[0-9][0-9])|(b.y.y)|(d.[0-9][0-9].[0-9][0-9])|(c.[0-9][0-9] )|(c.[0-9][0-9].[0-9][0-9])"
+  ))
+)
+
+all.params.simple <- all.params.simple[!grepl(paste0("xi.", lead.zero(N)), all.params.simple)]
+
+all.params.simple <- gsub("([.])|( )", "", all.params.simple)
+
+#all.params.simple <- all.params.simple[!grepl("xi", all.params.simple)]
+
+GAMS.nonlinear.results.params.names <- 
+  gdx.params.df$param.names[ gdx.params.df$param.names %in% all.params.simple]
+
+GAMS.nonlinear.results.params.numbers <-
+gdx.params.df$param.values[ gdx.params.df$param.names %in% all.params.simple]
+  
+  
 combined.w.params.df <- as.list(as.data.frame(combined.df))
 
 for ( i in 1:length(GAMS.nonlinear.results.params.names)) {
@@ -1144,10 +1289,6 @@ for ( i in 1:length(GAMS.nonlinear.results.params.names)) {
 #for ( i in 1:N) {
 #  combined.w.params.df[[ paste0("xi", lead.zero(i)) ]] <- 1
 #}
-
-
-
-
 
 
 
@@ -1171,11 +1312,13 @@ ind.to.delete <- grep("(surdelta[0-9][0-9]R[0-9][0-9])|(xi[0-9][0-9]R[0-9][0-9])
 
 param.starting.vals[ind.to.delete] <- gsub("R[0-9][0-9]", "", param.starting.vals[ind.to.delete])
 
-param.starting.vals <- param.starting.vals[ - ind.to.delete[1:(length(ind.to.delete)/2)]]
+
+
+param.starting.vals <- param.starting.vals[ !duplicated(param.starting.vals) ]
 
 
 
-if ( FALSE) {
+if ( start.nonlin.regimes.from.ignorance) {
 # Above was previously start.nonlin.from.ignorance
 
 
@@ -1628,6 +1771,23 @@ completed.GAMS.file <-  c(
   final.lines, " ",
   parameter.display.lines
 )
+
+
+
+
+if ( set.exp.correction.as.q07 ) {
+  demand.eqns.alt <- gsub(paste0("q", lead.zero(J)), correction.factor,  demand.eqns.alt)
+}
+# Doing this so that later in postestimation everything will work out
+
+
+J <- J - 1
+# NOTE: IMPORTANT: Setting J back to its value before the prep-for-sgm-GAMS-regime ran.
+# I believe this will have beneficial, not harmful, consequences.
+
+
+
+
 
 
   

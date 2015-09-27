@@ -767,12 +767,14 @@ test.kmeans <- kmeans(stacked.firm.df[, c("x19.sem.comprada.cantidad.kg.posi",
 str(test.kmeans)
 table(test.kmeans$cluster)
 
-just.posi.vars.df <- stacked.firm.df[, c("x19.sem.comprada.cantidad.kg.posi",
-  "tractor.hrs.final.posi",
-  "x19.plagicidas.cantidad.kg.posi",
-  "paid.hours.spread.posi",
-  "x19.abono.cantidad.kg.posi",
-  "x19.fertilizante.cantidad.kg.posi")]
+#just.posi.vars.df <- stacked.firm.df[, c("x19.sem.comprada.cantidad.kg.posi",
+#  "tractor.hrs.final.posi",
+#  "x19.plagicidas.cantidad.kg.posi",
+#  "paid.hours.spread.posi",
+#  "x19.abono.cantidad.kg.posi",
+#  "x19.fertilizante.cantidad.kg.posi")]
+
+# NOTE: Need to make the above consistent with the x01 x02, etc ordering in the orig dataframe
 
 trans1 <- as(just.posi.vars.df, "transactions")
 
@@ -784,7 +786,7 @@ plot(hc)
 
 test.cut <- cutree(hc, 6)
 
-colnames(just.posi.vars.df) <- c("Seed", "Tractor", "Plag", "Labor", "Abono", "Fert")
+#colnames(just.posi.vars.df) <- c("Seed", "Tractor", "Plag", "Labor", "Abono", "Fert")
 
 as.data.frame( ftable(just.posi.vars.df[test.cut==1, ]) )
 
